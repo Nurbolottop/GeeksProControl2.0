@@ -5,6 +5,12 @@
 {% block page %}
 {% ui_page_header title="Новое собрание" subtitle="Ссылка на видеовстречу у каждого участника своя — личность подтверждает она, а не имя в видеосервисе" %}
 {% end_ui_page_header %}
+{% if video_unavailable %}
+<div class="gp-alert gp-alert--warning" role="status" style="margin-bottom: var(--space-3)">
+    {% ui_icon "alert-circle" %}
+    <div class="gp-alert__body"><p class="gp-alert__title">{{ video_unavailable }}</p></div>
+</div>
+{% endif %}
 {% if not pairs %}
     {% ui_empty "Нет направлений для собраний" "Собрание направления назначает активный тимлид этого направления в идущем проекте." icon_name="calendar" %}
 {% else %}
@@ -25,7 +31,7 @@
             {% for m in people %}<label class="gp-check" style="display:flex; gap: var(--space-2); align-items:center"><input type="checkbox" name="people" value="{{ m.intern_id }}" checked> {{ m.intern.full_name }}{% if not m.intern.telegram_chat_id %} <span class="gp-muted gp-small">— нет Telegram, приглашение не дойдёт</span>{% endif %}</label>{% empty %}<p class="gp-muted gp-small" style="margin:0">Активных участников нет.</p>{% endfor %}
         </fieldset>
         <p class="gp-muted gp-small" style="margin:0">Приглашения с персональной ссылкой уйдут через Telegram-бота (в stage исходящие отключены). Ссылку не пересылают: она подтверждает личность.</p>
-        <div>{% ui_button "Назначить собрание" variant="primary" type="submit" %}</div>
+        {% if not video_unavailable %}<div>{% ui_button "Назначить собрание" variant="primary" type="submit" %}</div>{% endif %}
     </form>
 {% end_ui_card %}
 {% endif %}

@@ -153,6 +153,9 @@ def meeting_new(request, scope='lead'):
                       pairs[0] if pairs else None)
         people = list(services.project_leads(chosen['project'])) if chosen else []
         kinds = [(VideoMeeting.Kind.PM_LEADS, VideoMeeting.Kind.PM_LEADS.label)]
+    from apps.video.providers import unavailable_reason
+
+    video_unavailable = unavailable_reason()
     if request.method == 'POST' and chosen:
         try:
             meeting = services.create_meeting(
@@ -167,7 +170,7 @@ def meeting_new(request, scope='lead'):
             return redirect(_url(scope, 'detail', meeting.pk))
     return render(request, 'video/new.html', {
         'scope': scope, 'pairs': pairs, 'chosen': chosen, 'people': people, 'kinds': kinds,
-        'today': timezone.localdate(), 'post': request.POST,
+        'today': timezone.localdate(), 'post': request.POST, 'video_unavailable': video_unavailable,
         'crumbs': _crumbs(scope, ('Новое собрание', '')),
     })
 

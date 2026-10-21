@@ -107,8 +107,10 @@ def _week_start(moment) -> datetime.date:
 
 
 def create_meeting(user, project, *, kind, topic, starts_at, duration_minutes=60, direction='', intern_ids=()):
-    from apps.video.providers import get_provider
+    from apps.video.providers import get_provider, unavailable_reason
 
+    if reason := unavailable_reason():
+        raise MeetingError(reason)
     host = _profile(user)
     topic = (topic or '').strip()[:255]
     if not topic:
