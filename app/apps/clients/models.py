@@ -23,6 +23,11 @@ class Client(TimeStampedModel, ArchivableModel):
     def __str__(self) -> str:
         return self.organization
 
+    def get_absolute_url(self) -> str:
+        from django.urls import reverse
+
+        return reverse('clients:detail', args=[self.pk])
+
 
 class ClientContact(TimeStampedModel):
     """Дополнительное контактное лицо клиента."""

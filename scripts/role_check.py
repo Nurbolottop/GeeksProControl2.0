@@ -100,8 +100,9 @@ with override_settings(ALLOWED_HOSTS=[HOST, 'testserver']):
         for path in forbidden:
             r = c.get(path)
             check(f'{role} не видит {path}', r.status_code in (302, 403, 404), f'код {r.status_code}')
-        mine = set(TeamMember.objects.filter(intern=member.intern, status=ACTIVE).values_list('project_id', flat=True))
-        other = Project.objects.exclude(pk__in=mine).order_by('pk').first()
+        # «Чужой» — где человек не состоял никогда: прошлые проекты видны ему только для чтения
+        ever = set(TeamMember.objects.filter(intern=member.intern).values_list('project_id', flat=True))
+        other = Project.objects.exclude(pk__in=ever).order_by('pk').first()
         if other:
             r = c.get(f'/{role}/{other.pk}/')
             check(f'{role}: чужой проект → 404', r.status_code == 404, f'код {r.status_code}')
@@ -132,8 +133,8 @@ if WRITE and lead_member:
         check('lead: сдать еженедельный отчёт', True)
     except Exception as error:
         check('lead: сдать еженедельный отчёт', False, f'{type(error).__name__}: {str(error)[:160]}')
-    target = TeamMember.objects.filter(project=project, status=ACTIVE).exclude(intern=lead_member.intern).exclude(
-        role__in=[TeamRole.TEAM_LEAD, TeamRole.PROJECT_MANAGER]).first()
+    target = TeamMember.objects.filter(project=project, status=ACTIVE, role__in=directions).exclude(
+        intern=lead_member.intern).first()
     if target:
         try:
             weekly.evaluate(user, target.intern, project, 8, 'оценка проверки')
