@@ -40,6 +40,9 @@ class Command(BaseCommand):
             raise CommandError('Токен бота 1.0 в 2.0 запрещён.')
         if settings.TELEGRAM_OUTBOUND_MODE == 'off':
             raise CommandError('TELEGRAM_OUTBOUND_MODE=off — Telegram недоступен; включите allowlist для stage.')
+        if settings.GP2_ENVIRONMENT != 'production' and not settings.TELEGRAM_TEST_CHAT_IDS:
+            raise CommandError('Вне production нужен хотя бы один тестовый пользователь (TELEGRAM_TEST_CHAT_IDS); '
+                               'свой id — manage.py telegram_whoami.')
         try:
             acquire_polling_lock()
         except PollingLocked as error:

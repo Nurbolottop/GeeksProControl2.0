@@ -335,3 +335,42 @@ class InboundGateAndGuardTests(TestCase):
         for code, status in ((403, 'blocked'), (429, 'retry'), (500, 'retry'), (400, 'failed')):
             with mock.patch('apps.tgbot.outbox._bot', return_value=failing(code)):
                 self.assertEqual(outbox.send('n', USER, 'x').status, status)
+
+
+class Stage11BTelegramPrepTests(TestCase):
+    TOKEN = '123456789:AAFakeTestTokenForGeeksPro2AbcdefghiJK'
+
+    @override_settings(TELEGRAM_OUTBOUND_MODE='allowlist', GP2_ENVIRONMENT='stage', TELEGRAM_TEST_CHAT_IDS=set())
+    def test_polling_refuses_without_test_user(self):
+        from django.core.management import CommandError, call_command
+
+        with override_settings(TELEGRAM_BOT_TOKEN=self.TOKEN):
+            with self.assertRaisesMessage(CommandError, 'TELEGRAM_TEST_CHAT_IDS'):
+                call_command('run_telegram_bot')
+
+    @override_settings(TELEGRAM_OUTBOUND_MODE='allowlist', GP2_ENVIRONMENT='stage', TELEGRAM_TEST_CHAT_IDS={'777'},
+                       TELEGRAM_BOT_TOKEN='123456789:AAFakeTestTokenForGeeksPro2AbcdefghiJK')
+    def test_whoami_reads_only_and_sends_nothing(self):
+        from io import StringIO
+        from types import SimpleNamespace
+
+        from django.core.management import call_command
+
+        sender = SimpleNamespace(id=777, username='tester', first_name='Тест')
+        update = SimpleNamespace(message=SimpleNamespace(chat=SimpleNamespace(type='private'), from_user=sender))
+        with mock.patch('apps.graduate_bot.bot.bot') as bot:
+            bot.get_updates.return_value = [update]
+            out = StringIO()
+            call_command('telegram_whoami', stdout=out)
+        kwargs = bot.get_updates.call_args.kwargs
+        self.assertNotIn('offset', kwargs)  # обновления не подтверждаются
+        bot.send_message.assert_not_called()
+        self.assertIn('777  @tester', out.getvalue())
+        self.assertIn('в allowlist', out.getvalue())
+
+    @override_settings(TELEGRAM_OUTBOUND_MODE='off', TELEGRAM_BOT_TOKEN='123456789:AAFakeTestTokenForGeeksPro2AbcdefghiJK')
+    def test_whoami_refuses_in_off_mode(self):
+        from django.core.management import CommandError, call_command
+
+        with self.assertRaisesMessage(CommandError, 'off'):
+            call_command('telegram_whoami')

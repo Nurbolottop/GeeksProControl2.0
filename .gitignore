@@ -185,6 +185,9 @@ cython_debug/
 
 # Секреты: ключи сервисных аккаунтов, сертификаты, приватные ключи
 app/secrets/
+# На сервере: /opt/geekspro2/secrets (учётки staging, ключ JaaS) и backups
+/secrets/
+/backups/
 **/*credentials*.json
 **/*service-account*.json
 **/google-sheets*.json
