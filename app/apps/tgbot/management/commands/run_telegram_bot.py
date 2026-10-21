@@ -48,6 +48,8 @@ class Command(BaseCommand):
         except PollingLocked as error:
             raise CommandError(str(error)) from None
         telegram_guard.install()
+        from telebot import apihelper
+
         from apps.graduate_bot.bot import bot
         from apps.tgbot.dispatcher import handle_update
 
@@ -56,9 +58,11 @@ class Command(BaseCommand):
             settings.TELEGRAM_OUTBOUND_MODE, settings.GP2_ENVIRONMENT))
         while True:
             try:
-                updates = bot.get_updates(offset=offset, timeout=10, long_polling_timeout=10,
-                                          allowed_updates=['message', 'callback_query', 'my_chat_member',
-                                                           'chat_member'])
+                # Сырые словари Bot API: у telebot.types.Update нет .json (pyTelegramBotAPI 4.x),
+                # а диспетчер работает с исходным JSON. Запрос идёт через ту же защиту (guard).
+                updates = apihelper.get_updates(settings.TELEGRAM_BOT_TOKEN, offset=offset, timeout=10, long_polling_timeout=10,
+                                                allowed_updates=['message', 'callback_query', 'my_chat_member',
+                                                                 'chat_member'])
             except Exception as exc:  # сеть / Telegram — повтор с паузой, без утечки токена
                 self.stderr.write(f'Сбой связи ({type(exc).__name__}: {_hide_token(str(exc))}), '
                                   f'повтор через {delay} сек…')
@@ -69,8 +73,12 @@ class Command(BaseCommand):
                 continue
             delay = RETRY_START_SECONDS
             for update in updates:
-                offset = update.update_id + 1
-                handle_update(update.json)
+                offset = update['update_id'] + 1
+                try:
+                    handle_update(update)
+                except Exception as exc:  # одно сообщение не должно ронять бота и возвращаться по кругу
+                    self.stderr.write(f'Ошибка обработки update {update["update_id"]}: {type(exc).__name__}: '
+                                      f'{_hide_token(str(exc))[:200]}')
             if options['once']:
                 return
             if not updates:

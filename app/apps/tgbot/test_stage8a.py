@@ -374,3 +374,36 @@ class Stage11BTelegramPrepTests(TestCase):
 
         with self.assertRaisesMessage(CommandError, 'off'):
             call_command('telegram_whoami')
+
+
+class Stage11CPollingLoopTests(TestCase):
+    """Production 11C: цикл polling получал telebot.types.Update и падал на update.json."""
+    TOKEN = '123456789:AAFakeTestTokenForGeeksPro2AbcdefghiJK'
+
+    @override_settings(TELEGRAM_OUTBOUND_MODE='allowlist', GP2_ENVIRONMENT='stage', TELEGRAM_TEST_CHAT_IDS={'777'},
+                       TELEGRAM_BOT_TOKEN=TOKEN)
+    def test_raw_updates_reach_dispatcher_and_bad_one_does_not_crash(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        raw = [{'update_id': 10, 'message': {'message_id': 1, 'date': 0, 'text': '/start',
+                                             'chat': {'id': 777, 'type': 'private'}, 'from': {'id': 777}}},
+               {'update_id': 11, 'message': {'message_id': 2, 'date': 0, 'text': 'x',
+                                             'chat': {'id': 777, 'type': 'private'}, 'from': {'id': 777}}}]
+        seen = []
+
+        def fake_handle(data):
+            seen.append(data['update_id'])
+            if data['update_id'] == 10:
+                raise ValueError('сломанное сообщение')
+            return 'ok'
+
+        err = StringIO()
+        with mock.patch('telebot.apihelper.get_updates', return_value=raw) as get_updates, \
+                mock.patch('apps.tgbot.dispatcher.handle_update', side_effect=fake_handle):
+            call_command('run_telegram_bot', once=True, stdout=StringIO(), stderr=err)
+        self.assertEqual(seen, [10, 11])  # второе обработано, хотя первое упало
+        self.assertIn('Ошибка обработки update 10', err.getvalue())
+        self.assertEqual(get_updates.call_args.args[0], self.TOKEN)
+        self.assertNotIn(self.TOKEN, err.getvalue())

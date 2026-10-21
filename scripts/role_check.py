@@ -23,6 +23,11 @@ from apps.interns.models import Intern
 from apps.projects.models import Project
 from apps.teams.models import TeamMember, TeamRole
 
+from django.contrib.auth import user_logged_in
+from django.contrib.auth.models import update_last_login
+
+# Проверка не должна менять учётки: force_login иначе обновит last_login реальных людей
+user_logged_in.disconnect(update_last_login, dispatch_uid='update_last_login')
 WRITE = os.environ.get('GP2_CHECK_WRITE') == '1'
 if WRITE and settings.GP2_ENVIRONMENT == 'production':
     raise SystemExit('GP2_CHECK_WRITE запрещён в production.')
