@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Запросы на стажёров — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Запросы на стажёров</h1>
+        <div class="sub">Сколько людей и на какой проект нужно, к какой дате</div>
+    </div>
+    <div class="page-actions">
+        <a href="#new" class="btn">+ Запрос</a>
+    </div>
+</div>
+
+{% if open_requests %}
+    <div class="lead-summary">
+        <div class="lead-summary__item lead-summary__item--total">
+            <span class="lead-summary__value">{{ total_needed }}</span>
+            <span class="lead-summary__label">всего нужно</span>
+        </div>
+        {% for row in by_spec %}
+            <div class="lead-summary__item">
+                <span class="lead-summary__value">{{ row.total }}</span>
+                <span class="lead-summary__label">{{ row.specialization__name }}</span>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Проект</th>
+                <th>Направление</th>
+                <th>Сколько</th>
+                <th>Нужны к</th>
+                <th>Кто запросил</th>
+                <th>Комментарий</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for req in open_requests %}
+                <tr>
+                    <td><a href="{{ req.project.get_absolute_url }}"><strong>{{ req.project.name }}</strong></a></td>
+                    <td><span class="badge badge--blue">{{ req.specialization }}</span></td>
+                    <td>{{ req.count }}</td>
+                    <td>
+                        {% if req.needed_by %}{{ req.needed_by|date:'d.m.Y' }}{% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if req.created_by %}{{ req.created_by.display_name|default:req.created_by.username }}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td style="color: var(--text-muted); font-size: 13px">{{ req.comment|default:'—' }}</td>
+                    <td style="white-space: nowrap">
+                        <form method="post" action="{% url 'resources:staffing_request_toggle' req.pk %}" style="display:inline; margin:0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn--secondary btn--sm">Закрыть</button>
+                        </form>
+                        <form method="post" action="{% url 'resources:staffing_request_delete' req.pk %}" style="display:inline; margin:0"
+                              data-confirm="Удалить запрос «{{ req.project.name|escapejs }}: {{ req.specialization|escapejs }} × {{ req.count }}»?">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn--secondary btn--sm">✕</button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="empty" style="text-align:center; padding: 24px;">
+                    Открытых запросов нет.
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="panel" id="new" x-data="{ open: {% if not open_requests %}true{% else %}false{% endif %} }">
+    <div class="panel-head">
+        <h2>Новый запрос</h2>
+        <button type="button" class="btn btn--secondary btn--sm" @click="open = !open"
+                x-text="open ? 'Отмена' : '+ Запрос'"></button>
+    </div>
+    <form method="post" x-show="open" x-cloak>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="message message--error">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="form-grid">
+            {% include 'partials/form_fields.html' %}
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn">Добавить запрос</button>
+        </div>
+    </form>
+</div>
+
+{% if closed_requests %}
+    <div class="panel" style="padding: 0; margin-top: 16px;">
+        <div class="panel-head" style="padding: 18px 20px 0">
+            <h2>Закрытые</h2>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <tbody>
+                {% for req in closed_requests %}
+                    <tr style="color: var(--text-muted)">
+                        <td>{{ req.project.name }}</td>
+                        <td><span class="badge badge--gray">{{ req.specialization }}</span></td>
+                        <td>{{ req.count }}</td>
+                        <td>{% if req.needed_by %}{{ req.needed_by|date:'d.m.Y' }}{% else %}—{% endif %}</td>
+                        <td style="white-space: nowrap">
+                            <form method="post" action="{% url 'resources:staffing_request_toggle' req.pk %}" style="display:inline; margin:0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn--secondary btn--sm">Вернуть</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

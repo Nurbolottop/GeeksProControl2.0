@@ -1,0 +1,87 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Стажёры — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Стажёры" subtitle="Один человек — один профиль. Тимлиды — сотрудники, в списке их нет." %}
+    {% url 'interns:graduates' as graduates_url %}{% ui_button "Выпускники" href=graduates_url icon_name="graduation-cap" %}
+    {% ui_button "Анкета" icon_name="copy" data_gp_open="profile-link" %}
+    {% url 'interns:create' as create_url %}{% ui_button "Новый стажёр" variant="primary" href=create_url icon_name="plus" %}
+{% end_ui_page_header %}
+
+{% if waiting_count %}<div style="margin-bottom: var(--space-4)">{% ui_alert waiting_text level="info" title="Новенькие" %}{% if params.status != 'waiting' %}<div style="margin-top: var(--space-2)"><a class="gp-link gp-small" href="?status=waiting">Показать ожидающих</a></div>{% endif %}</div>{% endif %}
+<form method="get" class="gp-card" style="margin-bottom: var(--space-4)" role="search" aria-label="Фильтры стажёров">
+    <div class="gp-card__body">
+        <div class="gp-filters">
+            <div class="gp-field gp-filters__wide"><label class="gp-label" for="f-q">Поиск</label><input class="gp-input" id="f-q" type="search" name="q" value="{{ params.q|default:'' }}" placeholder="ФИО, телефон или Telegram"></div>
+            <div class="gp-field"><label class="gp-label" for="f-branch">Город</label><select class="gp-select" id="f-branch" name="branch"><option value="">Все</option>{% for b in options.branches %}<option value="{{ b }}"{% if params.branch == b %} selected{% endif %}>{{ b }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="f-spec">Направление</label><select class="gp-select" id="f-spec" name="specialization"><option value="">Все</option>{% for spec in options.specializations %}<option value="{{ spec.pk }}"{% if params.specialization == spec.pk|stringformat:'s' %} selected{% endif %}>{{ spec.name }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="f-status">Статус</label><select class="gp-select" id="f-status" name="status"><option value="">Все</option>{% for value, label in options.statuses %}<option value="{{ value }}"{% if params.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="f-kind">Новый / старый</label><select class="gp-select" id="f-kind" name="kind"><option value="">Все</option><option value="new"{% if params.kind == 'new' %} selected{% endif %}>Новые</option><option value="old"{% if params.kind == 'old' %} selected{% endif %}>Старые (выпускники)</option></select></div>
+            <div class="gp-field"><label class="gp-label" for="f-project">Проект</label><select class="gp-select" id="f-project" name="project"><option value="">Все</option>{% for project in options.projects %}<option value="{{ project.pk }}"{% if params.project == project.pk|stringformat:'s' %} selected{% endif %}>{{ project.name }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="f-tg">Telegram-бот</label><select class="gp-select" id="f-tg" name="telegram"><option value="">Все</option><option value="yes"{% if params.telegram == 'yes' %} selected{% endif %}>Подключён</option><option value="no"{% if params.telegram == 'no' %} selected{% endif %}>Не подключён</option></select></div>
+        </div>
+        <input type="hidden" name="sort" value="{{ sort }}">
+        <div class="gp-cluster" style="margin-top: var(--space-4)">
+            {% ui_button "Применить" variant="primary" type="submit" icon_name="filter" %}
+            {% if has_filters %}{% url 'interns:list' as reset_url %}{% ui_button "Показать всех" variant="ghost" href=reset_url %}{% endif %}
+            <span class="gp-muted gp-small" style="margin-left:auto">Найдено {{ page.paginator.count }} из {{ total_people }} человек</span>
+        </div>
+    </div>
+</form>
+
+{% ui_card flush=True %}
+{% if page.object_list %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Стажёры</caption>
+        <thead><tr>
+            <th scope="col">{% ui_sort "ФИО" "name" %}</th>
+            <th scope="col">Город · направление</th>
+            <th scope="col">Контакты</th>
+            <th scope="col">{% ui_sort "Статус" "status" %}</th>
+            <th scope="col">Текущие проекты</th>
+            <th scope="col">{% ui_sort "Начало" "start" %}</th>
+            <th scope="col">Тимлид</th>
+            <th scope="col" class="is-numeric">{% ui_sort "Предупр." "warnings" %}</th>
+        </tr></thead>
+        <tbody>
+        {% for person in page.object_list %}
+            <tr>
+                <td class="is-primary" data-label="ФИО"><a class="gp-link gp-table__primary" style="overflow-wrap:anywhere" href="{{ person.get_absolute_url }}">{{ person.full_name }}</a>
+                    <span class="gp-table__secondary">{% if person.ui_is_old %}{% ui_badge "старый" tone="primary" %}{% else %}{% ui_badge "новый" tone="info" %}{% endif %}</span></td>
+                <td data-label="Город · направление">{{ person.ui_branch }}<span class="gp-table__secondary">{{ person.specialization|default:"направление не указано" }}</span></td>
+                <td data-label="Контакты" style="overflow-wrap:anywhere">{% if person.phone %}<a class="gp-link" href="tel:{{ person.phone }}">{{ person.phone }}</a>{% endif %}{% if person.telegram %}<span class="gp-table__secondary">{{ person.telegram }}</span>{% endif %}{% if person.telegram_chat_id %}<span class="gp-table__secondary">бот подключён</span>{% endif %}{% if not person.phone and not person.telegram %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td data-label="Статус">{% ui_badge person.get_status_display tone=person.ui_status_tone %}</td>
+                <td data-label="Текущие проекты">{% for m in person.ui_memberships %}{{ m.project.name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="gp-muted">—</span>{% endfor %}</td>
+                <td data-label="Начало">{{ person.internship_start_date|date:"d.m.Y"|default:"—" }}</td>
+                <td data-label="Тимлид">{% for lead in person.ui_leads %}{{ lead.full_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="gp-muted">—</span>{% endfor %}</td>
+                <td class="is-numeric" data-label="Предупреждения">{% if person.warnings_count %}{% ui_badge person.warnings_count|stringformat:"s" tone="danger" %}{% else %}<span class="gp-muted">0</span>{% endif %}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Никого не найдено" "Измените поиск или фильтры." icon_name="users" %}</div>{% endif %}
+{% end_ui_card %}
+<div style="margin-top: var(--space-4)">{% ui_pagination page label="человек" %}</div>
+
+{% ui_modal id="profile-link" title="Общая анкета стажёра" %}
+    <div class="gp-stack">
+        <p class="gp-text" style="margin:0">Стажёр заполняет анкету сам, без входа. Новая ссылка гасит прежнюю. Заполнений всего: {{ answers_count }}.</p>
+        {% if profile_link %}
+            <div class="gp-copyline"><a class="gp-copyline__url" id="general-link-url" href="{{ profile_link.get_absolute_url }}" target="_blank" rel="noopener">{{ request.scheme }}://{{ request.get_host }}{{ profile_link.get_absolute_url }}</a>{% ui_button "Копировать" size="sm" icon_name="copy" data_gp_copy="general-link-url" %}</div>
+            <p class="gp-muted gp-small" style="margin:0">{% if profile_link.expires_at %}Действует до {{ profile_link.expires_at|date:"d.m.Y H:i" }}{% else %}Без срока{% endif %} · заполнений: {{ profile_link.submissions }}</p>
+        {% else %}<p class="gp-muted gp-small" style="margin:0">Действующей ссылки нет.</p>{% endif %}
+        <form method="post" action="{% url 'interns:profile_link_create' %}" class="gp-cluster" style="align-items:flex-end" id="profile-link-form">
+            {% csrf_token %}
+            <div class="gp-field"><label class="gp-label" for="pl-ttl">Срок действия</label><select class="gp-select" id="pl-ttl" name="ttl_days">{% for value, label in profile_link_ttls %}<option value="{{ value }}"{% if value == '7' %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        </form>
+    </div>
+    {% ui_slot "footer" %}
+        {% url 'interns:profile_link_answers' as answers_url %}<span style="margin-right:auto">{% ui_button "Ответы" variant="ghost" href=answers_url %}</span>
+        {% if profile_link %}<form method="post" action="{% url 'interns:profile_link_disable' %}" style="margin:0">{% csrf_token %}{% ui_button "Отключить" variant="ghost" type="submit" %}</form>{% endif %}
+        {% ui_button "Новая ссылка" variant="primary" type="submit" form="profile-link-form" %}
+    {% end_ui_slot %}
+{% end_ui_modal %}
+{% endblock %}

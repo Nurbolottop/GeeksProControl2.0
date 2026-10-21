@@ -1,0 +1,37 @@
+{% load ui %}{# Таблица проектов 2.0: руководитель, ПМ, тимлид (detail_url — своя карточка). На телефоне — карточки. #}
+{% if page_obj.object_list %}
+<div class="gp-table-wrap gp-table--stack">
+    <table class="gp-table">
+        <caption class="gp-sr-only">{{ title }}</caption>
+        <thead><tr>
+            <th scope="col">{% ui_sort "Проект" "name" hx_target="#project-list" %}</th>
+            <th scope="col">{% ui_sort "Статус" "status" hx_target="#project-list" %}</th>
+            <th scope="col">Основной этап</th>
+            <th scope="col">ПМ</th>
+            <th scope="col" class="is-numeric">{% ui_sort "Участники" "members" hx_target="#project-list" %}</th>
+            <th scope="col">{% ui_sort "Начало" "start" hx_target="#project-list" %}</th>
+            <th scope="col">{% ui_sort "Готовность" "progress" hx_target="#project-list" %}</th>
+        </tr></thead>
+        <tbody>
+        {% for project in page_obj.object_list %}
+            <tr{% if project.status == 'completed' %} class="gp-row--completed"{% elif project.status == 'cancelled' or project.status == 'refused' %} class="gp-row--cancelled"{% endif %}>
+                <td class="is-primary" data-label="Проект">
+                    <a class="gp-link gp-table__primary" href="{% url detail_url project.pk %}">{{ project.name }}</a>
+                    <span class="gp-table__secondary">{{ project.display_code }}{% if project.client %} · {{ project.client }}{% endif %}{% if project.project_type %} · {{ project.project_type }}{% endif %}{% if project.last_report %} · отчёт {{ project.last_report.date|date:"d.m" }}{% endif %}</span>
+                    {% if project.pending_meeting %}{% ui_badge "Табель не закрыт" tone="warning" dot=True %}{% endif %}
+                </td>
+                <td data-label="Статус">{% ui_badge project.get_status_display tone=project.ui_status_tone %}</td>
+                <td data-label="Основной этап">{{ project.ui_stage }}{% if not project.ui_stage_confirmed %} {% ui_badge "не подтверждён" tone="warning" %}{% endif %}</td>
+                <td data-label="ПМ">{% if project.ui_pm %}{{ project.ui_pm.full_name }}{% else %}<span class="gp-muted">не назначен</span>{% endif %}</td>
+                <td class="is-numeric" data-label="Участники">{{ project.members_count }}</td>
+                <td data-label="Начало">{{ project.start_date|date:"d.m.Y"|default:"—" }}</td>
+                <td data-label="Готовность"><span class="gp-cluster" style="--cluster-gap: var(--space-2); flex-wrap: nowrap; justify-content: flex-end"><span class="gp-segments" style="width: 72px; height: 6px" aria-hidden="true"><span class="gp-tone-2" style="width: {{ project.progress }}%"></span></span><span class="gp-nowrap">{{ project.progress }}%</span></span></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% ui_pagination page_obj hx_target="#project-list" label="проектов" %}
+{% else %}
+<div class="gp-card">{% if has_filters %}{% ui_empty "Ничего не найдено" text="Измените или сбросьте фильтры." icon_name="search" %}{% else %}{% ui_empty "Проектов пока нет" icon_name="folder" %}{% endif %}</div>
+{% endif %}

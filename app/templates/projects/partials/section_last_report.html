@@ -1,0 +1,23 @@
+{% comment %}Последний написанный отчёт по проекту — виден сразу на «Обзоре», выделен.{% endcomment %}
+{% if last_report %}
+<div class="panel last-report-panel" id="section-last-report">
+    <div class="panel-head">
+        <h2>Последний отчёт — {{ last_report.date|date:'d.m.Y' }}</h2>
+        <a href="?tab=report" class="btn btn--secondary btn--sm">Все отчёты →</a>
+    </div>
+    <div class="report-part__text">{{ last_report.text|truncatewords:60|linebreaksbr }}</div>
+    {% if last_report.author %}
+        <div class="note-row__meta" style="margin-top: 10px">
+            {{ last_report.author.display_name|default:last_report.author.username }}
+        </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="panel last-report-panel last-report-panel--empty" id="section-last-report">
+    <div class="panel-head">
+        <h2>Последний отчёт</h2>
+        <a href="?tab=report" class="btn btn--sm">+ Написать отчёт</a>
+    </div>
+    <div class="empty" style="padding: 4px 0">Отчётов по проекту ещё нет.</div>
+</div>
+{% endif %}

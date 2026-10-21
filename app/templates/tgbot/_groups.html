@@ -1,0 +1,36 @@
+{% load ui %}
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start; margin-bottom: var(--space-5)">
+    {% ui_card title="Telegram-группы" subtitle="Группы создаёт руководитель вручную. Бот — администратор с правом «Управление темами»." flush=True %}
+        {% if tg_groups %}
+        <ul class="gp-docs">{% for g in tg_groups %}<li class="gp-doc"><span class="gp-doc__icon">{% ui_icon "users" %}</span>
+            <div style="min-width:0"><p class="gp-doc__title">{% if g.project %}{{ g.project.name }}{% else %}{{ g.get_kind_display }}{% endif %}{% if g.status == 'pending' %}{% ui_badge g.get_status_display tone="warning" dot=True %}{% else %}{% ui_badge g.get_status_display tone="success" dot=True %}{% endif %}</p>
+            <p class="gp-doc__meta">«{{ g.title|default:"без названия" }}» · chat_id {{ g.chat_id }}{% if not g.can_manage_topics %} · нет права на темы{% endif %}{% if g.last_error %} · {{ g.last_error }}{% endif %}</p>
+            {% if g.kind == 'project' and g.status == 'active' %}<p class="gp-doc__meta">Темы: {% for t in g.topics.all %}{{ t.title }}{% if t.status != 'active' %} ({{ t.get_status_display|lower }}){% endif %}{% if not forloop.last %}, {% endif %}{% empty %}ещё нет{% endfor %}</p>{% endif %}</div>
+            <div class="gp-doc__actions">
+                {% if g.status == 'pending' %}<form method="post" action="{% url 'tgbot:group_action' g.pk 'confirm' %}" style="margin:0">{% csrf_token %}{% ui_button "Подтвердить" size="sm" variant="primary" type="submit" %}</form>{% endif %}
+                {% if g.status == 'active' and g.kind == 'project' %}<form method="post" action="{% url 'tgbot:group_action' g.pk 'topics' %}" style="margin:0">{% csrf_token %}{% ui_button "Обновить темы" size="sm" type="submit" %}</form>{% endif %}
+                <form method="post" action="{% url 'tgbot:group_action' g.pk 'unbind' %}" style="margin:0">{% csrf_token %}{% ui_button "Отвязать" size="sm" variant="ghost" type="submit" %}</form>
+            </div></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Групп пока нет" "Выпустите код привязки и отправьте его в группе командой /bind." icon_name="users" %}</div>{% endif %}
+        {% if not tg_sales_chat %}<p class="gp-muted gp-small" style="margin:0; padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border)">Группа отдела продаж задаётся настройкой SALES_TELEGRAM_CHAT_ID — сейчас не задана, подтверждения продаж не принимаются.</p>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Привязать группу" subtitle="Одноразовый код, 30 минут. Затем подтвердите привязку здесь." %}
+        <form method="post" action="{% url 'tgbot:issue_code' %}" class="gp-stack">{% csrf_token %}
+            <div class="gp-field"><label class="gp-label" for="tg-kind">Группа</label><select class="gp-select" id="tg-kind" name="kind"><option value="project">Проектная (темы по направлениям)</option>{% for key, label in tg_service_kinds %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="tg-project">Проект (для проектной)</label><select class="gp-select" id="tg-project" name="project"><option value="">—</option>{% for p in tg_projects %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}</select></div>
+            <div>{% ui_button "Выпустить код" variant="primary" type="submit" %}</div>
+        </form>
+        {% if tg_codes %}<ul class="gp-attention" style="margin-top: var(--space-4)">{% for c in tg_codes %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-2) 0; align-items:center"><span class="gp-attention__dot gp-attention__dot--warning" aria-hidden="true"></span><span class="gp-small">/bind {{ c.code }}<span class="gp-attention__meta">{% if c.project %}{{ c.project.name }}{% else %}{{ c.get_kind_display }}{% endif %} · до {{ c.expires_at|date:"H:i" }}</span></span></span></li>{% endfor %}</ul>{% endif %}
+        <p class="gp-muted gp-small" style="margin: var(--space-4) 0 0">Вне production бот работает только с группами из TELEGRAM_TEST_GROUP_IDS.</p>
+    {% end_ui_card %}
+</div>
+{% if tg_access %}
+<div style="margin-bottom: var(--space-5)">
+{% ui_card title="Подключение участников к группам" subtitle="Вступление — по факту: Telegram или отметка тимлида. Ссылка не считается вступлением." flush=True %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0"><table class="gp-table"><caption class="gp-sr-only">Подключения</caption>
+        <thead><tr><th scope="col">Участник</th><th scope="col">Проект</th><th scope="col">Статус</th></tr></thead>
+        <tbody>{% for a in tg_access %}<tr><td class="is-primary" data-label="Участник">{{ a.member.intern.full_name }}</td><td data-label="Проект">{{ a.member.project.name }}</td><td data-label="Статус">{{ a.get_status_display }}{% if a.join_source %}<span class="gp-table__secondary">подтверждено: {{ a.join_source }}</span>{% endif %}</td></tr>{% endfor %}</tbody>
+    </table></div>
+{% end_ui_card %}
+</div>
+{% endif %}

@@ -1,0 +1,25 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Мои проекты — Портал тимлида{% endblock %}
+{% block page %}
+{% ui_page_header title="Мои проекты" subtitle="Проекты, где вы тимлид — вместе со сданными" %}
+    {% url 'lead_portal:resume' as resume_url %}{% if resume %}{% ui_button "Моё резюме" href=resume_url icon_name="user" %}{% endif %}
+{% end_ui_page_header %}
+<div id="notifications" class="gp-stack gp-stack--sm" style="margin-bottom: var(--space-4)">
+{% for note in notifications %}
+    <div class="gp-alert gp-alert--{% if note.level == 'success' %}success{% elif note.level == 'critical' %}danger{% else %}warning{% endif %}" role="status">
+        {% ui_icon "bell" %}
+        <div class="gp-alert__body">
+            <p class="gp-alert__title">{{ note.title }}</p>
+            {% if note.description %}<p class="gp-alert__text">{{ note.description }}</p>{% endif %}
+            <p class="gp-alert__text gp-small">{{ note.created_at|date:'d.m.Y H:i' }}</p>
+        </div>
+        <form method="post" action="{% url 'lead_portal:notification_close' note.pk %}">{% csrf_token %}{% ui_button "Понятно" size="sm" type="submit" %}</form>
+    </div>
+{% endfor %}
+{% if resume %}<p class="gp-muted gp-small" style="margin:0">Моё резюме в резерве кадров — {% if resume.submitted_at %}обновлено {{ resume.submitted_at|date:'d.m.Y' }}{% else %}ещё не заполняли сами{% endif %}</p>{% endif %}
+</div>
+{% ui_tabs category_tabs active=category label="Статус проектов" %}
+{% include "projects/_list_filters.html" %}
+{% include "projects/_list_body.html" %}
+{% endblock %}

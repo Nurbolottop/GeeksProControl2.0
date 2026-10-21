@@ -1,0 +1,74 @@
+/*
+ * Страницы, ещё не переведённые на дизайн-систему 2.0.
+ *
+ * Стили 1.0 подключаются в самый нижний слой (legacy): новый каркас и
+ * компоненты всегда сильнее. Содержимое такой страницы показывается в
+ * светлой панели внутри нового каркаса — старые стили не знают тёмной
+ * темы. Файл и обёртка удаляются, когда переведён последний модуль.
+ */
+@import url("../css/app.css") layer(legacy);
+@import url("../css/pm-alerts.css") layer(legacy);
+
+@layer layout {
+  .gp-legacy {
+    /* Эти имена есть и в токенах 2.0 — внутри старой страницы возвращаем значения 1.0 */
+    --radius-sm: 10px;
+    /* Компоненты 2.0 внутри старой страницы — всегда в светлых токенах:
+       панель светлая в любой теме, иначе тёмная карточка на светлом фоне. */
+    --color-bg: #f7f8fa;
+    --color-surface: #ffffff;
+    --color-surface-raised: #ffffff;
+    --color-surface-sunken: #f1f3f6;
+    --color-surface-hover: #f3f4f7;
+    --color-overlay: rgb(15 18 25 / 0.45);
+    --color-border: #e4e7ec;
+    --color-border-strong: #cfd4dc;
+    --color-text: #111827;
+    --color-text-muted: #4b5563;
+    --color-text-subtle: #6b7280;
+    --color-text-disabled: #9ca3af;
+    --color-primary: var(--brand-600);
+    --color-primary-hover: var(--brand-700);
+    --color-primary-soft: var(--brand-50);
+    --color-primary-soft-text: var(--brand-700);
+    --color-on-primary: #ffffff;
+    --color-link: var(--brand-600);      /* акцентный ТЕКСТ: ссылки, выделения (≥ 4.5:1) */
+    --color-focus: var(--brand-500);
+    --color-success: #16a34a;
+    --color-success-soft: #ecfdf3;
+    --color-success-text: #15803d;
+    --color-warning: #d97706;
+    --color-warning-soft: #fffaeb;
+    --color-warning-text: #b45309;
+    --color-danger: #dc2626;
+    --color-danger-soft: #fef3f2;
+    --color-danger-text: #b91c1c;
+    --color-info: #2563eb;
+    --color-info-soft: #eff6ff;
+    --color-info-text: #1d4ed8;
+    --color-neutral-soft: #f2f4f7;
+    --color-neutral-text: #374151;
+    --shadow-xs: 0 1px 2px rgb(16 24 40 / 0.05);
+    --shadow-sm: 0 1px 3px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.04);
+    --shadow-md: 0 6px 16px -4px rgb(16 24 40 / 0.10), 0 2px 4px -2px rgb(16 24 40 / 0.05);
+    --shadow-lg: 0 20px 40px -12px rgb(16 24 40 / 0.22);
+    --shadow-sm: 0 1px 2px rgba(20, 24, 40, .06);
+
+    color-scheme: light;
+    min-width: 0;
+    padding: var(--space-5);
+    border-radius: var(--radius-xl);
+    background: #f3f4f8;
+    color: #14181f;
+    font-size: 14px;
+    line-height: 1.55;
+    /* Старые таблицы и широкие блоки прокручиваются внутри панели,
+       а не растягивают страницу на телефоне. */
+    overflow-x: auto;
+  }
+  @media (max-width: 767.98px) {
+    .gp-legacy { padding: var(--space-3); border-radius: var(--radius-lg); margin-inline: calc(var(--space-2) * -1); }
+  }
+  /* Сообщения Django показывает каркас (тосты), старые блоки сообщений не нужны */
+  .gp-legacy > .messages { display: none; }
+}

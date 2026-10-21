@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Ответы по анкете — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Ответы по анкете</h1>
+        <div class="sub">Всего заполнений: {{ total }}</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'interns:list' %}" class="btn btn--secondary">К стажёрам</a>
+    </div>
+</div>
+
+<form method="get" class="filters">
+    <select name="link">
+        <option value="">Ссылка: все</option>
+        {% for link in links %}
+            <option value="{{ link.token }}" {% if token == link.token %}selected{% endif %}>
+                {% if link.project %}{{ link.project.name }}{% else %}Общая{% endif %} · /{{ link.token }}/ — {{ link.created_at|date:'d.m.Y H:i' }}{% if link.is_open %} (активна){% endif %}
+            </option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn--secondary btn--sm">Применить</button>
+    <a href="{% url 'interns:profile_link_answers' %}" class="btn btn--secondary btn--sm">Сбросить</a>
+</form>
+
+<div class="panel" style="padding: 0;">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Когда</th>
+                <th>ФИО</th>
+                <th>Телефон</th>
+                <th>Результат</th>
+                <th>Ссылка</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in page %}
+                <tr>
+                    <td>{{ item.created_at|date:'d.m.Y H:i' }}</td>
+                    <td>
+                        {% if item.intern %}
+                            <a href="{{ item.intern.get_absolute_url }}"><strong>{{ item.full_name }}</strong></a>
+                        {% else %}
+                            <strong>{{ item.full_name }}</strong>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.phone|default:'—' }}</td>
+                    <td>
+                        {% if item.is_new %}
+                            <span class="badge badge--green">Новая карточка</span>
+                        {% else %}
+                            <span class="badge badge--gray">Обновил(а) профиль</span>
+                        {% endif %}
+                    </td>
+                    <td class="sub">{% if item.link.project %}<a href="{{ item.link.project.get_absolute_url }}?tab=team">{{ item.link.project.name }}</a>{% if item.link.created_by %} · {{ item.link.created_by.display_name }}{% endif %}<br>{% else %}Общая ссылка<br>{% endif %}/{{ item.link.token }}/</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="sub" style="padding: 18px;">Пока никто не заполнил анкету.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page.paginator.num_pages > 1 %}
+    <div class="pagination">
+        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}{% if token %}&link={{ token }}{% endif %}">‹</a>{% endif %}
+        <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a href="?page={{ page.next_page_number }}{% if token %}&link={{ token }}{% endif %}">›</a>{% endif %}
+    </div>
+{% endif %}
+{% endblock %}

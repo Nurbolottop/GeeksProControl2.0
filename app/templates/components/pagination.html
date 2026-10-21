@@ -1,0 +1,16 @@
+{% load ui %}{% if show %}<nav class="gp-pagination" aria-label="Страницы">
+    <span class="gp-pagination__info">{{ page.start_index }}–{{ page.end_index }} из {{ page.paginator.count }} {{ label }}</span>
+    <ul class="gp-pagination__pages">
+        <li>{% if prev_href %}<a class="gp-pagination__link" href="{{ prev_href }}" rel="prev" aria-label="Предыдущая страница"{% if hx_target %} hx-get="{{ prev_href }}" hx-target="{{ hx_target }}" hx-push-url="true"{% endif %}>{% ui_icon "chevron-left" %}</a>{% else %}<span class="gp-pagination__link" aria-disabled="true">{% ui_icon "chevron-left" %}</span>{% endif %}</li>
+        {% for item in pages %}
+            {% if item.gap %}
+                <li class="gp-pagination__gap" aria-hidden="true">…</li>
+            {% else %}
+                <li class="gp-pagination__page{% if item.current %} is-current{% endif %}">
+                    <a class="gp-pagination__link" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}{% if hx_target %} hx-get="{{ item.href }}" hx-target="{{ hx_target }}" hx-push-url="true"{% endif %}>{{ item.number }}</a>
+                </li>
+            {% endif %}
+        {% endfor %}
+        <li>{% if next_href %}<a class="gp-pagination__link" href="{{ next_href }}" rel="next" aria-label="Следующая страница"{% if hx_target %} hx-get="{{ next_href }}" hx-target="{{ hx_target }}" hx-push-url="true"{% endif %}>{% ui_icon "chevron-right" %}</a>{% else %}<span class="gp-pagination__link" aria-disabled="true">{% ui_icon "chevron-right" %}</span>{% endif %}</li>
+    </ul>
+</nav>{% endif %}

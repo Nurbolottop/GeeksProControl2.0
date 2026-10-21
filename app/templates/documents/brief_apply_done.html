@@ -1,0 +1,13 @@
+{% extends "layouts/public.html" %}
+{% load ui %}
+{% block title %}Спасибо — GeeksPro{% endblock %}
+{% block width %} gp-public__inner--narrow{% endblock %}
+{% block content %}
+{% ui_card %}
+    <div class="gp-stack" style="text-align:center; align-items:center">
+        <span style="color: var(--color-success)">{% ui_icon "check-circle" "lg" %}</span>
+        <h1 class="gp-public__title" style="margin:0">Спасибо!</h1>
+        <p class="gp-text" style="margin:0">Бриф{% if project %} по проекту «{{ project.name }}»{% elif brief %} по проекту «{{ brief.project_name }}»{% endif %} получен. Дальше с вами свяжется менеджер проекта.</p>
+    </div>
+{% end_ui_card %}
+{% endblock %}

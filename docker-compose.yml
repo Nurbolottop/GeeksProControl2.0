@@ -1,0 +1,105 @@
+# GeeksPro Control 2.0 — локальная разработка.
+#
+# Изоляция от 1.0: собственное имя проекта (name: geekspro2), явные имена
+# томов и сети geekspro2_*, свои порты. Ни один ресурс не объявлен
+# external — compose не может подхватить тома или сеть 1.0.
+#
+#   docker compose up -d            # web + db + redis + celery + beat
+#   docker compose --profile bot up -d bot   # бот — только с тестовым токеном
+name: geekspro2
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    args:
+      INSTALL_DEV: "1"   # tblib и др. для тестов — только в dev-образе
+  image: geekspro2/app:dev
+  init: true
+  # Исходники монтируются для автоперезагрузки runserver.
+  volumes:
+    - ./app:/app
+    # Инфраструктура только для чтения — тесты конфигурации (этап 11A)
+    - ./docker-compose.yml:/infra/docker-compose.yml:ro
+    - ./docker-compose.prod.yml:/infra/docker-compose.prod.yml:ro
+    - ./.env.example:/infra/.env.example:ro
+    - ./.env.prod.example:/infra/.env.prod.example:ro
+    - ./docker/Dockerfile:/infra/Dockerfile:ro
+    - ./requirements.txt:/infra/requirements.txt:ro
+    - ./requirements-dev.txt:/infra/requirements-dev.txt:ro
+  env_file:
+    - .env
+  environment:
+    DJANGO_SETTINGS_MODULE: core.settings.dev
+    GP2_INFRA_DIR: /infra
+  networks:
+    - internal
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:16
+    # Только то, что нужно самой PostgreSQL — без SECRET_KEY и токенов.
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5447}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6393}:6379"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  web:
+    <<: *app
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      DJANGO_SETTINGS_MODULE: core.settings.dev
+      RUN_MIGRATIONS: "1"
+      GP2_INFRA_DIR: /infra
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8100}:8000"
+
+  celery:
+    <<: *app
+    command: celery -A core worker -l info
+
+  celery-beat:
+    <<: *app
+    command: celery -A core beat -l info --schedule /tmp/celerybeat-schedule
+
+  # Только с тестовым ботом 2.0 и TELEGRAM_OUTBOUND_MODE=off/allowlist.
+  bot:
+    <<: *app
+    command: python manage.py run_telegram_bot  # единственный бот 2.0 (этап 10A)
+    profiles: ["bot"]
+
+volumes:
+  postgres_data:
+    name: geekspro2_dev_postgres_data
+
+networks:
+  internal:
+    name: geekspro2_dev_internal

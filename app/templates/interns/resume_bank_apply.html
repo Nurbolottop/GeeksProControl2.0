@@ -1,0 +1,44 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Банк резюме — GeeksPro</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+<div class="login-page">
+    <div class="login-card">
+        <h1>Geeks<span style="background: linear-gradient(120deg,#5b6cf9,#8b7cf9); -webkit-background-clip: text; background-clip: text; color: transparent;">Pro</span></h1>
+        <p class="sub">Банк резюме — оставьте свои данные, мы свяжемся, когда появится подходящий проект</p>
+        {% if form.non_field_errors %}
+            <div class="message message--error">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-field">
+                <label for="{{ form.full_name.id_for_label }}">ФИО</label>
+                {{ form.full_name }}
+                {% if form.full_name.errors %}<div class="form-errors">{{ form.full_name.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.phone.id_for_label }}">Телефон</label>
+                {{ form.phone }}
+                {% if form.phone.errors %}<div class="form-errors">{{ form.phone.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.email.id_for_label }}">Email</label>
+                {{ form.email }}
+                {% if form.email.errors %}<div class="form-errors">{{ form.email.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.specialization.id_for_label }}">Направление</label>
+                {{ form.specialization }}
+            </div>
+            <button type="submit" class="btn">Отправить</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

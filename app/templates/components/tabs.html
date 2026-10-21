@@ -1,0 +1,9 @@
+<nav class="gp-tabs" aria-label="{{ label }}">
+    {% for tab in tabs %}
+        <a href="{{ tab.href }}" class="gp-tabs__tab{% if tab.is_active %} is-active{% endif %}"
+           {% if tab.is_active %}aria-current="page"{% endif %}
+           {% if hx_target %}hx-get="{{ tab.href }}" hx-target="{{ hx_target }}" hx-push-url="true"{% endif %}>
+            {{ tab.label }}{% if tab.count is not None and tab.count != '' %}<span class="gp-tabs__count">{{ tab.count }}</span>{% endif %}
+        </a>
+    {% endfor %}
+</nav>

@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}Собрание {{ meeting.date|date:'d.m.Y' }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<nav class="crumbs">
+    <a href="{% url 'attendance:dashboard' %}">Табель</a>
+    {% if group.project %}
+        <span class="crumbs__sep">›</span>
+        <a href="{{ group.project.get_absolute_url }}">{{ group.project.name }}</a>
+    {% endif %}
+    <span class="crumbs__sep">›</span>
+    <a href="{% url 'attendance:group_meetings' group.pk %}">Собрания команды</a>
+    <span class="crumbs__sep">›</span>
+    <span class="crumbs__current">{{ meeting.date|date:'d.m.Y' }}</span>
+</nav>
+
+<div class="page-head">
+    <div>
+        <h1>{{ meeting.get_kind_display }} · {{ meeting.date|date:'d.m.Y' }}</h1>
+        <div class="sub" style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
+            {% if group.project %}<span class="badge badge--blue">{{ group.project.name }}</span>{% endif %}
+            <span class="badge badge--gray">{{ meeting.direction_label }}</span>
+            {% if meeting.host %}<span class="badge badge--gray">ведёт {{ meeting.host.full_name }}</span>{% endif %}
+            {% if rate is not None %}
+                <span class="badge badge--{% if rate >= 80 %}green{% elif rate >= 60 %}yellow{% else %}red{% endif %}">
+                    Посещаемость: {{ rate }}%
+                </span>
+            {% endif %}
+            {% if average_score is not None %}
+                <span class="badge badge--{% if average_score >= 8 %}green{% elif average_score >= 5 %}yellow{% else %}red{% endif %}">
+                    Средний балл: {{ average_score }}
+                </span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="page-actions">
+        <form method="post" action="{% url 'attendance:mark_all' meeting.pk %}" style="margin:0">
+            {% csrf_token %}
+            <button type="submit" class="btn">✓ Отметить всех</button>
+        </form>
+    </div>
+</div>
+
+<div x-data="{ tab: '{{ tab }}' }">
+    <div class="tabs">
+        <a href="#" @click.prevent="tab='marks'" :class="tab === 'marks' && 'is-active'">
+            Посещаемость <span class="tab-count">{{ marked }}/{{ rows|length }}</span>
+        </a>
+        <a href="#" @click.prevent="tab='scores'" :class="tab === 'scores' && 'is-active'">
+            Оценка работы <span class="tab-count">{{ scored }}/{{ rows|length }}</span>
+        </a>
+    </div>
+
+    <div x-show="tab === 'marks'" x-cloak>
+        <div class="panel" style="padding: 0;">
+            <div class="panel-bar">
+                <h2 style="margin:0">Кто был на собрании</h2>
+                <span class="panel-bar__note">Отмечено {{ marked }} из {{ rows|length }} · присутствовали {{ attended }}</span>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Человек</th>
+                        <th>Отметка</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in rows %}
+                        {% include 'attendance/partials/person_row.html' %}
+                    {% empty %}
+                        <tr><td colspan="2" class="empty" style="text-align:center; padding: 24px;">
+                            В команде нет людей.
+                        </td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'scores'" x-cloak>
+        <div class="panel" style="padding: 0;">
+            <div class="panel-bar">
+                <h2 style="margin:0">Как работал за период</h2>
+                <span class="panel-bar__note">
+                    {% if period_start %}
+                        с {{ period_start|date:'d.m.Y' }} по {{ meeting.date|date:'d.m.Y' }} · {{ period_days }} дн.
+                    {% else %}
+                        первое собрание этого вида — с начала работы по {{ meeting.date|date:'d.m.Y' }}
+                    {% endif %}
+                </span>
+            </div>
+            <div class="score-hint">
+                Кликните по шкале — балл выставится сразу.
+                <strong>0–4</strong> — не тянет, <strong>5–7</strong> — норма, <strong>8–10</strong> — сильно.
+                Неоценённые идут первыми; ✕ снимает балл.
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Человек</th>
+                        <th>Активность за период</th>
+                        <th>Прошлый раз</th>
+                        <th>Комментарий</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in score_rows %}
+                        {% include 'attendance/partials/score_row.html' %}
+                    {% empty %}
+                        <tr><td colspan="4" class="empty" style="text-align:center; padding: 24px;">
+                            В команде нет людей.
+                        </td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

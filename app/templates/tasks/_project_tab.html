@@ -1,0 +1,89 @@
+{% load ui %}
+{% comment %}
+Вкладка «Задачи» (UI-03C, этап 7A): Kanban из четырёх состояний у
+руководителя, ПМ и тимлида. Контекст: apps.tasks.project_views.tab_context.
+Состояние меняется кнопками (серверная проверка в apps.tasks.workflow).
+{% endcomment %}
+<div class="gp-cluster gp-cluster--between" style="margin-bottom: var(--space-4); align-items: flex-end">
+    <form method="get" class="gp-filters" aria-label="Фильтр задач" style="flex: 1 1 auto; min-width: 0">
+        <input type="hidden" name="tab" value="tasks">
+        <div class="gp-field"><label class="gp-label" for="task-direction">Направление</label>
+            <select class="gp-select" id="task-direction" name="direction">
+                <option value="">Все</option><option value="none"{% if task_direction == 'none' %} selected{% endif %}>Общие</option>
+                {% for key, label in task_directions %}<option value="{{ key }}"{% if task_direction == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="gp-field"><label class="gp-label" for="task-assignee">Исполнитель</label>
+            <select class="gp-select" id="task-assignee" name="assignee">
+                <option value="">Все</option>{% for pk, name in task_people %}<option value="{{ pk }}"{% if task_assignee == pk|stringformat:"s" %} selected{% endif %}>{{ name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="gp-field"><label class="gp-label" for="task-filter">Статус</label>
+            <select class="gp-select" id="task-filter" name="task_status">
+                <option value="">Все</option>{% for key, label, count in task_counts %}<option value="{{ key }}"{% if task_filter == key %} selected{% endif %}>{{ label }} · {{ count }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="gp-cluster" style="--cluster-gap: var(--space-2); align-self: flex-end">
+            {% ui_button "Применить" type="submit" icon_name="filter" %}
+            {% if task_filtered %}{% ui_button "Сбросить" href="?tab=tasks" variant="ghost" %}{% endif %}
+        </div>
+    </form>
+    {% if task_rights.edit %}{% ui_button "Новая задача" variant="primary" icon_name="plus" data_gp_open="task-create" %}{% endif %}
+</div>
+{% if task_pending %}<div style="margin-bottom: var(--space-4)">{% ui_alert "Откройте задачу, чтобы принять результат или вернуть на доработку." level="warning" title=task_pending_label %}</div>{% endif %}
+
+<div class="gp-board" aria-label="Доска задач">
+{% for col in task_columns %}
+    <section class="gp-board__col" aria-labelledby="col-{{ col.key }}">
+        <h3 class="gp-board__head" id="col-{{ col.key }}"><span>{{ col.label }}</span>{% ui_badge col.count_label tone=col.tone %}</h3>
+        {% if col.tasks %}
+        <ul class="gp-board__list">
+        {% for task in col.tasks %}
+            <li class="gp-task">
+                <p class="gp-task__title"><a href="{{ task.ui_url }}">{{ task.title }}</a></p>
+                <div class="gp-task__tags">
+                    {% if task.ui_direction %}{% ui_badge task.ui_direction tone="info" %}{% else %}{% ui_badge "Общая" %}{% endif %}
+                    {% if task.ui_priority_tone != 'neutral' %}{% ui_badge task.get_priority_display tone=task.ui_priority_tone %}{% endif %}
+                    {% if task.ui_pending %}{% ui_badge "ждёт проверки" tone="warning" dot=True %}{% endif %}
+                    {% if task.needs_reassign %}{% ui_badge "нужен исполнитель" tone="danger" dot=True %}{% endif %}
+                </div>
+                {% if task.description %}<p class="gp-task__desc">{{ task.description|truncatechars:120 }}</p>{% endif %}
+                <p class="gp-task__meta">
+                    {% if task.ui_assignees %}{% for a in task.ui_assignees %}{{ a.person_name }}{% if a.status == 'done' %} ✓{% elif a.status == 'review' %} · на проверке{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}{% elif task.assignee %}{{ task.assignee.display_name }}{% else %}Исполнитель не назначен{% endif %}
+                </p>
+                <p class="gp-task__meta">{% if task.author %}{{ task.author.display_name }} · {% endif %}{{ task.created_at|date:"d.m.Y" }}{% if task.deadline %} · срок {{ task.deadline|date:"d.m.Y" }}{% endif %}{% if task.ui_files %} · материалов: {{ task.ui_files }}{% endif %}</p>
+                {% if task.ui_actions %}
+                <div class="gp-task__actions">
+                    {% for status, label in task.ui_actions %}
+                    <form method="post" action="{{ task.ui_status_url }}">{% csrf_token %}<input type="hidden" name="status" value="{{ status }}">{% ui_button label size="sm" type="submit" %}</form>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+        {% else %}<p class="gp-board__empty">Нет задач</p>{% endif %}
+    </section>
+{% endfor %}
+</div>
+
+{% if task_rights.edit %}
+{% ui_modal id="task-create" title="Новая задача" %}
+    <form method="post" action="{{ task_create_url }}" class="gp-stack" id="task-create-form">
+        {% csrf_token %}
+        <div class="gp-field"><label class="gp-label" for="tc-title">Что нужно сделать<span class="gp-required" aria-hidden="true">*</span></label><input class="gp-input" id="tc-title" name="title" maxlength="255" required></div>
+        <div class="gp-field"><label class="gp-label" for="tc-description">Описание</label><textarea class="gp-textarea" id="tc-description" name="description" rows="3"></textarea></div>
+        <div class="gp-form-grid gp-form-grid--2">
+            {% if task_lead_direction %}
+            <div class="gp-field"><span class="gp-label">Направление</span><p class="gp-text" style="margin:0">{{ task_lead_direction }}</p></div>
+            {% else %}
+            <div class="gp-field"><label class="gp-label" for="tc-direction">Направление</label><select class="gp-select" id="tc-direction" name="direction"><option value="">Общая задача</option>{% for key, label in task_directions %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></div>
+            {% endif %}
+            <div class="gp-field"><label class="gp-label" for="tc-priority">Приоритет</label><select class="gp-select" id="tc-priority" name="priority">{% for key, label in task_priorities %}<option value="{{ key }}"{% if key == 'medium' %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="tc-deadline">Срок</label><input class="gp-input" type="date" id="tc-deadline" name="deadline"></div>
+        </div>
+        <p class="gp-muted gp-small" style="margin:0">Исполнителей — участников проекта — назначают в карточке задачи.</p>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Создать" variant="primary" type="submit" form="task-create-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}

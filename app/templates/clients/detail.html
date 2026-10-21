@@ -1,0 +1,58 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}{{ client.organization }} — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title=client.organization subtitle=client.city %}
+    {% url 'clients:update' client.pk as edit_url %}{% ui_button "Редактировать" href=edit_url icon_name="pencil" %}
+    {% if not projects %}{% ui_button "Удалить" variant="ghost" icon_name="trash" data_gp_open="client-delete" %}{% endif %}
+    {% url 'projects:create' as create_url %}{% ui_button "Новый проект" variant="primary" href=create_url icon_name="plus" %}
+{% end_ui_page_header %}
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Контакты" %}
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>Представитель</dt><dd>{{ client.contact_name|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Телефон</dt><dd>{{ client.phone|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Email</dt><dd style="white-space: normal; overflow-wrap:anywhere">{{ client.email|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Адрес</dt><dd style="white-space: normal">{{ client.address|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Город</dt><dd>{{ client.city|default:"—" }}</dd></div>
+        </dl>
+    {% end_ui_card %}
+    {% ui_card title="Реквизиты и заметки" %}
+        {% if client.requisites or client.comment %}
+            {% if client.requisites %}<p class="gp-text" style="white-space: pre-line; margin: 0 0 var(--space-3)">{{ client.requisites }}</p>{% endif %}
+            {% if client.comment %}<p class="gp-text" style="white-space: pre-line; margin:0">{{ client.comment }}</p>{% endif %}
+        {% else %}<p class="gp-muted gp-small" style="margin:0">Не заполнено.</p>{% endif %}
+    {% end_ui_card %}
+</div>
+
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Проекты заказчика" flush=True %}
+    {% if projects %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0">
+        <table class="gp-table">
+            <caption class="gp-sr-only">Проекты заказчика</caption>
+            <thead><tr><th scope="col">Проект</th><th scope="col">Статус</th><th scope="col">Начало</th><th scope="col">Готовность</th></tr></thead>
+            <tbody>
+            {% for project in projects %}
+                <tr{% if project.status == 'completed' %} class="gp-row--completed"{% elif project.status == 'cancelled' or project.status == 'refused' %} class="gp-row--cancelled"{% endif %}>
+                    <td class="is-primary" data-label="Проект"><a class="gp-link gp-table__primary" href="{{ project.get_absolute_url }}">{{ project.name }}</a><span class="gp-table__secondary">{{ project.display_code }}{% if project.project_type %} · {{ project.project_type }}{% endif %}</span></td>
+                    <td data-label="Статус">{% ui_badge project.get_status_display tone=project.ui_status_tone %}</td>
+                    <td data-label="Начало">{{ project.start_date|date:"d.m.Y"|default:"—" }}</td>
+                    <td data-label="Готовность">{{ project.progress }}%</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Проектов пока нет" icon_name="folder" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+
+{% if not projects %}
+{% ui_modal id="client-delete" title="Удалить заказчика?" %}
+    <form method="post" action="{% url 'clients:delete' client.pk %}" id="client-delete-form">{% csrf_token %}<p class="gp-text" style="margin:0">«{{ client.organization }}» будет удалён. Проектов у заказчика нет.</p></form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Удалить" variant="danger" type="submit" form="client-delete-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% endblock %}

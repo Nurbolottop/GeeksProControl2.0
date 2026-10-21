@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>{{ title }}</h1>
+        <div class="sub">Всего: {{ people|length }}</div>
+    </div>
+</div>
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>ФИО</th>
+                <th>Направление</th>
+                <th>Телефон</th>
+                <th>Статус проверки</th>
+                <th>Действия</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for person in people %}
+                <tr>
+                    <td><a href="{{ person.get_absolute_url }}"><strong>{{ person.full_name }}</strong></a></td>
+                    <td>{{ person.specialization|default:'—' }}</td>
+                    <td>{{ person.phone|default:'—' }}</td>
+                    <td>
+                        {% if person.resume_bank_status == 'approved' %}
+                            <span class="badge badge--green">Принят</span>
+                        {% elif person.resume_bank_status == 'revision' %}
+                            <span class="badge badge--red">На доработке</span>
+                            {% if person.resume_bank_comment %}
+                                <div class="sub" style="margin-top:4px;">{{ person.resume_bank_comment }}</div>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge badge--yellow">Ожидает проверки</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if person.resume_bank_status == 'pending' %}
+                        <div style="display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap;">
+                            <form method="post" action="{% url 'interns:resume_bank_approve' person.pk %}" style="margin:0"
+                                  data-confirm="Принять резюме {{ person.full_name|escapejs }}? Выпускнику придёт уведомление в Telegram."
+                                  data-confirm-ok="Принять">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn--secondary btn--sm">Принять</button>
+                            </form>
+                            <details>
+                                <summary class="btn btn--secondary btn--sm" style="display:inline-block; cursor:pointer;">На доработку</summary>
+                                <form method="post" action="{% url 'interns:resume_bank_revise' person.pk %}" style="margin-top:8px;">
+                                    {% csrf_token %}
+                                    <textarea name="comment" required placeholder="Что нужно исправить — уйдёт стажёру в Telegram" rows="2" style="width:220px;"></textarea>
+                                    <button type="submit" class="btn btn--secondary btn--sm" style="margin-top:4px;">Отправить</button>
+                                </form>
+                            </details>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="empty" style="text-align:center; padding: 24px;">Пока никого нет.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

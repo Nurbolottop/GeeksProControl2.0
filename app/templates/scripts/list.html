@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Скрипты — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Скрипты</h1>
+        <div class="sub">Заготовки текстов: сохранили один раз — дальше копируете в один клик. Всего: {{ total }}</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'scripts:create' %}" class="btn">+ Новый скрипт</a>
+    </div>
+</div>
+
+<form method="get" class="filterbar">
+    <input type="text" name="q" class="filterbar__search" placeholder="Поиск по названию и тексту" value="{{ params.q|default:'' }}">
+    <select name="category">
+        <option value="">Категория: все</option>
+        {% for name in categories %}
+            <option value="{{ name }}" {% if params.category == name %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn--sm">Найти</button>
+    {% if params.q or params.category %}
+        <a href="{% url 'scripts:list' %}" class="btn btn--secondary btn--sm">Сбросить</a>
+    {% endif %}
+</form>
+
+{% for script in scripts %}
+    <div class="panel script {% if script.is_pinned %}script--pinned{% endif %}">
+        <div class="script__head">
+            <div>
+                <h2>{{ script.title }}</h2>
+                <div class="sub">
+                    {% if script.category %}<span class="badge badge--gray">{{ script.category }}</span>{% endif %}
+                    Изменён {{ script.updated_at|date:'d.m.Y H:i' }}{% if script.created_by %} · {{ script.created_by }}{% endif %}
+                </div>
+            </div>
+            <div class="script__actions">
+                <button type="button" class="btn btn--sm" data-copy-script="script-{{ script.pk }}">Копировать</button>
+                <form method="post" action="{% url 'scripts:pin' script.pk %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--secondary btn--sm" title="{% if script.is_pinned %}Снять закрепление{% else %}Закрепить сверху{% endif %}">
+                        {% if script.is_pinned %}Открепить{% else %}Закрепить{% endif %}
+                    </button>
+                </form>
+                <a href="{% url 'scripts:update' script.pk %}" class="btn btn--secondary btn--sm">Изменить</a>
+                <form method="post" action="{% url 'scripts:delete' script.pk %}" style="margin: 0;"
+                      data-confirm="Удалить скрипт «{{ script.title|escapejs }}»? Текст пропадёт безвозвратно."
+                      data-confirm-ok="Удалить">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--secondary btn--sm">Удалить</button>
+                </form>
+            </div>
+        </div>
+        <pre class="script__body" id="script-{{ script.pk }}">{{ script.body }}</pre>
+    </div>
+{% empty %}
+    <div class="panel">
+        <div class="sub">
+            {% if params.q or params.category %}
+                Ничего не нашлось. Попробуйте другой запрос или сбросьте фильтры.
+            {% else %}
+                Скриптов пока нет. Сохраните первый текст — потом его можно будет копировать в один клик.
+            {% endif %}
+        </div>
+    </div>
+{% endfor %}
+
+<script>
+    document.querySelectorAll('[data-copy-script]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var text = document.getElementById(button.dataset.copyScript).textContent;
+            navigator.clipboard.writeText(text).then(function () {
+                button.textContent = 'Скопировано';
+                button.classList.add('btn--secondary');
+                setTimeout(function () {
+                    button.textContent = 'Копировать';
+                    button.classList.remove('btn--secondary');
+                }, 1500);
+            });
+        });
+    });
+</script>
+{% endblock %}

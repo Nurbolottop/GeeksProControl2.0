@@ -1,0 +1,38 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{# Добавление / правка участника в портале ПМ и тимлида (2.0, UI-03C) #}
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title=title subtitle=project.name %}{% end_ui_page_header %}
+{% ui_card %}
+    <form method="post" class="gp-form">
+        {% csrf_token %}
+        {% if role %}<input type="hidden" name="role" value="{{ role }}">{% endif %}
+        {% if form.non_field_errors %}{% ui_alert form.non_field_errors|join:" " level="danger" %}{% endif %}
+        <div class="gp-field">
+            <span class="gp-label">Участник<span class="gp-required" aria-hidden="true">*</span></span>
+            {% include "components/person_picker.html" %}
+            <span class="gp-help">{% if form.intern.help_text %}{{ form.intern.help_text }}{% else %}Направление подставится из карточки человека{% endif %}</span>
+            {% if form.intern.errors %}<div class="gp-error"><span>{{ form.intern.errors|join:" " }}</span></div>{% endif %}
+        </div>
+        {% if form.is_lead and role != 'team_lead' and role != 'pm' %}{% ui_field form.is_lead %}{% endif %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% if form.status %}{% ui_field form.status %}{% endif %}
+            {% if form.joined_at %}{% ui_field form.joined_at %}{% ui_field form.left_at %}{% endif %}
+            {% ui_field form.comment wide=True %}
+        </div>
+        <div class="gp-form-actions">{% ui_button "Сохранить" variant="primary" type="submit" %}{% ui_button "Отмена" variant="ghost" href=cancel_url %}</div>
+    </form>
+{% end_ui_card %}
+{% if remove_url %}
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Убрать из команды" subtitle="Запись об участии сохранится в истории проекта." %}
+    <form method="post" action="{{ remove_url }}" class="gp-cluster" style="align-items: flex-end">
+        {% csrf_token %}
+        <div class="gp-field"><label class="gp-label" for="left-reason">Причина</label><select class="gp-select" id="left-reason" name="left_reason"><option value="">Не указана</option>{% for value, label in left_reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+        {% ui_button "Убрать" variant="danger" type="submit" icon_name="trash" %}
+    </form>
+{% end_ui_card %}
+</div>
+{% endif %}
+{% endblock %}

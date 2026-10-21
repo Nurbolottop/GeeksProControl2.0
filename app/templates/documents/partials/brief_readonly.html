@@ -1,0 +1,32 @@
+{% comment %}
+Бриф заказчика, заполненный по публичной ссылке — только чтение.
+Контекст: project_brief (ProjectBrief | None).
+{% endcomment %}
+{% if project_brief %}
+<div class="panel" style="margin-bottom: 16px;">
+    <div class="page-head" style="margin-bottom: 12px;">
+        <div>
+            <h3 style="margin:0;">Бриф заказчика</h3>
+            <div class="sub">Заполнен {{ project_brief.submitted_at|date:'d.m.Y H:i' }}</div>
+        </div>
+    </div>
+    <div class="brief-grid">
+        {% for label, value in project_brief.display_rows %}
+            {% if value %}
+                <div class="brief-row">
+                    <div class="brief-row__label">{{ label }}</div>
+                    <div class="brief-row__value">{{ value|linebreaksbr }}</div>
+                </div>
+            {% endif %}
+        {% endfor %}
+        {% if project_brief.requirements_file %}
+            <div class="brief-row">
+                <div class="brief-row__label">Готовое ТЗ/документация</div>
+                <div class="brief-row__value">
+                    <a href="{{ project_brief.requirements_file.url }}" target="_blank" rel="noopener">Открыть файл</a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

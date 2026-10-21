@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Прогноз потребности — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Стажёры по направлениям</h1>
+        <div class="sub">
+            Сколько стажёров в каждом направлении: активные, на заморозке, ожидающие
+            старта, выпускники и свободные. «Свободные» — кого можно поставить на проект
+            прямо сейчас: без проекта, в рабочем статусе и не из «Выпускников». Тимлиды и ПМ сюда не входят —
+            они сотрудники.
+        </div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'training:plan' %}" class="btn btn--secondary">План набора из академии</a>
+    </div>
+</div>
+
+<div class="kpi-grid">
+    <div class="kpi-card kpi-card--info">
+        <div class="kpi-card__value">{{ totals.total }}</div>
+        <div class="kpi-card__label">Общее количество</div>
+    </div>
+    <div class="kpi-card kpi-card--green">
+        <div class="kpi-card__value">{{ totals.active }}</div>
+        <div class="kpi-card__label">Активные</div>
+    </div>
+    <div class="kpi-card kpi-card--yellow">
+        <div class="kpi-card__value">{{ totals.paused }}</div>
+        <div class="kpi-card__label">Заморозка</div>
+    </div>
+    <div class="kpi-card kpi-card--info">
+        <div class="kpi-card__value">{{ totals.graduates }}</div>
+        <div class="kpi-card__label">Выпускники</div>
+    </div>
+    <div class="kpi-card kpi-card--green">
+        <div class="kpi-card__value">{{ totals.free }}</div>
+        <div class="kpi-card__label">Свободные</div>
+    </div>
+</div>
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Направление</th>
+                <th>Всего</th>
+                <th>Активные</th>
+                <th>Заморозка</th>
+                <th>Ожидают старта</th>
+                <th>Выпускники</th>
+                <th>На проектах</th>
+                <th>Свободные</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+                <tr>
+                    <td><strong>{{ row.specialization|default:'Без направления' }}</strong></td>
+                    <td><strong style="font-size:15px">{{ row.total }}</strong></td>
+                    <td>{{ row.active }}</td>
+                    <td>{% if row.paused %}<span class="badge badge--yellow">{{ row.paused }}</span>{% else %}—{% endif %}</td>
+                    <td>{% if row.waiting %}<span class="badge badge--gray">{{ row.waiting }}</span>{% else %}—{% endif %}</td>
+                    <td>
+                        {% if row.graduates %}
+                            <a href="{% url 'interns:graduates' %}{% if row.specialization %}?specialization={{ row.specialization.pk }}{% endif %}">{{ row.graduates }}</a>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ row.busy }}</td>
+                    <td>
+                        {% if row.free %}
+                            <span class="badge badge--green">{{ row.free }}</span>
+                        {% else %}
+                            <span class="badge badge--gray">0</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="8" class="empty" style="text-align:center; padding: 24px;">Нет направлений.</td></tr>
+            {% endfor %}
+            </tbody>
+            <tfoot>
+            <tr class="data__total">
+                <td><strong>Итого</strong></td>
+                <td><strong style="font-size:15px">{{ totals.total }}</strong></td>
+                <td><strong>{{ totals.active }}</strong></td>
+                <td><strong>{{ totals.paused }}</strong></td>
+                <td><strong>{{ totals.waiting }}</strong></td>
+                <td><strong>{{ totals.graduates }}</strong></td>
+                <td><strong>{{ totals.busy }}</strong></td>
+                <td>
+                    {% if totals.free %}
+                        <span class="badge badge--green">{{ totals.free }}</span>
+                    {% else %}
+                        <span class="badge badge--gray">0</span>
+                    {% endif %}
+                </td>
+            </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

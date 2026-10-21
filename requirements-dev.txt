@@ -1,0 +1,5 @@
+# Только для разработки и тестов 2.0 — в production-образ не ставится
+# (docker/Dockerfile, ARG INSTALL_DEV; включён только в docker-compose.yml).
+-r requirements.txt
+# Параллельные тесты Django (--parallel): передача traceback между процессами
+tblib==3.1.0

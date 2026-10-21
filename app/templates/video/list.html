@@ -1,0 +1,37 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Собрания — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Видеособрания" subtitle="Минимум одно обязательное собрание в неделю на каждое направление проекта (пн–вс, Бишкек)" %}
+    {% if create_url %}{% ui_button "Новое собрание" href=create_url variant="primary" icon_name="plus" %}{% endif %}
+{% end_ui_page_header %}
+
+<form method="get" class="gp-filters" aria-label="Фильтры собраний" style="margin-bottom: var(--space-4)">
+    <div class="gp-field"><label class="gp-label" for="f-week">Неделя</label><select class="gp-select" id="f-week" name="week"><option value="">Все</option>{% for w in weeks %}<option value="{{ w.key }}"{% if week and w.key == week.key %} selected{% endif %}>{{ w.label }}</option>{% endfor %}</select></div>
+    {% if scope == 'head' %}
+    <div class="gp-field"><label class="gp-label" for="f-project">Проект</label><select class="gp-select" id="f-project" name="project"><option value="">Все</option>{% for p in projects %}<option value="{{ p.pk }}"{% if params.project == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></div>
+    <div class="gp-field"><label class="gp-label" for="f-host">Ведущий</label><select class="gp-select" id="f-host" name="host"><option value="">Все</option>{% for h in hosts %}<option value="{{ h.pk }}"{% if params.host == h.pk|stringformat:"s" %} selected{% endif %}>{{ h.full_name }}</option>{% endfor %}</select></div>
+    {% endif %}
+    <div class="gp-field"><label class="gp-label" for="f-direction">Направление</label><select class="gp-select" id="f-direction" name="direction"><option value="">Все</option>{% for key, label in directions %}<option value="{{ key }}"{% if params.direction == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="gp-field"><label class="gp-label" for="f-kind">Вид</label><select class="gp-select" id="f-kind" name="kind"><option value="">Все</option>{% for key, label in kinds %}<option value="{{ key }}"{% if params.kind == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div style="align-self: flex-end">{% ui_button "Применить" type="submit" icon_name="filter" %}</div>
+</form>
+
+{% if obligations_block %}{% include "video/_obligations.html" %}{% endif %}
+
+{% ui_card title="Собрания" flush=True %}
+    {% if meetings %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0"><table class="gp-table"><caption class="gp-sr-only">Собрания</caption>
+        <thead><tr><th scope="col">Собрание</th><th scope="col">Когда</th><th scope="col">Вид</th><th scope="col">Участники</th><th scope="col">Статус</th></tr></thead>
+        <tbody>{% for m in meetings %}<tr>
+            <td class="is-primary" data-label="Собрание"><a class="gp-table__primary gp-link" href="{{ m.ui_url }}">{{ m.topic }}</a><span class="gp-table__secondary">{{ m.project.name }} · {{ m.ui_direction }} · {{ m.host.full_name }}</span></td>
+            <td data-label="Когда">{{ m.starts_at|date:"d.m.Y H:i" }}</td>
+            <td data-label="Вид">{{ m.get_kind_display }}</td>
+            <td data-label="Участники">{{ m.ui_people }}</td>
+            <td data-label="Статус">{% ui_badge m.get_status_display tone=m.ui_tone dot=True %}{% if m.held_source == 'manual' %}<span class="gp-table__secondary">вручную</span>{% endif %}</td>
+        </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Собраний нет" "Создание встречи не равно проведению: проведённым собрание считается по событиям видеосервиса или по отметке с причиной." icon_name="calendar" %}</div>{% endif %}
+{% end_ui_card %}
+{% endblock %}

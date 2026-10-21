@@ -1,0 +1,127 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Решения по стажёрам — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Решения по стажёрам" subtitle="Три предупреждения, подтверждение оплаты, заморозки, возвращения, отмены и повторные стажировки. Решает руководитель." %}{% end_ui_page_header %}
+
+<div class="gp-stack gp-stack--lg">
+{% ui_card title="Три предупреждения" subtitle="Это не отчисление: выберите «Отчислить» или «Оставить». «Оставить» обнуляет счётчик — сами предупреждения остаются в истории." flush=True %}
+    {% if cases %}
+    <ul class="gp-docs">
+    {% for case in cases %}
+        <li class="gp-doc">
+            <span class="gp-doc__icon" style="color: var(--color-danger-text)">{% ui_icon "alert-triangle" %}</span>
+            <div style="min-width:0">
+                <p class="gp-doc__title"><a class="gp-link" href="{{ case.intern.get_absolute_url }}">{{ case.intern.full_name }}</a>{% ui_badge case.intern.specialization|default:"без направления" %}</p>
+                <ul class="gp-doc__versions" style="margin-top: var(--space-2)">{% for w in case.warnings.all %}<li>{{ w.created_at|date:"d.m.Y" }}{% if w.project %} · {{ w.project.name }}{% endif %}{% if w.issued_by %} · {{ w.issued_by.display_name }}{% endif %} — {{ w.reason }}</li>{% endfor %}</ul>
+            </div>
+            <div class="gp-doc__actions">
+                {% ui_button "Оставить" size="sm" data_gp_open=case.ui_keep %}
+                {% ui_button "Отчислить" size="sm" variant="danger" data_gp_open=case.ui_expel %}
+            </div>
+        </li>
+    {% endfor %}
+    </ul>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Решений по предупреждениям не ждёт никто" icon_name="check-circle" %}</div>{% endif %}
+{% end_ui_card %}
+
+{% ui_card title="Подтверждение продаж" subtitle="Повторная стажировка: оплату подтверждает только отдел продаж через свой Telegram-процесс. Руководитель решает после этого — отдельно." flush=True %}
+    {% if sales_queue %}
+    <ul class="gp-docs">
+    {% for req in sales_queue %}
+        <li class="gp-doc">
+            <span class="gp-doc__icon">{% ui_icon "briefcase" %}</span>
+            <div style="min-width:0"><p class="gp-doc__title"><a class="gp-link" href="{{ req.intern.get_absolute_url }}">{{ req.intern.full_name }}</a>{% ui_badge "Ожидает подтверждения отдела продаж" tone="warning" dot=True %}</p><p class="gp-doc__meta">{{ req.created_at|date:"d.m.Y" }} · {{ req.reason }}</p></div>
+            <div class="gp-doc__actions"><form method="post" action="{% url 'interns:internship_request_decide' req.pk 'reject' %}" style="margin:0">{% csrf_token %}{% ui_button "Отклонить заявку" size="sm" variant="ghost" type="submit" %}</form></div>
+        </li>
+    {% endfor %}
+    </ul>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Нет заявок, ждущих продаж" icon_name="briefcase" %}</div>{% endif %}
+    {% if sales_events %}
+    <div style="padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border)">
+        <h3 class="gp-h3">События продаж на сверку</h3>
+        <ul class="gp-doc__versions">{% for e in sales_events %}<li>{{ e.occurred_at|date:"d.m.Y H:i" }} · {{ e.full_name|default:"без ФИО" }} {{ e.phone }} · {{ e.get_status_display }}{% if e.agent_name %} · {{ e.agent_name }}{% endif %}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+{% end_ui_card %}
+
+{% ui_card title="Ждут решения руководителя" flush=True %}
+    {% if pending %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0">
+        <table class="gp-table">
+            <caption class="gp-sr-only">Заявки, ожидающие решения</caption>
+            <thead><tr><th scope="col">Стажёр</th><th scope="col">Заявка</th><th scope="col">Причина</th><th scope="col">Подана</th><th scope="col"><span class="gp-sr-only">Решение</span></th></tr></thead>
+            <tbody>
+            {% for req in pending %}
+                <tr>
+                    <td class="is-primary" data-label="Стажёр"><a class="gp-link gp-table__primary" href="{{ req.intern.get_absolute_url }}">{{ req.intern.full_name }}</a><span class="gp-table__secondary">{{ req.intern.specialization|default:"направление не указано" }} · {{ req.intern.get_status_display }}</span></td>
+                    <td data-label="Заявка">{% if req.kind == 'freeze' %}{% ui_badge "Заморозка" tone="warning" %}{% elif req.kind == 'return' %}{% ui_badge "Возвращение" tone="primary" %}{% elif req.kind == 'cancel' %}{% ui_badge "Добровольная отмена" %}{% elif req.kind == 'leave' %}{% ui_badge "Выход из проекта" tone="warning" %}<span class="gp-table__secondary">{{ req.project.name }}</span>{% else %}{% ui_badge "Повторная стажировка" tone="info" %}<span class="gp-table__secondary">{{ req.get_sales_status_display }}{% if req.sales_reference %} · {{ req.sales_reference }}{% endif %}</span>{% endif %}</td>
+                    <td data-label="Причина" style="white-space: pre-line; overflow-wrap: anywhere">{{ req.reason }}</td>
+                    <td data-label="Подана">{{ req.created_at|date:"d.m.Y H:i" }}<span class="gp-table__secondary">{{ req.get_source_display }}</span></td>
+                    <td data-label="Решение">
+                        <div class="gp-cluster" style="--cluster-gap: var(--space-2)">
+                            {% if req.ui_waits_sales %}<span class="gp-muted gp-small">ждёт продаж</span>{% else %}{% ui_button "Одобрить" size="sm" variant="primary" icon_name="check" data_gp_open=req.ui_modal %}{% endif %}
+                            <form method="post" action="{% url 'interns:internship_request_decide' req.pk 'reject' %}" style="margin:0">{% csrf_token %}{% ui_button "Отклонить" size="sm" variant="ghost" type="submit" %}</form>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Новых заявок нет" "Стажёр подаёт заявку в Telegram-боте: /freeze, /return; отмену и повторную стажировку оформляет руководитель на карточке." icon_name="inbox" %}</div>{% endif %}
+{% end_ui_card %}
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+{% ui_card title="Решённые заявки" flush=True %}
+    {% if decided %}
+    <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for req in decided %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot{% if req.status != 'approved' %} gp-attention__dot--warning{% endif %}" aria-hidden="true"></span><span class="gp-small"><a class="gp-link" href="{{ req.intern.get_absolute_url }}">{{ req.intern.full_name }}</a> · {{ req.get_kind_display }} · {% if req.status == 'approved' %}Одобрена{% else %}Отклонена{% endif %}<span class="gp-attention__meta">{{ req.decided_at|date:"d.m.Y H:i" }}{% if req.decided_by %} · {{ req.decided_by.display_name }}{% endif %}{% if req.kind == 'freeze' and req.status == 'approved' %} · вышел из: {% if req.left_projects %}{{ req.left_projects|linebreaksbr }}{% else %}активных проектов не было{% endif %}{% if req.tasks_reset %} · задач «К выполнению»: {{ req.tasks_reset }}{% endif %}{% elif req.kind == 'return' and req.status == 'approved' %} · {% if req.chosen_project %}выбрал: {{ req.chosen_project.name }}{% else %}проект ещё не выбран{% endif %}{% elif req.decision_comment %} · {{ req.decision_comment }}{% endif %}</span></span></span></li>{% endfor %}</ul>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Решённых заявок пока нет" icon_name="clock" %}</div>{% endif %}
+{% end_ui_card %}
+{% ui_card title="Решения по предупреждениям" flush=True %}
+    {% if decided_cases %}
+    <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for case in decided_cases %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot{% if case.status == 'expelled' %} gp-attention__dot--danger{% endif %}" aria-hidden="true"></span><span class="gp-small"><a class="gp-link" href="{{ case.intern.get_absolute_url }}">{{ case.intern.full_name }}</a> · {{ case.get_status_display }}<span class="gp-attention__meta">{{ case.decided_at|date:"d.m.Y H:i" }}{% if case.decided_by %} · {{ case.decided_by.display_name }}{% endif %}{% if case.comment %} · {{ case.comment }}{% endif %}</span></span></span></li>{% endfor %}</ul>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Решений пока нет" icon_name="clock" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+</div>
+
+{% for case in cases %}
+    {% ui_modal id=case.ui_keep title="Оставить стажёра" %}
+        <form method="post" action="{% url 'interns:discipline_decide' case.pk 'keep' %}" class="gp-stack" id="{{ case.ui_keep }}-form">{% csrf_token %}
+            <p class="gp-text" style="margin:0">{{ case.intern.full_name }} продолжает стажировку. Счётчик активных предупреждений станет 0; три предупреждения останутся в истории.</p>
+            <div class="gp-field"><label class="gp-label" for="{{ case.ui_keep }}-c">Комментарий</label><textarea class="gp-textarea" id="{{ case.ui_keep }}-c" name="comment" rows="2"></textarea></div>
+        </form>
+        {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Оставить" variant="primary" type="submit" form=case.ui_keep|add:"-form" %}{% end_ui_slot %}
+    {% end_ui_modal %}
+    {% ui_modal id=case.ui_expel title="Отчислить стажёра?" %}
+        <form method="post" action="{% url 'interns:discipline_decide' case.pk 'expel' %}" class="gp-stack" id="{{ case.ui_expel }}-form">{% csrf_token %}
+            <p class="gp-text" style="margin:0">{{ case.intern.full_name }}: стажировка прекращается, участие во всех проектах завершается, незавершённые задачи возвращаются «К выполнению», вход в портал закрывается. Выпуск не присваивается. Вернуться можно только через повторную стажировку (оплата + решение руководителя).</p>
+            <div class="gp-field"><label class="gp-label" for="{{ case.ui_expel }}-c">Причина</label><textarea class="gp-textarea" id="{{ case.ui_expel }}-c" name="comment" rows="2"></textarea></div>
+        </form>
+        {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Отчислить" variant="danger" type="submit" form=case.ui_expel|add:"-form" %}{% end_ui_slot %}
+    {% end_ui_modal %}
+{% endfor %}
+
+{% for req in pending %}{% if not req.ui_waits_sales %}
+    {% ui_modal id=req.ui_modal title=req.get_kind_display %}
+        <form method="post" action="{% url 'interns:internship_request_decide' req.pk 'approve' %}" class="gp-stack" id="{{ req.ui_form }}">
+            {% csrf_token %}
+            {% if req.kind == 'freeze' %}
+                <p class="gp-text" style="margin:0">{{ req.intern.full_name }} сразу выйдет из всех активных проектов (участие закроется с причиной «Стажировка заморожена»), незавершённые задачи вернутся «К выполнению», выполненные останутся. Места в командах освободятся; закрытие бывших проектов стажёра не выпустит.</p>
+            {% elif req.kind == 'cancel' %}
+                <p class="gp-text" style="margin:0">Добровольная отмена: участия во всех проектах завершатся, незавершённые задачи вернутся «К выполнению», период стажировки закроется. Это не отчисление и не заморозка; оценки и история сохранятся.</p>
+            {% elif req.kind == 'reenroll' %}
+                <p class="gp-text" style="margin:0">Отдел продаж подтвердил оплату ({{ req.sales_reference }}). Человек будет ожидать проект; новый период стажировки откроется при вступлении в первый проект — тот же профиль, предупреждения с нуля, история сохранится.</p>
+            {% elif req.kind == 'leave' %}
+                <p class="gp-text" style="margin:0">{{ req.intern.full_name }} выйдет только из проекта «{{ req.project.name }}»: незавершённые задачи этого проекта вернутся «К выполнению», второй проект не изменится, статус выпускника сохранится.</p>
+            {% else %}
+                <p class="gp-text" style="margin:0">{{ req.intern.full_name }} сможет выбрать новый проект по действующим правилам. Прежнее участие не восстанавливается.</p>
+            {% endif %}
+            <div class="gp-field"><label class="gp-label" for="c-{{ req.pk }}">Комментарий (необязательно)</label><textarea class="gp-textarea" id="c-{{ req.pk }}" name="comment" rows="2"></textarea></div>
+        </form>
+        {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Одобрить" variant="primary" type="submit" form=req.ui_form %}{% end_ui_slot %}
+    {% end_ui_modal %}
+{% endif %}{% endfor %}
+{% endblock %}

@@ -1,0 +1,10 @@
+{% load ui %}<div class="gp-dropdown" x-data="gpDropdown" @keydown.escape.stop="close(true)" @click.outside="close()">
+    <button type="button" x-ref="button" class="gp-btn gp-btn--{{ variant|default:'secondary' }}{% if size %} gp-btn--{{ size }}{% endif %}{% if label_hidden %} gp-btn--icon{% endif %}"
+            @click="toggle()" :aria-expanded="open.toString()" aria-haspopup="menu"{% if label_hidden %} aria-label="{{ label }}"{% endif %}>
+        {% if icon %}{% ui_icon icon "sm" %}{% endif %}{% if not label_hidden %}<span>{{ label }}</span>{% ui_icon "chevron-down" "sm" %}{% endif %}
+    </button>
+    <div class="gp-dropdown__menu{% if align == 'start' %} gp-dropdown__menu--start{% endif %}" x-ref="menu" role="menu" x-show="open" x-cloak
+         x-transition.origin.top.right @keydown.arrow-down.prevent="move(1)" @keydown.arrow-up.prevent="move(-1)" @keydown.tab="close()">
+        {{ body }}
+    </div>
+</div>

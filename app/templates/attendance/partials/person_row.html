@@ -1,0 +1,28 @@
+<tr id="person-{{ row.intern.pk }}">
+    <td>
+        <a href="{{ row.intern.get_absolute_url }}"><strong>{{ row.intern.full_name }}</strong></a>
+        <div style="font-size:11.5px; color: var(--text-muted)">
+            {{ row.intern.specialization|default:'' }}
+        </div>
+    </td>
+    <td>
+        <div class="mark-buttons">
+            <button type="button" class="mark-btn mark-btn--present {% if row.status == 'present' %}is-on{% endif %}"
+                    hx-post="{% url 'attendance:mark_person' meeting.pk %}"
+                    hx-vals='{"intern": "{{ row.intern.pk }}", "status": "{% if row.status == 'present' %}{% else %}present{% endif %}"}'
+                    hx-target="#person-{{ row.intern.pk }}" hx-swap="outerHTML">✓ Был</button>
+            <button type="button" class="mark-btn mark-btn--absent {% if row.status == 'absent' %}is-on{% endif %}"
+                    hx-post="{% url 'attendance:mark_person' meeting.pk %}"
+                    hx-vals='{"intern": "{{ row.intern.pk }}", "status": "{% if row.status == 'absent' %}{% else %}absent{% endif %}"}'
+                    hx-target="#person-{{ row.intern.pk }}" hx-swap="outerHTML">✕ Не был</button>
+            <button type="button" class="mark-btn mark-btn--late {% if row.status == 'late' %}is-on{% endif %}"
+                    hx-post="{% url 'attendance:mark_person' meeting.pk %}"
+                    hx-vals='{"intern": "{{ row.intern.pk }}", "status": "{% if row.status == 'late' %}{% else %}late{% endif %}"}'
+                    hx-target="#person-{{ row.intern.pk }}" hx-swap="outerHTML">Опоздал</button>
+            <button type="button" class="mark-btn mark-btn--excused {% if row.status == 'excused' %}is-on{% endif %}"
+                    hx-post="{% url 'attendance:mark_person' meeting.pk %}"
+                    hx-vals='{"intern": "{{ row.intern.pk }}", "status": "{% if row.status == 'excused' %}{% else %}excused{% endif %}"}'
+                    hx-target="#person-{{ row.intern.pk }}" hx-swap="outerHTML">Уважительная</button>
+        </div>
+    </td>
+</tr>

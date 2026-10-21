@@ -1,0 +1,50 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Кадровый резерв — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Кадровый резерв" subtitle="Кандидаты для Geeks Studio — прежде всего тимлиды. Резерв не означает трудоустройство и не меняет работу тимлида; банк резюме выпускников — отдельный модуль." %}
+    {% url 'reserve:overview' as tools_url %}{% ui_button "Подборки и рекомендации" href=tools_url icon_name="briefcase" %}
+    {% url 'reserve_external_apply' as public_url %}{% ui_button "Форма для кандидатов" href=public_url icon_name="external-link" target="_blank" rel="noopener" %}
+{% end_ui_page_header %}
+
+<div class="gp-grid gp-grid--4" style="--grid-gap: var(--space-4); margin-bottom: var(--space-5)">
+    {% for label, value in stat_rows %}<div class="gp-card"><div class="gp-card__body"><div class="gp-muted gp-small">{{ label }}</div><div style="font-size: var(--text-2xl); font-weight: 700">{{ value }}</div></div></div>{% endfor %}
+</div>
+
+<form method="get" class="gp-card" style="margin-bottom: var(--space-4)" role="search" aria-label="Фильтры резерва">
+    <div class="gp-card__body">
+        <div class="gp-filters">
+            <div class="gp-field gp-filters__wide"><label class="gp-label" for="r-q">Поиск</label><input class="gp-input" id="r-q" type="search" name="q" value="{{ params.q|default:'' }}" placeholder="ФИО, телефон, Telegram, навык"></div>
+            <div class="gp-field"><label class="gp-label" for="r-kind">Кто</label><select class="gp-select" id="r-kind" name="kind"><option value="">Все</option>{% for v, l in kinds %}<option value="{{ v }}"{% if params.kind == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="r-status">Статус</label><select class="gp-select" id="r-status" name="status"><option value="">Любой</option>{% for v, l in statuses %}<option value="{{ v }}"{% if params.status == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="r-spec">Специализация</label><select class="gp-select" id="r-spec" name="specialization"><option value="">Все</option>{% for s in specializations %}<option value="{{ s.pk }}"{% if params.specialization == s.pk|stringformat:'s' %} selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="gp-cluster" style="margin-top: var(--space-4)">{% ui_button "Применить" variant="primary" type="submit" icon_name="filter" %}<span class="gp-muted gp-small" style="margin-left:auto">Найдено {{ page.paginator.count }}</span></div>
+    </div>
+</form>
+
+{% ui_card flush=True %}
+{% if page.object_list %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Кадровый резерв</caption>
+        <thead><tr><th scope="col">Кандидат</th><th scope="col">Специализация</th><th scope="col">Кто</th><th scope="col">Статус</th><th scope="col">Резюме</th><th scope="col">Обновлено</th></tr></thead>
+        <tbody>
+        {% for c in page.object_list %}
+            <tr>
+                <td class="is-primary" data-label="Кандидат"><a class="gp-link gp-table__primary" style="overflow-wrap:anywhere" href="{% url 'reserve:hr_detail' c.pk %}">{{ c.full_name }}</a><span class="gp-table__secondary">{{ c.phone|default:"" }}{% if c.telegram %} · {{ c.telegram }}{% endif %}</span></td>
+                <td data-label="Специализация">{{ c.direction|default:"—" }}</td>
+                <td data-label="Кто">{{ c.ui_kind }}</td>
+                <td data-label="Статус">{% ui_badge c.get_status_display tone=c.ui_tone %}</td>
+                <td data-label="Резюме">{% if c.resume_file %}<a class="gp-link" href="{{ c.resume_file.url }}" target="_blank" rel="noopener">файл</a>{% elif c.resume_url %}<a class="gp-link" href="{{ c.resume_url }}" target="_blank" rel="noopener noreferrer">ссылка</a>{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td data-label="Обновлено">{{ c.updated_at|date:"d.m.Y" }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Кандидатов не найдено" icon_name="users" %}</div>{% endif %}
+{% end_ui_card %}
+<div style="margin-top: var(--space-4)">{% ui_pagination page label="кандидатов" %}</div>
+{% endblock %}

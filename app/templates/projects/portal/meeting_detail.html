@@ -1,0 +1,41 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% comment %}
+Табель собрания (2.0, UI-03C). Тимлид отмечает и оценивает своё направление
+(editable), ПМ — только просмотр. Контекст: meeting, sections, mark_url, score_url…
+{% endcomment %}
+{% block title %}Собрание {{ meeting.date|date:"d.m.Y" }} — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title=title subtitle=project.name %}
+    {% ui_slot "eyebrow" %}
+        {% if meeting.host %}{% ui_badge host_label %}{% endif %}
+        {% if rate is not None %}{% ui_badge rate_label tone=rate_tone %}{% endif %}
+        {% if average_score is not None %}{% ui_badge average_label tone=average_tone %}{% endif %}
+    {% end_ui_slot %}
+    {% if editable %}<form method="post" action="{{ mark_all_url }}" style="margin:0">{% csrf_token %}{% ui_button "Отметить всех" variant="primary" type="submit" icon_name="check" %}</form>{% endif %}
+{% end_ui_page_header %}
+
+<div x-data="{ tab: '{{ tab }}' }">
+    <nav class="gp-tabs" aria-label="Табель собрания">
+        <a href="?tab=marks" class="gp-tabs__tab" :class="tab === 'marks' && 'is-active'" @click.prevent="tab='marks'">Посещаемость<span class="gp-tabs__count">{{ marked }}/{{ total_people }}</span></a>
+        <a href="?tab=scores" class="gp-tabs__tab" :class="tab === 'scores' && 'is-active'" @click.prevent="tab='scores'">Активность<span class="gp-tabs__count">{{ scored }}/{{ total_people }}</span></a>
+    </nav>
+    <div x-show="tab === 'marks'" class="gp-stack gp-stack--lg" style="margin-top: var(--space-4)">
+        {% if editable %}<p class="gp-muted gp-small" style="margin:0">Нажмите на отметку, чтобы сменить: был → не был → опоздал → уважительная → пусто.</p>{% endif %}
+        {% for section in sections %}
+            {% ui_card title=section.label flush=True %}
+                <ul class="gp-marks">{% for member in section.members %}{% include "projects/portal/_mark_row.html" %}{% endfor %}</ul>
+            {% end_ui_card %}
+        {% empty %}<div class="gp-card">{% ui_empty "В команде пока никого" icon_name="users" %}</div>{% endfor %}
+    </div>
+    <div x-show="tab === 'scores'" x-cloak class="gp-stack gp-stack--lg" style="margin-top: var(--space-4)">
+        <p class="gp-muted gp-small" style="margin:0">{% if editable %}Нажмите на шкалу — балл выставится сразу, повторное нажатие снимает. {% endif %}0–4 — не тянет, 5–7 — норма, 8–10 — сильно.{% if period_start %} Период: {{ period_start|date:"d.m.Y" }} — {{ meeting.date|date:"d.m.Y" }} ({{ period_days }} дн.).{% endif %}</p>
+        {% for section in sections %}
+            {% ui_card title=section.label flush=True %}
+                <ul class="gp-scores">{% for member in section.members %}{% include "projects/portal/_score_row.html" %}{% endfor %}</ul>
+            {% end_ui_card %}
+        {% empty %}<div class="gp-card">{% ui_empty "В команде пока никого" icon_name="users" %}</div>{% endfor %}
+    </div>
+</div>
+{% endblock %}

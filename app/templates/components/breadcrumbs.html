@@ -1,0 +1,13 @@
+{% if crumbs %}<nav class="gp-breadcrumbs" aria-label="Навигационная цепочка">
+    <ol>
+        {% for crumb in crumbs %}
+            {% if forloop.last %}
+                <li><span aria-current="page">{{ crumb.label }}</span></li>
+            {% elif crumb.href %}
+                <li><a href="{{ crumb.href }}">{{ crumb.label }}</a></li>
+            {% else %}
+                <li><span>{{ crumb.label }}</span></li>
+            {% endif %}
+        {% endfor %}
+    </ol>
+</nav>{% endif %}

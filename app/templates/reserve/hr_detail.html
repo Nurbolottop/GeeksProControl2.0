@@ -1,0 +1,67 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}{{ c.full_name }} — кадровый резерв{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title=c.full_name subtitle=c.direction %}
+    {% ui_slot "eyebrow" %}
+        {% ui_badge c.get_status_display tone=tone dot=True %}
+        {% if c.intern_id %}{% ui_badge "Профиль GeeksPro" tone="info" %}{% else %}{% ui_badge "Внешний кандидат" %}{% endif %}
+    {% end_ui_slot %}
+    {% if c.intern_id %}{% ui_button "Профиль GeeksPro" href=c.intern.get_absolute_url icon_name="user" %}{% endif %}
+    {% ui_button "Расширенная карточка" href=c.get_absolute_url icon_name="file-text" %}
+    {% if not job %}{% ui_button "Подтвердить трудоустройство" variant="primary" icon_name="check" data_gp_open="employ-modal" %}{% endif %}
+{% end_ui_page_header %}
+
+{% if job %}<div style="margin-bottom: var(--space-4)">{% ui_alert job_text level="success" title="Трудоустройство в Geeks Studio подтверждено" %}</div>{% endif %}
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Кандидат" %}
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>Телефон</dt><dd style="white-space:normal; overflow-wrap:anywhere">{% if c.phone %}<a class="gp-link" href="tel:{{ c.phone }}">{{ c.phone }}</a>{% else %}—{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Telegram / контакт</dt><dd style="white-space:normal; overflow-wrap:anywhere">{{ c.telegram|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Специализация</dt><dd>{{ c.direction }}</dd></div>
+            <div class="gp-metrics__row"><dt>Резюме</dt><dd>{% if c.resume_file %}<a class="gp-link" href="{{ c.resume_file.url }}" target="_blank" rel="noopener">открыть файл</a>{% elif c.resume_url %}<a class="gp-link" href="{{ c.resume_url }}" target="_blank" rel="noopener noreferrer">открыть ссылку</a>{% else %}<span class="gp-nodata">нет</span>{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Заявка подана</dt><dd>{{ c.submitted_at|date:"d.m.Y"|default:"—" }}</dd></div>
+        </dl>
+        {% if c.work_experience %}<h3 class="gp-h3" style="margin-top: var(--space-4)">Опыт</h3><p class="gp-text" style="white-space: pre-line; margin:0; overflow-wrap:anywhere">{{ c.work_experience }}</p>{% endif %}
+        {% if c.skills %}<p class="gp-small" style="margin: var(--space-3) 0 0"><span class="gp-muted">Навыки:</span> {{ c.skills }}</p>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Решение по кандидатуре" subtitle="«Трудоустройство подтверждено» ставится только отдельным подтверждением ниже." %}
+        {% if not job %}
+        <form method="post" action="{% url 'reserve:status' c.pk %}" class="gp-stack">{% csrf_token %}<input type="hidden" name="next" value="hr">
+            {% ui_field status_form.status %}{% ui_field status_form.comment %}
+            <div>{% ui_button "Сохранить решение" variant="primary" type="submit" %}</div>
+        </form>
+        {% if c.status == 'reserve' %}<form method="post" action="{% url 'reserve:unreserve' c.pk %}" style="margin-top: var(--space-3)">{% csrf_token %}{% ui_button "Убрать из активного резерва" size="sm" variant="ghost" type="submit" %}</form>{% endif %}
+        {% else %}<p class="gp-muted gp-small" style="margin:0">Кандидат трудоустроен — кадровое решение закрыто, история сохранена.</p>{% endif %}
+    {% end_ui_card %}
+</div>
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start; margin-top: var(--space-5)">
+    {% ui_card title="Проекты в GeeksPro" flush=True %}
+        {% if memberships %}
+        <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for m in memberships %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot{% if m.status != 'active' %} gp-attention__dot--warning{% endif %}" aria-hidden="true"></span><span class="gp-small">{{ m.project.name|default:"—" }} · {{ m.get_role_display }}<span class="gp-attention__meta">{{ m.joined_at|date:"d.m.Y"|default:"—" }} — {% if m.status == 'active' %}сейчас{% else %}{{ m.left_at|date:"d.m.Y"|default:"—" }}{% if m.left_reason %} · {{ m.get_left_reason_display|lower }}{% endif %}{% endif %}</span></span></span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Проектов в GeeksPro нет" icon_name="folder" %}</div>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="История кадровых решений" flush=True %}
+        {% if events %}
+        <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for e in events %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot" aria-hidden="true"></span><span class="gp-small">{{ e.title }}<span class="gp-attention__meta">{{ e.created_at|date:"d.m.Y H:i" }}{% if e.user %} · {{ e.user.display_name }}{% endif %}{% if e.detail %} · {{ e.detail }}{% endif %}</span></span></span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Событий нет" icon_name="clock" %}</div>{% endif %}
+    {% end_ui_card %}
+</div>
+
+{% if not job %}
+{% ui_modal id="employ-modal" title="Подтвердить трудоустройство в Geeks Studio" %}
+    <form method="post" action="{% url 'reserve:confirm_employment' c.pk %}" class="gp-stack" id="employ-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">Это отдельное кадровое решение. {% if c.intern_id %}Назначения в проектах GeeksPro закроются, вход в Control закроется, проекты без тимлида появятся в уведомлениях. История работы сохранится.{% else %}Профиля GeeksPro у кандидата нет — учётка и назначения не создаются.{% endif %}</p>
+        <div class="gp-form-grid gp-form-grid--2">
+            <div class="gp-field"><label class="gp-label" for="e-date">Дата трудоустройства</label><input class="gp-input" type="date" id="e-date" name="employed_on" value="{{ today|date:'Y-m-d' }}" required></div>
+            <div class="gp-field"><label class="gp-label" for="e-pos">Должность</label><input class="gp-input" id="e-pos" name="position" maxlength="255"></div>
+        </div>
+        <div class="gp-field"><label class="gp-label" for="e-c">Комментарий</label><textarea class="gp-textarea" id="e-c" name="comment" rows="2"></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Подтвердить" variant="primary" type="submit" form="employ-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% endblock %}

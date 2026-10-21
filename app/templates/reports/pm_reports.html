@@ -1,0 +1,41 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Отчёты — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Отчёты" subtitle="Сводный отчёт руководителю и отчёты тимлидов ваших проектов" %}
+{% end_ui_page_header %}
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Сводный отчёт за неделю" subtitle="Один в неделю. В срок — пятница или суббота; в другой день сохранится с фактической датой, но не в срок." %}
+        <ul class="gp-attention" style="margin-bottom: var(--space-4)">{% for w in weeks %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-2) 0; align-items:center"><span class="gp-attention__dot{% if not w.done %} gp-attention__dot--warning{% endif %}" aria-hidden="true"></span><span class="gp-small">{{ w.label }}<span class="gp-attention__meta">{% if w.done %}сдан {{ w.done.created_at|date:"d.m.Y H:i" }} · {% if w.done.on_time %}в срок{% else %}не в срок{% endif %}{% else %}не сдан{% endif %}</span></span></span></li>{% endfor %}</ul>
+        {% if can_submit %}
+        <form method="post" action="{% url 'pm_portal:weekly_report_submit' %}" class="gp-stack">{% csrf_token %}
+            <div class="gp-field"><label class="gp-label" for="pm-week">Неделя</label><select class="gp-select" id="pm-week" name="week">{% for w in weeks %}{% if not w.done %}<option value="{{ w.key }}">{{ w.label }}</option>{% endif %}{% endfor %}</select></div>
+            <fieldset class="gp-field" style="border:0; padding:0; margin:0"><legend class="gp-label">Проекты в отчёте</legend>{% for p in own %}<label class="gp-check" style="display:flex; gap: var(--space-2); align-items:center"><input type="checkbox" name="projects" value="{{ p.pk }}" checked> {{ p.name }}</label>{% endfor %}</fieldset>
+            <div class="gp-field"><label class="gp-label" for="pm-text">Работа за неделю, проекты, риски<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="pm-text" name="text" rows="6" required></textarea></div>
+            {% if not is_on_time_day %}<p class="gp-muted gp-small" style="margin:0">Сегодня не пятница и не суббота — отчёт сохранится, но не в срок.</p>{% endif %}
+            <div>{% ui_button "Отправить руководителю" variant="primary" type="submit" %}</div>
+        </form>
+        {% elif not own %}{% ui_empty "Активных проектов нет" icon_name="folder" %}{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Мои отчёты" flush=True %}
+        {% if history %}
+        <ul class="gp-timeline" style="padding: 0 var(--space-5)">{% for r in history %}<li class="gp-timeline__item gp-timeline__item--{% if r.on_time %}success{% else %}warning{% endif %}"><span class="gp-timeline__icon">{% ui_icon "file-text" %}</span><div style="min-width:0"><p class="gp-timeline__title">Неделя с {{ r.week_start|date:"d.m.Y" }} · {% if r.on_time %}в срок{% else %}не в срок{% endif %}</p><p class="gp-timeline__meta">{% for p in r.projects.all %}{{ p.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p><p class="gp-timeline__meta">{{ r.text|truncatechars:300 }}</p></div><span class="gp-timeline__date">{{ r.created_at|date:"d.m.Y H:i" }}</span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Отчётов ещё нет" icon_name="file-text" %}</div>{% endif %}
+    {% end_ui_card %}
+</div>
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start; margin-top: var(--space-5)">
+    {% ui_card title="Обязательные отчёты тимлидов" flush=True %}
+        {% if lead_obligations %}
+        <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for o in lead_obligations %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot{% if o.status == 'missed' %} gp-attention__dot--danger{% elif o.status == 'pending' %} gp-attention__dot--warning{% endif %}" aria-hidden="true"></span><span class="gp-small">{{ o.lead_name }} — «{{ o.project.name }}» · {{ o.label|lower }}<span class="gp-attention__meta">{{ o.ui_direction }} · неделя с {{ o.week.start|date:"d.m" }}</span></span></span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Тимлидов в ваших проектах нет" icon_name="users" %}</div>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Отчёты тимлидов" subtitle="Только чтение" flush=True %}
+        {% if lead_reports %}
+        <ul class="gp-timeline" style="padding: 0 var(--space-5)">{% for r in lead_reports %}<li class="gp-timeline__item"><span class="gp-timeline__icon">{% ui_icon "file-text" %}</span><div style="min-width:0"><p class="gp-timeline__title">{{ r.lead.full_name }} · «{{ r.project.name }}»{% if r.kind == 'extra' %} · дополнительный{% endif %}</p><p class="gp-timeline__meta">{{ r.text }}</p></div><span class="gp-timeline__date">{{ r.created_at|date:"d.m.Y H:i" }}</span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Отчётов тимлидов нет" icon_name="file-text" %}</div>{% endif %}
+    {% end_ui_card %}
+</div>
+{% endblock %}

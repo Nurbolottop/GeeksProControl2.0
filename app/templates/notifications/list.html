@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Уведомления — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Уведомления</h1>
+        <div class="sub">Открытых: {{ page.paginator.count }}</div>
+    </div>
+    <div class="page-actions">
+        <form method="post" action="{% url 'notifications:close_all' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn--secondary">Закрыть все</button>
+        </form>
+    </div>
+</div>
+
+<div class="tabs">
+    <a href="{% url 'notifications:list' %}" class="{% if not level %}is-active{% endif %}">Все</a>
+    <a href="?level=critical" class="{% if level == 'critical' %}is-active{% endif %}">Critical</a>
+    <a href="?level=warning" class="{% if level == 'warning' %}is-active{% endif %}">Warning</a>
+    <a href="?level=info" class="{% if level == 'info' %}is-active{% endif %}">Info</a>
+    <a href="?level=success" class="{% if level == 'success' %}is-active{% endif %}">Success</a>
+</div>
+
+<div class="panel">
+    {% for notification in page.object_list %}
+        <div style="display:flex; gap:12px; align-items:flex-start; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+            <div style="display:flex; gap:10px; align-items:flex-start;">
+                {% if notification.level == 'critical' %}<span class="dot dot--red" style="margin-top:5px"></span>
+                {% elif notification.level == 'warning' %}<span class="dot dot--orange" style="margin-top:5px"></span>
+                {% elif notification.level == 'success' %}<span class="dot" style="background:var(--green); margin-top:5px"></span>
+                {% else %}<span class="dot" style="background:var(--blue); margin-top:5px"></span>{% endif %}
+                <div>
+                    {% if notification.url %}
+                        <a href="{{ notification.url }}"><strong>{{ notification.title }}</strong></a>
+                    {% else %}
+                        <strong>{{ notification.title }}</strong>
+                    {% endif %}
+                    {% if notification.description %}
+                        <div style="font-size:12px; color:var(--text-muted)">{{ notification.description }}</div>
+                    {% endif %}
+                    <div style="font-size:12px; color:var(--text-muted)">{{ notification.created_at|date:'d.m.Y H:i' }}</div>
+                </div>
+            </div>
+            <form method="post" action="{% url 'notifications:close' notification.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--secondary btn--sm">Закрыть</button>
+            </form>
+        </div>
+    {% empty %}
+        <div class="empty">Уведомлений нет — всё чисто.</div>
+    {% endfor %}
+</div>
+
+{% if page.paginator.num_pages > 1 %}
+    <div class="pagination">
+        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">‹</a>{% endif %}
+        <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a href="?page={{ page.next_page_number }}">›</a>{% endif %}
+    </div>
+{% endif %}
+{% endblock %}

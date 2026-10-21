@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ project.name }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<nav class="crumbs">
+    <a href="{% url 'projects:list' %}">Проекты</a>
+    {% if project.flow %}
+        <span class="crumbs__sep">›</span>
+        <a href="{{ project.flow.get_absolute_url }}">Поток {{ project.flow.number }}</a>
+    {% endif %}
+    {% if project.group %}
+        <span class="crumbs__sep">›</span>
+        <a href="{% url 'attendance:group_meetings' project.group.pk %}">Команда {{ project.group.code }}</a>
+    {% endif %}
+    <span class="crumbs__sep">›</span>
+    <span class="crumbs__current">{{ project.name }}</span>
+</nav>
+
+<div class="page-head">
+    <div>
+        <h1>{{ project.display_code }} · {{ project.name }} {% if project.is_favorite %}★{% endif %}</h1>
+        <div class="sub" style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
+            {% include 'projects/partials/stage_badge.html' with stage_key=project.current_stage stage_display=project.get_current_stage_display %}
+            {% include 'projects/partials/deadline_badge.html' with status=project.deadline_status %}
+            <span class="badge badge--gray">{{ project.get_status_display }}</span>
+            {% if project.flow %}<a href="{{ project.flow.get_absolute_url }}" class="badge badge--gray">{{ project.flow }}</a>{% endif %}
+        </div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'projects:update' project.pk %}" class="btn btn--secondary">Редактировать</a>
+        <form method="post" action="{% url 'projects:delete' project.pk %}" class="inline-form"
+              data-confirm="Проект будет удалён безвозвратно вместе с этапами, задачами, отчётами, документами и историей."
+              data-confirm-input="{{ project.display_code|default:project.pk }}"
+              data-confirm-ok="Удалить проект">
+            {% csrf_token %}
+            <input type="hidden" name="confirm_code">
+            <button type="submit" class="btn btn--danger">Удалить</button>
+        </form>
+    </div>
+</div>
+
+<div class="tabs">
+    <a href="?tab=overview" class="{% if tab == 'overview' %}is-active{% endif %}">Обзор</a>
+    <a href="?tab=stages" class="{% if tab == 'stages' %}is-active{% endif %}">Этапы</a>
+    <a href="?tab=tasks" class="{% if tab == 'tasks' %}is-active{% endif %}">Задачи</a>
+    <a href="?tab=team" class="{% if tab == 'team' %}is-active{% endif %}">Команда</a>
+    <a href="?tab=documents" class="{% if tab == 'documents' %}is-active{% endif %}">Документы</a>
+    <a href="?tab=access" class="{% if tab == 'access' %}is-active{% endif %}">Доступы</a>
+    <a href="?tab=report" class="{% if tab == 'report' %}is-active{% endif %}">Отчёт</a>
+    <a href="?tab=graphics" class="{% if tab == 'graphics' %}is-active{% endif %}">Графика</a>
+    <a href="?tab=history" class="{% if tab == 'history' %}is-active{% endif %}">История</a>
+    {% if project.group %}
+        <a href="{% url 'attendance:group_meetings' project.group.pk %}" class="tabs__link">Табель →</a>
+    {% endif %}
+</div>
+
+{% if tab == 'stages' %}
+    {% url 'projects:primary_stage_set' project.pk as primary_stage_action %}
+    {% include "projects/partials/primary_stage.html" with can_set_primary_stage=True primary_stage_action=primary_stage_action %}
+    <div class="panel">
+        <h2>Этапы проекта</h2>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Этап</th>
+                    <th>Статус</th>
+                    <th>Начало</th>
+                    <th>Deadline</th>
+                    <th>Завершение</th>
+                    <th>Комментарий</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for stage in stages %}
+                    {% include 'projects/partials/stage_row.html' %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% elif tab == 'tasks' %}
+    <div class="panel" style="padding: 0;">
+        <div style="display:flex; justify-content: space-between; align-items:center; padding: 16px 20px 0;">
+            <h2 style="margin:0">Задачи проекта ({{ tasks|length }})</h2>
+            <a href="{% url 'tasks:create' %}?project={{ project.pk }}" class="btn btn--sm">+ Задача</a>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Задача</th>
+                    <th>Приоритет</th>
+                    <th>Deadline</th>
+                    <th>Статус</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for task in tasks %}
+                    {% include 'tasks/partials/task_row.html' with statuses=task_statuses %}
+                {% empty %}
+                    <tr><td colspan="5" class="empty" style="text-align:center; padding: 24px;">Задач нет.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% elif tab == 'team' %}
+    <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 14px;">
+        <h2 style="margin:0">
+            Команда ({{ team_members|length }})
+            {% if project.group %}
+                — <a href="{{ project.group.get_absolute_url }}">группа {{ project.group.code }} потока {{ project.group.flow.number }} →</a>
+            {% endif %}
+        </h2>
+        <div style="display:flex; gap:8px">
+            {% if project.group %}
+                <a href="{% url 'attendance:group_meetings' project.group.pk %}"
+                   class="btn btn--secondary btn--sm">Табель команды →</a>
+            {% endif %}
+            <a href="{% url 'teams:member_add' project.pk %}" class="btn btn--sm">+ Участник</a>
+            {% if team_members %}
+                <form method="post" action="{% url 'teams:team_clear' project.pk %}" style="margin:0"
+                      data-confirm="Расформировать команду проекта? Все участники будут сняты, люди останутся в базе.">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--secondary btn--sm">Расформировать</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    {% for section in team_sections %}
+        <div class="panel team-section">
+            <div class="team-section__head">
+                <h2><span class="badge badge--{{ section.tone }}">{{ section.label }}</span></h2>
+                <div style="display:flex; gap:10px; align-items:center">
+                    <span class="team-section__count">{{ section.count }} чел.</span>
+                    <a href="{% url 'teams:member_add' project.pk %}?role={{ section.role }}"
+                       class="btn btn--secondary btn--sm">+ Добавить</a>
+                </div>
+            </div>
+            <div class="member-list">
+                {% for member in section.members %}
+                    <div class="member {% if member.status != 'active' %}member--left{% endif %}">
+                        <div class="member__avatar">{{ member.person_name|first|upper }}</div>
+                        <div class="member__body">
+                            {% if member.intern %}
+                                <a href="{{ member.intern.get_absolute_url }}" class="member__name">{{ member.person_name }}</a>
+                            {% else %}
+                                <span class="member__name">{{ member.person_name }}</span>
+                            {% endif %}
+                            {% if member.intern.status == 'paused' %}<span class="badge badge--gray" style="margin-left:6px;">Приостановлен</span>{% endif %}
+                            <div class="member__meta">
+                                {{ member.intern.specialization|default:'—' }}
+                                {% if member.status != 'active' %} · вышел{% if member.left_reason %} ({{ member.get_left_reason_display }}){% endif %}{% endif %}
+                            </div>
+                        </div>
+                        <div class="member__actions">
+                            <a href="{% url 'teams:member_edit' member.pk %}" class="btn-edit" title="Изменить">✎</a>
+                            <form method="post" action="{% url 'teams:member_delete' member.pk %}" style="margin:0"
+                                  data-confirm="Убрать {{ member.person_name|escapejs }} из команды?"
+                                  data-confirm-reasons='[["self","Сам ушёл"],["unresponsive","Не отвечает"],["not_fit","Не подошёл"],["other","Другое"]]'>
+                                {% csrf_token %}
+                                <input type="hidden" name="left_reason">
+                                <button type="submit" class="btn-edit btn-edit--danger" title="Убрать из команды">✕</button>
+                            </form>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="empty" style="padding: 6px 2px; font-size: 13px">
+                        Пока никого — нажмите «+ Добавить».
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% empty %}
+        <div class="panel empty">Команда не сформирована.</div>
+    {% endfor %}
+{% elif tab == 'access' %}
+    <div class="panel" style="padding: 0;">
+        <h2 style="padding: 16px 20px 0">Доступы проекта ({{ accesses|length }})</h2>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Сервис</th>
+                    <th>Адрес</th>
+                    <th>Логин</th>
+                    <th>Пароль</th>
+                    <th>Комментарий</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for access in accesses %}
+                    <tr>
+                        <td><strong>{{ access.service }}</strong></td>
+                        <td>
+                            {% if access.url %}
+                                <a href="{{ access.url }}" target="_blank" rel="noopener">{{ access.url|cut:'https://'|cut:'http://'|truncatechars:34 }}</a>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if access.login %}
+                                <span style="font-family: monospace">{{ access.login }}</span>
+                                <button type="button" class="copy-btn" title="Скопировать"
+                                        onclick="navigator.clipboard.writeText('{{ access.login|escapejs }}'); this.textContent='✓'; setTimeout(() => this.textContent='⧉', 1200)">⧉</button>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if access.password %}
+                                <span x-data="{ show: false }" style="display:inline-flex; gap:6px; align-items:center">
+                                    <span style="font-family: monospace" x-text="show ? '{{ access.password|escapejs }}' : '••••••••'"></span>
+                                    <button type="button" class="copy-btn" @click="show = !show" x-text="show ? 'Скрыть' : 'Показать'"></button>
+                                    <button type="button" class="copy-btn" title="Скопировать"
+                                            onclick="navigator.clipboard.writeText('{{ access.password|escapejs }}'); this.textContent='✓'; setTimeout(() => this.textContent='⧉', 1200)">⧉</button>
+                                </span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td style="font-size:12px; color: var(--text-muted)">{{ access.comment|default:'' }}</td>
+                        <td style="white-space: nowrap">
+                            <a href="{% url 'projects:access_update' access.pk %}" class="btn btn--secondary btn--sm">Изменить</a>
+                            <form method="post" action="{% url 'projects:access_delete' access.pk %}" style="display:inline"
+                                  data-confirm="Удалить доступ «{{ access.service|escapejs }}»?">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn--secondary btn--sm">✕</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="6" class="empty" style="text-align:center; padding: 24px;">
+                        Доступов пока нет. Добавьте логины и пароли при выходе в прод или сдаче проекта.
+                    </td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Добавить доступ</h2>
+        <form method="post" action="{% url 'projects:access_create' project.pk %}">
+            {% csrf_token %}
+            <div class="form-grid">
+                {% include 'partials/form_fields.html' with form=access_form %}
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn">Добавить</button>
+            </div>
+        </form>
+    </div>
+{% elif tab == 'documents' %}
+    <div class="page-head" style="margin-bottom: 16px">
+        <div>
+            <h2 style="margin:0">Документы проекта</h2>
+            <div class="sub">
+                Обязательных загружено: <strong>{{ doc_progress.done }}/{{ doc_progress.total }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div id="brief-link" class="form-link {% if not brief_link %}form-link--off{% endif %} {% if request.GET.brief == 'new' %}form-link--fresh{% endif %}" style="margin-bottom: 16px;">
+        <div class="form-link__body">
+            <div class="form-link__label">Ссылка на бриф</div>
+            {% if brief_link %}
+                <a class="form-link__url" id="brief-link-url" href="{{ brief_link.get_absolute_url }}" target="_blank" rel="noopener">{{ request.scheme }}://{{ request.get_host }}{{ brief_link.get_absolute_url }}</a>
+                <div class="form-link__meta">
+                    Отправьте заказчику сами — заполнит без входа в систему
+                    · заполнений: {{ brief_link.submissions }}
+                </div>
+            {% else %}
+                <div class="form-link__meta">Ссылки ещё нет — создайте кнопкой справа и отправьте заказчику.</div>
+            {% endif %}
+        </div>
+        <div class="form-link__actions">
+            {% if brief_link %}
+                <button type="button" class="btn btn--secondary btn--sm" data-copy-link="brief-link-url">Копировать</button>
+            {% endif %}
+            <form method="post" action="{% url 'documents:brief_link_create' project.pk %}"
+                  {% if brief_link %}data-confirm="Создать новую ссылку на бриф? Прежняя перестанет работать." data-confirm-ok="Создать ссылку"{% endif %}
+                  style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--secondary btn--sm">{% if brief_link %}Новая ссылка{% else %}Создать ссылку{% endif %}</button>
+            </form>
+        </div>
+    </div>
+    {% if brief_link %}
+        <style>
+            .form-link--fresh { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+        </style>
+        <script>
+            (function () {
+                var button = document.querySelector('[data-copy-link="brief-link-url"]');
+                var field = document.getElementById('brief-link-url');
+                if (!button || !field) return;
+
+                function done() {
+                    button.textContent = 'Скопировано';
+                    setTimeout(function () { button.textContent = 'Копировать'; }, 1500);
+                }
+                function copy() {
+                    return navigator.clipboard.writeText(field.href).then(done);
+                }
+                button.addEventListener('click', copy);
+
+                {% if request.GET.brief == 'new' %}
+                // Проект только что создан: подводим к ссылке и пробуем
+                // сразу положить её в буфер. Браузер может не дать копировать
+                // без клика — тогда просто останется кнопка.
+                document.getElementById('brief-link').scrollIntoView({block: 'center'});
+                copy().catch(function () {});
+                {% endif %}
+            })();
+        </script>
+    {% endif %}
+
+    {% include 'documents/partials/brief_readonly.html' %}
+
+    <div class="doc-list">
+        {% for item in checklist %}
+            <div class="doc-row {% if item.document %}doc-row--done{% endif %}">
+                <div class="doc-row__icon">
+                    {% if item.document %}✓{% else %}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                    {% endif %}
+                </div>
+                <div class="doc-row__name">
+                    {{ item.type.name }}
+                    {% if item.type.required_for_delivery %}
+                        <span class="doc-row__req">обязательный</span>
+                    {% endif %}
+                    {% if item.document.number %}
+                        <div class="doc-row__meta">№ {{ item.document.number }}{% if item.document.document_date %} от {{ item.document.document_date|date:'d.m.Y' }}{% endif %}</div>
+                    {% endif %}
+                </div>
+                <div class="doc-row__status">
+                    {% if item.document %}
+                        {% if item.document.is_signed %}
+                            <span class="badge badge--green">✓ Подписан</span>
+                        {% elif item.document.status == 'awaiting' %}
+                            <span class="badge badge--yellow">Ожидает подписи</span>
+                        {% elif item.document.status == 'expired' %}
+                            <span class="badge badge--red">Истёк</span>
+                        {% elif item.document.status == 'cancelled' %}
+                            <span class="badge badge--gray">Отменён</span>
+                        {% else %}
+                            <span class="badge badge--blue">Загружен</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="badge badge--gray">Не загружен</span>
+                    {% endif %}
+                </div>
+                <div class="doc-row__actions">
+                    {% if item.document %}
+                        {% if item.document.file %}
+                            <a href="{{ item.document.file.url }}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">Открыть</a>
+                        {% endif %}
+                        {% if not item.document.is_signed %}
+                            <form method="post" action="{% url 'documents:approve' item.document.pk %}" style="display:inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn--sm">Утвердить</button>
+                            </form>
+                        {% endif %}
+                        <a href="{% url 'documents:update' item.document.pk %}" class="btn btn--secondary btn--sm">Изменить</a>
+                    {% else %}
+                        <a href="{% url 'documents:create' %}?project={{ project.pk }}&type={{ item.type.pk }}" class="btn btn--sm">Загрузить</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% elif tab == 'report' %}
+    {% include 'projects/partials/tab_report.html' %}
+{% elif tab == 'graphics' %}
+    {% include 'projects/partials/tab_graphics.html' %}
+{% elif tab == 'history' %}
+    <div class="panel">
+        <h2>История изменений</h2>
+        {% if history %}
+            <ul class="feed">
+                {% for record in history %}
+                    <li>
+                        <strong>{{ record.field }}</strong>:
+                        {% if record.old_value %}{{ record.old_value }} → {% endif %}{{ record.new_value|default:'—' }}
+                        {% if record.reason %}<div class="reason">Причина: {{ record.reason }}</div>{% endif %}
+                        <div class="when">{{ record.created_at|date:'d.m.Y H:i' }}{% if record.user %} · {{ record.user.display_name }}{% endif %}</div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="empty">Изменений пока нет.</div>
+        {% endif %}
+    </div>
+{% else %}
+<div class="detail-grid">
+    <div class="detail-grid__main">
+        {% include 'projects/partials/section_last_report.html' %}
+        {% include 'projects/partials/section_progress.html' %}
+        {% include 'projects/partials/section_client.html' %}
+        {% include 'projects/partials/section_links.html' %}
+        {% include 'projects/partials/section_about.html' %}
+        {% include 'projects/partials/section_delivery.html' %}
+    </div>
+
+    <div class="detail-grid__side">
+        {% include 'projects/partials/section_details.html' %}
+        {% include 'projects/partials/section_dates.html' %}
+    </div>
+</div>
+{% endif %}
+
+
+{% endblock %}

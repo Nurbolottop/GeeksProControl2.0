@@ -1,0 +1,26 @@
+{% load ui %}
+{# Ссылка на анкету для новых стажёров проекта (тимлид). При закрытом наборе выпускать нельзя. #}
+<div style="margin-bottom: var(--space-5)">
+{% ui_card title="Анкета для новых стажёров" subtitle="Новые стажёры попадают в команду по ссылке на анкету — только при открытом наборе." %}
+    {% if not project.accepts_new_members %}
+        {% ui_alert "Набор в проект закрыт — новые стажёры по ссылке не добавляются, выпустить ссылку нельзя. Набор открывает руководитель." level="warning" %}
+    {% elif profile_link %}
+        <div class="gp-copyline">
+            <a class="gp-copyline__url" id="profile-link-url" href="{{ profile_link.get_absolute_url }}" target="_blank" rel="noopener">{{ request.scheme }}://{{ request.get_host }}{{ profile_link.get_absolute_url }}</a>
+            {% ui_button "Копировать" size="sm" icon_name="copy" data_gp_copy="profile-link-url" %}
+        </div>
+        <p class="gp-muted gp-small" style="margin: var(--space-2) 0 0">Создана {{ profile_link.created_at|date:"d.m.Y" }} · {% if profile_link.expires_at %}действует до {{ profile_link.expires_at|date:"d.m.Y H:i" }}{% else %}без срока{% endif %} · заполнений: {{ profile_link.submissions }}</p>
+    {% else %}<p class="gp-muted gp-small" style="margin:0">Активной ссылки нет.</p>{% endif %}
+    {% if is_active_lead and project.accepts_new_members %}
+    {% ui_slot "footer" %}
+        <form method="post" action="{{ profile_link_create }}" class="gp-cluster" style="--cluster-gap: var(--space-2); margin:0">
+            {% csrf_token %}
+            <label class="gp-sr-only" for="link-ttl">Срок действия</label>
+            <select class="gp-select" id="link-ttl" name="ttl_days" style="width:auto; min-height: var(--control-height-sm)">{% for value, label in profile_link_ttls %}<option value="{{ value }}"{% if value == '7' %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+            {% if profile_link %}{% ui_button "Новая ссылка (старая перестанет работать)" size="sm" type="submit" %}{% else %}{% ui_button "Создать ссылку" size="sm" variant="primary" type="submit" icon_name="plus" %}{% endif %}
+        </form>
+        {% if profile_link %}<form method="post" action="{{ profile_link_disable }}" style="margin:0">{% csrf_token %}{% ui_button "Отключить" size="sm" variant="ghost" type="submit" %}</form>{% endif %}
+    {% end_ui_slot %}
+    {% endif %}
+{% end_ui_card %}
+</div>

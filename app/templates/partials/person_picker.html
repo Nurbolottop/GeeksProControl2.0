@@ -1,0 +1,58 @@
+{{ people|json_script:"people-data" }}
+<div x-data="{ newPerson: false }">
+    <div class="input-add" x-show="!newPerson">
+        <div class="picker"
+             x-data="{
+                open: false,
+                query: '{{ selected_name|default:''|escapejs }}',
+                selectedId: '{{ selected_id|default:'' }}',
+                people: JSON.parse(document.getElementById('people-data').textContent),
+                get filtered() {
+                    const q = this.query.trim().toLowerCase();
+                    const list = q ? this.people.filter(p => p.name.toLowerCase().includes(q)) : this.people;
+                    return list.slice(0, 30);
+                },
+                choose(person) {
+                    this.selectedId = person.id;
+                    this.query = person.name;
+                    this.open = false;
+                }
+             }"
+             @click.outside="open = false">
+            <input type="hidden" name="intern" :value="selectedId">
+            <input type="text" x-model="query" @focus="open = true" @input="open = true"
+                   placeholder="Начните вводить имя" autocomplete="off" class="picker__input">
+            <div class="picker__list" x-show="open" x-cloak>
+                <template x-for="person in filtered" :key="person.id">
+                    <button type="button" class="picker__item" @click="choose(person)">
+                        <span x-text="person.name"></span>
+                        <em x-text="person.spec"></em>
+                    </button>
+                </template>
+                <div class="picker__empty" x-show="filtered.length === 0">
+                    Никого не найдено — нажмите «+», чтобы завести человека
+                </div>
+            </div>
+        </div>
+        <button type="button" class="input-add__btn" @click="newPerson = true"
+                title="Человека ещё нет в базе">+</button>
+    </div>
+
+    <div x-show="newPerson" x-cloak>
+        <div class="input-add">
+            <input type="text" name="new_person" autocomplete="off"
+                   placeholder="Фамилия и имя нового человека">
+            <button type="button" class="input-add__btn input-add__btn--cancel"
+                    @click="newPerson = false" title="Выбрать из базы">✕</button>
+        </div>
+        <select name="new_spec" style="margin-top: 8px; width: 100%">
+            <option value="">Направление</option>
+            {% for spec in specializations %}
+                <option value="{{ spec.pk }}">{{ spec.name }}</option>
+            {% endfor %}
+        </select>
+        <div class="field-hint">
+            Человек добавится в базу стажёров и сразу в эту команду.
+        </div>
+    </div>
+</div>

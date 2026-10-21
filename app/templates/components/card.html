@@ -1,0 +1,13 @@
+<section class="gp-card{% if flush %} gp-card--flush{% endif %}{% if interactive %} gp-card--interactive{% endif %}"{% if id %} id="{{ id }}"{% endif %}>
+    {% if title or slots.actions %}
+        <header class="gp-card__header">
+            <div>
+                {% if title %}<h2 class="gp-card__title">{{ title }}</h2>{% endif %}
+                {% if subtitle %}<p class="gp-card__subtitle">{{ subtitle }}</p>{% endif %}
+            </div>
+            {% if slots.actions %}<div class="gp-card__actions">{{ slots.actions }}</div>{% endif %}
+        </header>
+    {% endif %}
+    <div class="gp-card__body">{{ body }}</div>
+    {% if slots.footer %}<footer class="gp-card__footer">{{ slots.footer }}</footer>{% endif %}
+</section>

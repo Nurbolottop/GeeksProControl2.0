@@ -1,0 +1,42 @@
+{% load ui %}
+{# Обзор тимлида (UI-03C): его направление за 4 недели, кому нужно внимание, собрания, ПМ #}
+<div class="gp-grid gp-grid--4" style="--grid-gap: var(--space-4); margin-bottom: var(--space-5)">
+    {% for tile in lead.lead_tiles %}
+        <div class="gp-card"><div class="gp-card__body">
+            <div class="gp-muted gp-small">{{ tile.label }}</div>
+            <div style="font-size: var(--text-2xl); font-weight: 700">{% if tile.text %}{{ tile.text }}{% else %}{{ tile.value }}{% endif %}{% if tile.unit %} <small class="gp-muted" style="font-size: var(--text-sm); font-weight: 500">{{ tile.unit }}</small>{% endif %}</div>
+            <div class="gp-muted gp-small">{{ tile.hint }}</div>
+        </div></div>
+    {% endfor %}
+</div>
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start; margin-bottom: var(--space-5)">
+    {% ui_card title="Кому нужно внимание" subtitle="Последние 4 недели: посещаемость ниже 70%, активность ниже 5 из 10 или нет отметок." %}
+        {% if lead.attention %}
+        <ul class="gp-attention">{% for row in lead.attention %}<li><a href="{{ row.url }}"><span class="gp-attention__dot gp-attention__dot--warning" aria-hidden="true"></span><span class="gp-attention__text">{{ row.person.full_name }}<span class="gp-attention__meta">{{ row.reasons|join:" · " }}</span></span><span class="gp-attention__action">Открыть</span></a></li>{% endfor %}</ul>
+        {% elif lead.is_finished %}<p class="gp-muted gp-small" style="margin:0">Проект {{ project.get_status_display|lower }} — команда освобождена.</p>
+        {% elif lead.people_count %}<p class="gp-muted gp-small" style="margin:0">У всех в порядке.</p>
+        {% else %}<p class="gp-muted gp-small" style="margin:0">В вашем направлении пока никого.</p>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Собрания" %}
+        {% ui_slot "actions" %}{% ui_button "Табель" size="sm" variant="ghost" href="?tab=attendance" icon_end="chevron-right" %}{% end_ui_slot %}
+        {% if not lead.group %}<p class="gp-muted gp-small" style="margin:0">У проекта пока нет группы в потоке.</p>
+        {% elif lead.unmarked or lead.upcoming %}
+        <ul class="gp-attention">
+            {% for meeting in lead.unmarked %}<li><a href="{{ meeting.ui_url }}"><span class="gp-attention__dot gp-attention__dot--danger" aria-hidden="true"></span><span class="gp-attention__text">{{ meeting.date|date:"d.m" }} · {{ meeting.get_kind_display }}<span class="gp-attention__meta">прошло, но не отмечено</span></span><span class="gp-attention__action">Отметить</span></a></li>{% endfor %}
+            {% for meeting in lead.upcoming %}<li><a href="{{ meeting.ui_url }}"><span class="gp-attention__dot" aria-hidden="true"></span><span class="gp-attention__text">{{ meeting.date|date:"d.m" }} · {{ meeting.get_kind_display }}<span class="gp-attention__meta">{% if meeting.date == today %}сегодня{% else %}{{ meeting.date|date:"l" }}{% endif %}{% if meeting.host %} · ведёт {{ meeting.host.full_name }}{% endif %}</span></span></a></li>{% endfor %}
+        </ul>
+        {% else %}<p class="gp-muted gp-small" style="margin:0">Ближайших собраний не назначено.</p>{% endif %}
+    {% end_ui_card %}
+</div>
+{% if lead.pm %}
+<div style="margin-bottom: var(--space-5)">
+{% ui_card title="ПМ проекта" %}
+    <div class="gp-cluster" style="--cluster-gap: var(--space-3)">
+        {% ui_avatar lead.pm.person_name %}
+        <div><strong>{{ lead.pm.person_name }}</strong>
+            <div class="gp-small">{% if lead.pm.intern.phone %}<a class="gp-link" href="tel:{{ lead.pm.intern.phone }}">{{ lead.pm.intern.phone }}</a>{% endif %}{% if lead.pm.intern.telegram %} · {{ lead.pm.intern.telegram }}{% endif %}{% if not lead.pm.intern.phone and not lead.pm.intern.telegram %}<span class="gp-muted">контакты не указаны</span>{% endif %}</div>
+        </div>
+    </div>
+{% end_ui_card %}
+</div>
+{% endif %}

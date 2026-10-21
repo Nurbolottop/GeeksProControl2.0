@@ -1,0 +1,230 @@
+{% extends "layouts/app.html" %}
+{% load ui static %}
+{% block title %}Компоненты UI — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block mobile_title %}Компоненты UI{% endblock %}
+{% block extra_head %}
+<style>
+    /* Только для витрины: оглавление и образцы цветов */
+    .ui-catalog { display: grid; gap: var(--space-8); grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 1280px) { .ui-catalog { grid-template-columns: 200px minmax(0, 1fr); } }
+    .ui-toc { display: none; }
+    @media (min-width: 1280px) {
+        .ui-toc { display: block; position: sticky; top: calc(var(--topbar-height) + var(--space-6)); align-self: start; }
+        .ui-toc a { display: block; padding: 6px var(--space-3); border-radius: var(--radius-sm); color: var(--color-text-muted); font-size: var(--text-sm); text-decoration: none; }
+        .ui-toc a:hover { background: var(--color-surface-hover); color: var(--color-text); }
+    }
+    .ui-section { scroll-margin-top: calc(var(--topbar-height) + var(--space-4)); }
+    .ui-swatch { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); }
+    .ui-swatch i { width: 36px; height: 36px; border-radius: var(--radius-md); border: 1px solid var(--color-border); flex-shrink: 0; }
+    .ui-swatch code { display: block; font-size: var(--text-xs); color: var(--color-text-subtle); }
+    .ui-icons { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+    .ui-icons div { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-1); border-radius: var(--radius-md); background: var(--color-surface-sunken); font-size: 11px; color: var(--color-text-subtle); text-align: center; overflow-wrap: anywhere; }
+    .ui-type > * { margin: 0 0 var(--space-2); }
+    .ui-label { margin: 0 0 var(--space-3); font-size: var(--text-xs); font-weight: var(--weight-semibold); text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-subtle); }
+</style>
+{% endblock %}
+
+{% block page %}
+{% ui_page_header title="Компоненты UI" subtitle="Дизайн-система GeeksPro Control 2.0: токены и компоненты в светлой и тёмной темах. Все данные на странице вымышленные." %}
+    {% ui_button "Тёмная / светлая" icon_name="moon" x_on_click="cycleTheme()" %}
+    {% ui_button "Состояние ошибок" variant="primary" href="?errors=1#forms" icon_name="alert-circle" %}
+{% end_ui_page_header %}
+
+<div class="ui-catalog">
+    <nav class="ui-toc" aria-label="Разделы каталога">
+        <a href="#foundations">Основы</a><a href="#buttons">Button</a><a href="#forms">Формы</a><a href="#badges">Badge</a>
+        <a href="#cards">Card</a><a href="#alerts">Alert и Toast</a><a href="#overlays">Modal, Drawer, Dropdown</a>
+        <a href="#tabs">Tabs</a><a href="#tables">DataTable и Pagination</a><a href="#states">Skeleton, Loading, Empty</a>
+        <a href="#navigation">Breadcrumbs и Page Header</a>
+    </nav>
+
+    <div class="gp-stack gp-stack--lg">
+        {# ---------------- Основы ---------------- #}
+        <section class="ui-section" id="foundations">
+            {% ui_card title="Основы" subtitle="Токены из static/gp2/tokens.css — единственный источник цветов и размеров." %}
+                <div class="gp-stack gp-stack--lg">
+                    <div>
+                        <p class="ui-label">Цвета</p>
+                        <div class="gp-grid" style="--grid-min: 180px">
+                            {% for label, token in colors %}<div class="ui-swatch"><i style="background: var({{ token }})"></i><span>{{ label }}<code>{{ token }}</code></span></div>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="ui-type">
+                        <p class="ui-label">Типографика — Inter</p>
+                        <p style="font-size: var(--text-3xl); font-weight: var(--weight-bold); letter-spacing: -0.02em">Управление проектами</p>
+                        <p style="font-size: var(--text-2xl); font-weight: var(--weight-bold)">Заголовок страницы, 24</p>
+                        <p style="font-size: var(--text-xl); font-weight: var(--weight-semibold)">Заголовок раздела, 20</p>
+                        <p style="font-size: var(--text-md)">Основной текст, 15 — спокойный и читаемый на любом экране.</p>
+                        <p style="font-size: var(--text-sm); color: var(--color-text-muted)">Вторичный текст и таблицы, 13</p>
+                        <p style="font-size: var(--text-xs); color: var(--color-text-subtle)">Подписи и бейджи, 12</p>
+                    </div>
+                    <div>
+                        <p class="ui-label">Иконки — {% ui_icon "info" "sm" %} SVG-спрайт static/gp2/icons.svg</p>
+                        <div class="ui-icons">{% for name in icons %}<div>{% ui_icon name "lg" %}<span>{{ name }}</span></div>{% endfor %}</div>
+                    </div>
+                </div>
+            {% end_ui_card %}
+        </section>
+
+        {# ---------------- Кнопки ---------------- #}
+        <section class="ui-section" id="buttons">
+            {% ui_card title="Button" subtitle="primary — одно главное действие на экране; secondary — остальные; ghost — в панелях и таблицах." %}
+                <div class="gp-stack">
+                    <div class="gp-cluster">
+                        {% ui_button "Создать проект" variant="primary" icon_name="plus" %}
+                        {% ui_button "Экспорт" icon_name="upload" %}
+                        {% ui_button "Подробнее" variant="ghost" icon_end="chevron-right" %}
+                        {% ui_button "Удалить" variant="danger" icon_name="trash" %}
+                        {% ui_button "Отменить" variant="danger-soft" %}
+                        {% ui_button "Ссылка" variant="link" href="#buttons" %}
+                    </div>
+                    <div class="gp-cluster">
+                        {% ui_button "Маленькая" size="sm" %}
+                        {% ui_button "Обычная" %}
+                        {% ui_button "Крупная" size="lg" variant="primary" %}
+                        {% ui_button "Настройки" variant="ghost" icon_name="more-horizontal" label_hidden=True %}
+                        {% ui_button "Сохраняем" variant="primary" busy=True %}
+                        {% ui_button "Недоступно" disabled=True %}
+                    </div>
+                </div>
+            {% end_ui_card %}
+        </section>
+
+        {# ---------------- Формы ---------------- #}
+        <section class="ui-section" id="forms">
+            {% ui_card title="Формы: Input, Select, Textarea, Checkbox" subtitle="Тег ui_field рендерит любое поле Django-формы: подпись, подсказка, ошибка, aria. Формы во views не меняются." %}
+                {% ui_slot "actions" %}{% if invalid %}{% ui_button "Без ошибок" size="sm" href="?#forms" %}{% else %}{% ui_button "Показать ошибки" size="sm" href="?errors=1#forms" %}{% endif %}{% end_ui_slot %}
+                <form class="gp-form" onsubmit="event.preventDefault(); GP.toast('Это демо-форма: данные никуда не отправляются.', 'info')">
+                    {% ui_form form cols=2 %}
+                    <div class="gp-form-actions">
+                        {% ui_button "Отмена" variant="ghost" %}
+                        {% ui_button "Сохранить" variant="primary" type="submit" icon_name="check" %}
+                    </div>
+                </form>
+            {% end_ui_card %}
+        </section>
+
+        {# ---------------- Badge ---------------- #}
+        <section class="ui-section" id="badges">
+            {% ui_card title="Badge" subtitle="Статусы — только тонами из токенов, одинаково во всех модулях." %}
+                <div class="gp-cluster">
+                    {% ui_badge "Черновик" %}{% ui_badge "В работе" tone="primary" %}{% ui_badge "Сдан" tone="success" dot=True %}
+                    {% ui_badge "Риск срыва" tone="warning" dot=True %}{% ui_badge "Просрочен" tone="danger" dot=True %}{% ui_badge "Новое" tone="info" %}
+                </div>
+            {% end_ui_card %}
+        </section>
+
+        {# ---------------- Card ---------------- #}
+        <section class="ui-section" id="cards">
+            <div class="gp-grid gp-grid--3">
+                {% ui_card title="Альфа CRM" subtitle="ОсОО «Пример»" interactive=True %}
+                    {% ui_slot "actions" %}{% ui_badge "В работе" tone="primary" %}{% end_ui_slot %}
+                    <p class="gp-text">Карточка с заголовком, действиями в шапке и футером.</p>
+                    {% ui_slot "footer" %}<div class="gp-cluster gp-cluster--between"><span class="gp-muted gp-small">Дедлайн 15.12</span>{% ui_button "Открыть" size="sm" variant="ghost" icon_end="chevron-right" %}</div>{% end_ui_slot %}
+                {% end_ui_card %}
+                {% ui_card title="Без футера" %}
+                    <p class="gp-text">Внутри — любой контент: списки, формы, таблицы.</p>
+                {% end_ui_card %}
+                {% ui_card %}
+                    <p class="gp-muted gp-small" style="margin:0">Активных проектов</p>
+                    <p style="margin: var(--space-1) 0 0; font-size: var(--text-3xl); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums">24</p>
+                {% end_ui_card %}
+            </div>
+        </section>
+
+        {# ---------------- Alert и Toast ---------------- #}
+        <section class="ui-section" id="alerts">
+            {% ui_card title="Alert и Toast" subtitle="Alert — в потоке страницы; Toast — кратковременно, в углу экрана (на телефоне — снизу)." %}
+                <div class="gp-stack">
+                    {% ui_alert "Отчёт за неделю ещё не заполнен." title="Информация" %}
+                    {% ui_alert "Проект переведён на этап «Тестирование»." level="success" title="Готово" %}
+                    {% ui_alert "До дедлайна 3 дня, прогресс 60%." level="warning" title="Риск срыва срока" %}
+                    {% ui_alert "Не удалось загрузить файл: допустимы PDF, DOCX, XLSX до 20 МБ." level="danger" %}
+                    <div class="gp-cluster">
+                        {% ui_button "Toast: успех" x_on_click="GP.toast('Изменения сохранены.', 'success')" %}
+                        {% ui_button "Toast: ошибка" x_on_click="GP.toast('Не удалось сохранить.', 'danger')" %}
+                        {% url 'ui:catalog_toast' as toast_url %}
+                        {% ui_button "Toast с сервера (htmx)" variant="primary" hx_post=toast_url hx_swap="none" %}
+                    </div>
+                </div>
+            {% end_ui_card %}
+        </section>
+
+        {# ---------------- Modal, Drawer, Dropdown ---------------- #}
+        <section class="ui-section" id="overlays">
+            {% ui_card title="Modal, Drawer, Dropdown" subtitle="Окна — нативный элемент dialog: фокус, Escape и блокировка фона из коробки. На телефоне Modal становится нижним листом." %}
+                <div class="gp-cluster">
+                    {% ui_button "Открыть Modal" variant="primary" data_gp_open="demo-modal" %}
+                    {% ui_button "Открыть Drawer" data_gp_open="demo-drawer" icon_name="panel-left" %}
+                    {% ui_dropdown label="Действия" icon="more-horizontal" %}
+                        {% ui_menu_item "Редактировать" href="#overlays" icon_name="pencil" %}
+                        {% ui_menu_item "Скачать" href="#overlays" icon_name="upload" %}
+                        <div class="gp-menu__divider" role="separator"></div>
+                        {% ui_menu_item "Удалить" icon_name="trash" danger=True %}
+                    {% end_ui_dropdown %}
+                </div>
+            {% end_ui_card %}
+
+            {% ui_modal id="demo-modal" title="Перевести проект на этап" %}
+                <p class="gp-text" style="margin-bottom: var(--space-4)">Проект «Альфа CRM» перейдёт на этап «Тестирование». Команда получит уведомление.</p>
+                {% ui_alert "Этап нельзя вернуть назад без руководителя." level="warning" %}
+                {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Перевести" variant="primary" data_gp_close=True %}{% end_ui_slot %}
+            {% end_ui_modal %}
+
+            {% ui_drawer id="demo-drawer" title="Фильтры" %}
+                <div class="gp-stack">
+                    {% ui_field filter_form.role %}
+                    {% ui_field filter_form.priority %}
+                    {% ui_field filter_form.stages %}
+                </div>
+                {% ui_slot "footer" %}{% ui_button "Сбросить" variant="ghost" data_gp_close=True %}{% ui_button "Применить" variant="primary" data_gp_close=True %}{% end_ui_slot %}
+            {% end_ui_drawer %}
+        </section>
+
+        {# ---------------- Tabs ---------------- #}
+        <section class="ui-section" id="tabs">
+            {% ui_card title="Tabs" subtitle="Вкладки-ссылки с htmx: адрес меняется, «назад» в браузере работает, без JS — обычные ссылки." %}
+                {% ui_tabs tabs active=tab hx_target="#demo-tab-panel" label="Разделы проекта" %}
+                {% include "ui/_demo_tab.html" %}
+            {% end_ui_card %}
+        </section>
+
+        {# ---------------- DataTable ---------------- #}
+        <section class="ui-section" id="tables">
+            {% ui_card title="DataTable и Pagination" subtitle="Сортировка и страницы — на сервере через htmx. На телефоне строки становятся карточками." flush=True %}
+                <div style="padding: var(--space-4) var(--space-5) 0">{% include "ui/_demo_table.html" %}</div>
+            {% end_ui_card %}
+        </section>
+
+        {# ---------------- Состояния ---------------- #}
+        <section class="ui-section" id="states">
+            <div class="gp-grid gp-grid--3">
+                {% ui_card title="Skeleton" %}
+                    <div class="gp-cluster" style="margin-bottom: var(--space-3)">{% ui_skeleton "circle" %}<div style="flex:1">{% ui_skeleton "title" width="70%" %}</div></div>
+                    {% ui_skeleton lines=3 %}
+                {% end_ui_card %}
+                {% ui_card title="Loading" %}
+                    {% ui_loading "Загружаем проекты…" %}
+                {% end_ui_card %}
+                {% ui_card title="Empty State" flush=True %}
+                    {% ui_empty "Нет документов" text="Загрузите договор или ТЗ — они появятся здесь." icon_name="file-text" action_label="Загрузить" action_href="#states" %}
+                {% end_ui_card %}
+            </div>
+        </section>
+
+        {# ---------------- Навигация ---------------- #}
+        <section class="ui-section" id="navigation">
+            {% ui_card title="Breadcrumbs и Page Header" %}
+                <div class="gp-stack">
+                    {% ui_breadcrumbs demo_crumbs %}
+                    {% ui_page_header title="Альфа CRM" subtitle="ОсОО «Пример» · дедлайн 15 декабря" %}
+                        {% ui_button "Отчёт" icon_name="file-text" %}
+                        {% ui_button "Редактировать" variant="primary" icon_name="pencil" %}
+                    {% end_ui_page_header %}
+                </div>
+            {% end_ui_card %}
+        </section>
+    </div>
+</div>
+{% endblock %}

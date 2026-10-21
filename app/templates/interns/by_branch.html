@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Стажёры по филиалам — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Стажёры по филиалам</h1>
+        <div class="sub">
+            Сколько человек в каждом филиале и по каким направлениям.
+            Тимлиды сюда не входят — они сотрудники.
+        </div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'interns:list' %}" class="btn btn--secondary">Все стажёры</a>
+    </div>
+</div>
+
+<div class="spec-grid">
+    {% for card in cards %}
+        <a href="{% url 'interns:list' %}?branch={{ card.branch|urlencode }}" class="spec-card">
+            <div class="spec-card__name">{{ card.branch }}</div>
+            <div class="spec-card__row">
+                <div><strong>{{ card.total }}</strong><span>всего</span></div>
+                <div><strong>{{ card.busy }}</strong><span>занято</span></div>
+                <div><strong style="color: var(--green)">{{ card.free }}</strong><span>свободно</span></div>
+            </div>
+        </a>
+    {% endfor %}
+</div>
+
+<div class="panel" style="padding: 0;">
+    <h2 style="padding: 16px 20px 0">По направлениям</h2>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Направление</th>
+                {% for branch in branches %}<th>{{ branch }}</th>{% endfor %}
+                <th>Всего</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+                <tr>
+                    <td><strong>{{ row.name }}</strong></td>
+                    {% for count in row.cells %}
+                        <td>{% if count %}{{ count }}{% else %}—{% endif %}</td>
+                    {% endfor %}
+                    <td><strong>{{ row.total }}</strong></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="{{ branches|length|add:2 }}" class="empty" style="text-align:center; padding: 24px;">
+                    Стажёров пока нет.
+                </td></tr>
+            {% endfor %}
+            </tbody>
+            {% if rows %}
+                <tfoot>
+                <tr>
+                    <td><strong>Итого</strong></td>
+                    {% for count in totals.cells %}<td><strong>{{ count }}</strong></td>{% endfor %}
+                    <td><strong>{{ totals.total }}</strong></td>
+                </tr>
+                </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endblock %}

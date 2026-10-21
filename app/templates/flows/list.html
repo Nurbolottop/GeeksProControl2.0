@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Потоки — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Потоки</h1>
+        <div class="sub">Набор стажёров + его проекты. Всё начинается отсюда</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'flows:create' %}" class="btn">+ Новый поток</a>
+    </div>
+</div>
+
+<div class="flow-grid">
+    {% for row in rows %}
+        <a href="{{ row.flow.get_absolute_url }}" class="flow-card flow-card--{{ row.flow.status }}">
+            <div class="flow-card__head">
+                <span class="flow-card__number">{{ row.flow.number }}</span>
+                <div>
+                    <div class="flow-card__title">Поток {{ row.flow.number }}</div>
+                    <div class="flow-card__dates">
+                        {% if row.flow.start_date %}{{ row.flow.start_date|date:'d.m.Y' }}{% else %}—{% endif %}
+                        {% if row.flow.end_date %} → {{ row.flow.end_date|date:'d.m.Y' }}{% endif %}
+                    </div>
+                </div>
+                {% if row.flow.status == 'active' %}<span class="badge badge--green">Активный</span>
+                {% elif row.flow.status == 'planned' %}<span class="badge badge--yellow">Набор</span>
+                {% else %}<span class="badge badge--gray">Завершён</span>{% endif %}
+            </div>
+            <div class="flow-card__stats">
+                <div><strong>{{ row.projects }}</strong><span>проектов</span></div>
+                <div><strong>{{ row.active }}</strong><span>в работе</span></div>
+                <div><strong>{{ row.completed }}</strong><span>завершено</span></div>
+                <div><strong>{{ row.interns }}</strong><span>человек</span></div>
+            </div>
+        </a>
+    {% empty %}
+        <div class="panel empty">Потоков пока нет — создайте первый.</div>
+    {% endfor %}
+</div>
+{% endblock %}

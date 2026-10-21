@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}Табель — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Табель</h1>
+        <div class="sub">Собрания и посещаемость по всем командам</div>
+    </div>
+</div>
+
+<div class="kpi-grid">
+    <div class="kpi-card kpi-card--info">
+        <div class="kpi-card__value">{{ today_meetings|length }}</div>
+        <div class="kpi-card__label">Собраний сегодня</div>
+    </div>
+    <div class="kpi-card kpi-card--green">
+        <div class="kpi-card__value">{{ total_held }}</div>
+        <div class="kpi-card__label">Проведено за неделю</div>
+    </div>
+    <div class="kpi-card kpi-card--yellow">
+        <div class="kpi-card__value">{{ total_meetings }}</div>
+        <div class="kpi-card__label">Назначено за неделю</div>
+    </div>
+    <div class="kpi-card kpi-card--green">
+        <div class="kpi-card__value">{% if average_rate is not None %}{{ average_rate }}%{% else %}—{% endif %}</div>
+        <div class="kpi-card__label">Средняя посещаемость</div>
+    </div>
+    <div class="kpi-card kpi-card--info">
+        <div class="kpi-card__value">{% if average_activity is not None %}{{ average_activity }}{% else %}—{% endif %}</div>
+        <div class="kpi-card__label">Средняя активность из 10</div>
+    </div>
+</div>
+
+<div class="panel">
+    <h2>Сегодня, {{ today|date:'d.m.Y' }}</h2>
+    {% for meeting in today_meetings %}
+        <div class="today-meeting">
+            <div class="today-meeting__info">
+                <a href="{% url 'attendance:group_meetings' meeting.group.pk %}">
+                    <strong>Группа {{ meeting.group.code }}</strong>
+                </a>
+                <span>
+                    {{ meeting.get_kind_display }}
+                    {% if meeting.group.project %} · {{ meeting.group.project.name }}{% endif %}
+                    {% if meeting.host %} · ведёт {{ meeting.host.full_name }}{% endif %}
+                </span>
+            </div>
+            <div class="today-meeting__actions">
+                {% if meeting.status == 'held' %}
+                    <span class="badge badge--green">✓ Проведено{% if meeting.attendance_rate is not None %} · {{ meeting.attendance_rate }}%{% endif %}</span>
+                {% else %}
+                    <span class="badge badge--yellow">Не отмечено</span>
+                {% endif %}
+                <a href="{% url 'attendance:meeting_detail' meeting.pk %}"
+                   class="btn btn--sm">Отметить</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty">На сегодня собраний не назначено.</div>
+    {% endfor %}
+</div>
+
+<div class="month-nav">
+    <a href="?week={{ prev_week|date:'Y-m-d' }}" class="btn btn--secondary btn--sm">‹ Прошлая неделя</a>
+    <strong style="min-width: 200px;">{{ week_start|date:'d.m' }} — {{ week_end|date:'d.m.Y' }}</strong>
+    <a href="?week={{ next_week|date:'Y-m-d' }}" class="btn btn--secondary btn--sm">Следующая неделя ›</a>
+    {% if not is_current_week %}
+        <a href="?" class="btn btn--secondary btn--sm">Текущая неделя</a>
+    {% endif %}
+</div>
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Команда</th>
+                <th>Проект</th>
+                <th>Людей</th>
+                <th>Собраний</th>
+                <th>Проведено</th>
+                <th>Посещаемость</th>
+                <th>Активность</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+                <tr>
+                    <td><strong>{{ row.group.code }}</strong></td>
+                    <td>
+                        {% if row.group.project %}
+                            <a href="{{ row.group.project.get_absolute_url }}">{{ row.group.project.name }}</a>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ row.people }}</td>
+                    <td>{{ row.meetings }}</td>
+                    <td>{{ row.held }}</td>
+                    <td>
+                        {% if row.rate is not None %}
+                            <span class="badge badge--{% if row.rate >= 80 %}green{% elif row.rate >= 60 %}yellow{% else %}red{% endif %}">{{ row.rate }}%</span>
+                        {% else %}
+                            <span class="badge badge--gray">нет отметок</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.activity is not None %}
+                            <span class="badge badge--{% if row.activity >= 8 %}green{% elif row.activity >= 5 %}yellow{% else %}red{% endif %}">{{ row.activity }} из 10</span>
+                        {% else %}
+                            <span class="badge badge--gray">нет оценок</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'attendance:group_meetings' row.group.pk %}"
+                           class="btn btn--secondary btn--sm">Открыть</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="8" class="empty" style="text-align:center; padding: 24px;">
+                    Команд пока нет — они появляются вместе с проектами.
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="panel">
+    <h2>Собрания недели {{ week_start|date:'d.m' }} — {{ week_end|date:'d.m.Y' }}</h2>
+    {% for meeting in week_meetings %}
+        <div class="today-meeting">
+            <div class="today-meeting__info">
+                <strong>{{ meeting.date|date:'d.m, D' }}</strong>
+                <span>
+                    Группа {{ meeting.group.code }} · {{ meeting.get_kind_display }}
+                    {% if meeting.group.project %} · {{ meeting.group.project.name }}{% endif %}
+                    {% if meeting.host %} · ведёт {{ meeting.host.full_name }}{% endif %}
+                </span>
+            </div>
+            <div class="today-meeting__actions">
+                {% if meeting.status == 'held' %}
+                    <span class="badge badge--green">✓ Проведено{% if meeting.attendance_rate is not None %} · {{ meeting.attendance_rate }}%{% endif %}</span>
+                {% else %}
+                    <span class="badge badge--yellow">Не отмечено</span>
+                {% endif %}
+                <a href="{% url 'attendance:meeting_detail' meeting.pk %}"
+                   class="btn btn--secondary btn--sm">Открыть</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty">На эту неделю собраний не назначено.</div>
+    {% endfor %}
+</div>
+{% endblock %}

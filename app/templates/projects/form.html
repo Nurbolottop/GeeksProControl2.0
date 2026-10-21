@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div><h1>{{ title }}</h1></div>
+</div>
+
+<form method="post" class="panel">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="message message--error">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    {% if project %}
+        <div class="form-grid">
+            {% include 'partials/form_fields.html' %}
+        </div>
+    {% else %}
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                {{ form.name }}
+                {% if form.name.errors %}<div class="form-errors">{{ form.name.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="form-field" x-data="{ newClient: false }">
+                <label for="{{ form.client.id_for_label }}">Заказчик</label>
+                <div class="input-add">
+                    <template x-if="!newClient">
+                        <select name="client" id="{{ form.client.id_for_label }}">
+                            <option value="">Выберите заказчика</option>
+                            {% for value, label in form.fields.client.choices %}
+                                {% if value %}<option value="{{ value }}">{{ label }}</option>{% endif %}
+                            {% endfor %}
+                        </select>
+                    </template>
+                    <template x-if="newClient">
+                        <input type="text" name="new_client" autocomplete="off"
+                               placeholder="Название организации заказчика">
+                    </template>
+                    <button type="button"
+                            class="input-add__btn" :class="newClient && 'input-add__btn--cancel'"
+                            @click="newClient = !newClient"
+                            :title="newClient ? 'Выбрать из списка' : 'Добавить нового заказчика'"
+                            x-text="newClient ? '✕' : '+'"></button>
+                </div>
+                {% if form.client.errors %}<div class="form-errors">{{ form.client.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="form-field">
+                <label for="{{ form.city.id_for_label }}">{{ form.city.label }}</label>
+                {{ form.city }}
+            </div>
+
+            <div class="form-field form-field--wide">
+                <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+                {{ form.description }}
+            </div>
+        </div>
+        <div class="sub" style="color: var(--text-muted); font-size: 12.5px; margin-top: 4px">
+            Поток и номер в потоке проставятся сами по текущему потоку.
+            Тип проекта и ссылки заполнит ПМ в своём портале, сроки и доступы — потом в «Обзоре».
+            Команда проекта создаётся сразу, ПМ назначите на следующем шаге.
+        </div>
+    {% endif %}
+
+    <div class="form-actions">
+        <button type="submit" class="btn">Сохранить</button>
+        <a href="{% if project %}{{ project.get_absolute_url }}{% else %}{% url 'projects:list' %}{% endif %}"
+           class="btn btn--secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}

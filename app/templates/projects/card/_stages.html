@@ -1,0 +1,36 @@
+{% load ui %}
+{% include "projects/partials/primary_stage.html" %}
+{% ui_card title="Этапы проекта" subtitle="Этапы могут идти параллельно. Готовность — доля завершённых этапов, у всех равный вес." flush=True %}
+    {% ui_slot "actions" %}{% if stages_confirm_url %}{% if stage_check_needed %}<form method="post" action="{{ stages_confirm_url }}" style="margin:0">{% csrf_token %}{% ui_button "Всё верно, этапы актуальны" size="sm" type="submit" icon_name="check" %}</form>{% else %}{% ui_badge "Сегодня сверено" tone="success" dot=True %}{% endif %}{% endif %}{% ui_badge stage_data.progress|stringformat:"s"|add:"%" tone="primary" %}{% end_ui_slot %}
+    <div style="padding: var(--space-4) var(--space-5) 0" class="gp-stack gp-stack--sm">
+        <div class="gp-segments" role="img" aria-label="Готовность {{ stage_data.progress }}%"><span class="gp-tone-4" style="width: {{ stage_data.progress }}%"></span></div>
+        <p class="gp-muted gp-small" style="margin:0">Завершено {{ stage_data.done }} из {{ stage_data.total }}, в работе параллельно: {{ stage_data.in_progress }}.</p>
+    </div>
+    {% if stage_data.stages %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0; margin-top: var(--space-3)">
+        <table class="gp-table">
+            <caption class="gp-sr-only">Этапы проекта</caption>
+            <thead><tr><th scope="col">Этап</th><th scope="col">Статус</th><th scope="col">Начало</th><th scope="col">Дедлайн</th><th scope="col">Завершение</th>{% if can_edit_stages %}<th scope="col" class="is-actions">Изменить статус</th>{% endif %}</tr></thead>
+            <tbody>
+            {% for stage in stage_data.stages %}
+                <tr>
+                    <td class="is-primary" data-label="Этап"><span class="gp-table__primary">{{ stage.get_key_display }}</span>{% if stage.ui_is_primary %} {% ui_badge "основной" tone="primary" dot=True %}{% endif %}</td>
+                    <td data-label="Статус">{% ui_badge stage.get_status_display tone=stage.ui_tone %}</td>
+                    <td data-label="Начало">{{ stage.start_date|date:"d.m.Y"|default:"—" }}</td>
+                    <td data-label="Дедлайн">{{ stage.deadline|date:"d.m.Y"|default:"—" }}</td>
+                    <td data-label="Завершение">{{ stage.end_date|date:"d.m.Y"|default:"—" }}</td>
+                    {% if can_edit_stages %}<td class="is-actions" data-label="">{% if stage.ui_status_url %}
+                        <form method="post" action="{{ stage.ui_status_url }}" class="gp-cluster" style="--cluster-gap: var(--space-2); flex-wrap: nowrap">
+                            {% csrf_token %}
+                            <label class="gp-sr-only" for="stage-status-{{ stage.pk }}">Статус этапа «{{ stage.get_key_display }}»</label>
+                            <select class="gp-select" id="stage-status-{{ stage.pk }}" name="status" style="min-height: var(--control-height-sm); width: auto">{% for key, label in stage_statuses %}<option value="{{ key }}"{% if stage.status == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                            {% ui_button "Сохранить" size="sm" type="submit" %}
+                        </form>{% else %}<span class="gp-muted gp-small">закрывает руководитель</span>{% endif %}
+                    </td>{% endif %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}{% ui_empty "Этапов нет" text="Этапы появятся по типу проекта." icon_name="calendar" %}{% endif %}
+{% end_ui_card %}

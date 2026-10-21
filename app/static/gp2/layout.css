@@ -1,0 +1,175 @@
+/*
+ * Слой layout: каркас приложения (sidebar + topbar + контент).
+ *
+ *   < 768px      сайдбар — выезжающая панель (кнопка меню в топбаре)
+ *   768–1279px   узкая «рейка» с иконками; кнопка меню разворачивает её поверх
+ *   ≥ 1280px     полный сайдбар; пользователь может свернуть его в рейку
+ *
+ * Состояния: body.gp-nav-open (панель открыта), .gp-shell[data-collapsed="true"]
+ * (свёрнут на десктопе). Меню одно — разметка не дублируется.
+ */
+@layer layout {
+  .gp-shell { --sb: 0px; min-height: 100dvh; }
+
+  .gp-skip-link {
+    position: absolute;
+    left: var(--space-3);
+    top: -100px;
+    z-index: var(--z-toast);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    text-decoration: none;
+  }
+  .gp-skip-link:focus { top: var(--space-3); }
+
+  /* ---------- Sidebar ---------- */
+  .gp-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: var(--z-sidebar);
+    display: flex;
+    flex-direction: column;
+    width: min(var(--sidebar-width), 86vw);
+    background: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+    transform: translateX(-100%);
+    transition: transform var(--duration-base) var(--ease), width var(--duration-base) var(--ease);
+    overscroll-behavior: contain;
+  }
+  .gp-nav-open .gp-sidebar { transform: none; box-shadow: var(--shadow-lg); }
+
+  .gp-sidebar__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    height: var(--topbar-height);
+    padding: 0 var(--space-4);
+    flex-shrink: 0;
+  }
+  .gp-sidebar__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-2) var(--space-3) var(--space-4);
+    scrollbar-width: thin;
+  }
+  .gp-sidebar__foot {
+    display: none;
+    padding: var(--space-3);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .gp-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-sidebar) - 1);
+    background: var(--color-overlay);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-base) var(--ease);
+  }
+  .gp-nav-open .gp-overlay { opacity: 1; pointer-events: auto; }
+
+  /* ---------- Основная колонка ---------- */
+  .gp-main-col {
+    margin-left: var(--sb);
+    min-width: 0;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    transition: margin-left var(--duration-base) var(--ease);
+  }
+
+  .gp-topbar {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: var(--topbar-height);
+    padding: 0 var(--gutter);
+    background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .gp-topbar__title {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .gp-topbar__crumbs { display: none; flex: 1; min-width: 0; }
+  .gp-topbar__actions { display: flex; align-items: center; gap: var(--space-1); margin-left: auto; }
+
+  .gp-content {
+    flex: 1;
+    width: 100%;
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: var(--space-5) var(--gutter) var(--space-12);
+    min-width: 0;
+  }
+
+  /* Телефон: панель поверх, прокрутка страницы под ней заблокирована */
+  @media (max-width: 767.98px) {
+    body.gp-nav-open { overflow: hidden; }
+  }
+
+  /* ---------- Планшет: рейка ---------- */
+  @media (min-width: 768px) {
+    .gp-shell { --sb: var(--sidebar-rail); }
+    .gp-sidebar { transform: none; width: var(--sidebar-rail); }
+    .gp-nav-open .gp-sidebar { width: var(--sidebar-width); }
+    .gp-topbar__crumbs { display: block; }
+    .gp-topbar__title { display: none; }
+    .gp-content { padding-top: var(--space-6); }
+  }
+
+  /* ---------- Десктоп: полный сайдбар ---------- */
+  @media (min-width: 1280px) {
+    .gp-shell:not([data-collapsed="true"]) { --sb: var(--sidebar-width); }
+    .gp-shell:not([data-collapsed="true"]) .gp-sidebar { width: var(--sidebar-width); box-shadow: none; }
+    .gp-shell:not([data-collapsed="true"]) .gp-overlay { display: none; }
+    .gp-sidebar__foot { display: block; }
+  }
+
+}
+
+/*
+ * Состояния каркаса поверх компонентов: кнопки меню, рейка. Слой utilities
+ * выше components, поэтому display/padding компонентов их не перебивают.
+ */
+@layer utilities {
+  /*
+   * Рейка (только иконки): планшет без раскрытой панели и свёрнутый десктоп
+   * без раскрытой панели. Правила одинаковые, отличаются только условия.
+   */
+  @media (min-width: 768px) and (max-width: 1279.98px) {
+    body:not(.gp-nav-open) .gp-sidebar :is(.gp-nav__label, .gp-nav__chevron, .gp-nav__sub, .gp-nav__section-title, .gp-brand__text, .gp-sidebar__close) { display: none; }
+    body:not(.gp-nav-open) .gp-sidebar .gp-nav__section { height: 1px; padding: 0; margin: var(--space-3) var(--space-2); background: var(--color-border); }
+    body:not(.gp-nav-open) .gp-sidebar :is(.gp-nav__item, .gp-sidebar__head) { justify-content: center; }
+    body:not(.gp-nav-open) .gp-sidebar .gp-nav__item { padding-inline: 0; }
+    body:not(.gp-nav-open) .gp-sidebar .gp-nav__count { position: absolute; top: 4px; right: 8px; min-width: 8px; height: 8px; padding: 0; font-size: 0; }
+    body:not(.gp-nav-open) .gp-sidebar .gp-sidebar__head { padding: 0; }
+  }
+  @media (min-width: 1280px) {
+    body:not(.gp-nav-open) .gp-shell[data-collapsed="true"] .gp-sidebar :is(.gp-nav__label, .gp-nav__chevron, .gp-nav__sub, .gp-nav__section-title, .gp-brand__text, .gp-sidebar__close, .gp-sidebar__foot-label) { display: none; }
+    body:not(.gp-nav-open) .gp-shell[data-collapsed="true"] .gp-sidebar .gp-nav__section { height: 1px; padding: 0; margin: var(--space-3) var(--space-2); background: var(--color-border); }
+    body:not(.gp-nav-open) .gp-shell[data-collapsed="true"] .gp-sidebar :is(.gp-nav__item, .gp-sidebar__head) { justify-content: center; }
+    body:not(.gp-nav-open) .gp-shell[data-collapsed="true"] .gp-sidebar .gp-nav__item { padding-inline: 0; }
+    body:not(.gp-nav-open) .gp-shell[data-collapsed="true"] .gp-sidebar .gp-nav__count { position: absolute; top: 4px; right: 8px; min-width: 8px; height: 8px; padding: 0; font-size: 0; }
+    body:not(.gp-nav-open) .gp-shell[data-collapsed="true"] .gp-sidebar .gp-sidebar__head { padding: 0; }
+    .gp-shell[data-collapsed="true"] .gp-sidebar__collapse .gp-icon { transform: scaleX(-1); }
+  }
+  @media (min-width: 1280px) {
+    .gp-topbar__menu { display: none; }
+    .gp-shell[data-collapsed="true"] .gp-topbar__menu { display: inline-flex; }
+  }
+}

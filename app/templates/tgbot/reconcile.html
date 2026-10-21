@@ -1,0 +1,57 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Telegram-бот — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Telegram-бот" subtitle="Сверка профилей, регистрации, подтверждения продаж и журнал сообщений" %}
+{% end_ui_page_header %}
+{% if outbox_held %}<div style="margin-bottom: var(--space-4)">{% ui_alert "Исходящие запрещены режимом TELEGRAM_OUTBOUND_MODE: такие сообщения записаны в журнал, в Telegram они не ушли." title="Задержано защитой" %}</div>{% endif %}
+
+{% block groups %}{% if groups_block %}{% include "tgbot/_groups.html" %}{% endif %}{% endblock %}
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Сверка «Я уже стажёр»" subtitle="Нет однозначного совпадения — привяжите к профилю или отклоните. Новый профиль не создаётся." flush=True %}
+        {% if links %}
+        <ul class="gp-docs">{% for l in links %}<li class="gp-doc"><span class="gp-doc__icon">{% ui_icon "user" %}</span><div style="min-width:0"><p class="gp-doc__title">{{ l.full_name }}</p><p class="gp-doc__meta">{{ l.phone }}{% if l.telegram_username %} · @{{ l.telegram_username }}{% endif %} · {{ l.reason }} · {{ l.created_at|date:"d.m.Y H:i" }}</p></div><div class="gp-doc__actions">{% ui_button "Решить" size="sm" data_gp_open=l.ui_modal %}</div></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Сверок нет" icon_name="check-circle" %}</div>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Регистрации: ждут отдела продаж" subtitle="Подтверждает только сообщение «#оплата» в группе продаж" flush=True %}
+        {% if enrollments %}
+        <ul class="gp-docs">{% for r in enrollments %}<li class="gp-doc"><span class="gp-doc__icon">{% ui_icon "clock" %}</span><div style="min-width:0"><p class="gp-doc__title"><a class="gp-link" href="{{ r.intern.get_absolute_url }}">{{ r.intern.full_name }}</a></p><p class="gp-doc__meta">{{ r.intern.phone }} · {{ r.intern.specialization|default:"—" }} · {{ r.intern.branch|default:"—" }} · {{ r.created_at|date:"d.m.Y H:i" }}</p></div></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Ожидающих регистраций нет" icon_name="clock" %}</div>{% endif %}
+    {% end_ui_card %}
+</div>
+
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Подтверждения продаж на сверке" subtitle="Не совпали данные, несколько совпадений, человек не найден или нет заявки — автоматически не зачислено" flush=True %}
+    {% if sales %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0"><table class="gp-table"><caption class="gp-sr-only">Подтверждения продаж</caption>
+        <thead><tr><th scope="col">Из продаж</th><th scope="col">Результат</th><th scope="col">Профиль</th><th scope="col">Когда</th></tr></thead>
+        <tbody>{% for s in sales %}<tr><td class="is-primary" data-label="Из продаж"><span class="gp-table__primary">{{ s.full_name }}</span><span class="gp-table__secondary">{{ s.phone }} · {{ s.direction|default:"—" }} · {{ s.city|default:"—" }} · оплата {{ s.reference|default:"—" }}</span></td><td data-label="Результат">{{ s.get_status_display }}{% if s.detail %}<span class="gp-table__secondary">{{ s.detail }}</span>{% endif %}</td><td data-label="Профиль">{% if s.intern %}<a class="gp-link" href="{{ s.intern.get_absolute_url }}">{{ s.intern.full_name }}</a>{% else %}—{% endif %}</td><td data-label="Когда">{{ s.occurred_at|date:"d.m.Y H:i" }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Нечего сверять" icon_name="check-circle" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Журнал исходящих" subtitle="Последние 50. Отправка — только через защищённого бота." flush=True %}
+    {% if outbox %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0"><table class="gp-table"><caption class="gp-sr-only">Исходящие сообщения</caption>
+        <thead><tr><th scope="col">Сообщение</th><th scope="col">Кому</th><th scope="col">Статус</th><th scope="col">Когда</th></tr></thead>
+        <tbody>{% for m in outbox %}<tr><td class="is-primary" data-label="Сообщение"><span class="gp-table__primary">{{ m.kind }}</span><span class="gp-table__secondary">{{ m.ui_text|truncatechars:90 }}</span></td><td data-label="Кому">{{ m.intern.full_name|default:m.chat_id|default:"—" }}</td><td data-label="Статус">{{ m.get_status_display }}{% if m.last_error %}<span class="gp-table__secondary">{{ m.last_error|truncatechars:80 }}</span>{% endif %}</td><td data-label="Когда">{{ m.created_at|date:"d.m H:i" }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Сообщений не было" icon_name="inbox" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+
+{% for l in links %}
+{% ui_modal id=l.ui_modal title="Сверка профиля" %}
+    <form method="post" action="{% url 'tgbot:link_decide' l.pk %}" class="gp-stack" id="{{ l.ui_form }}">{% csrf_token %}<input type="hidden" name="decision" value="link">
+        <p class="gp-text" style="margin:0">{{ l.full_name }}, {{ l.phone }}. {{ l.reason }}. Статус стажёра не меняется.</p>
+        <div class="gp-field"><label class="gp-label" for="{{ l.ui_form }}-i">Профиль</label><select class="gp-select" id="{{ l.ui_form }}-i" name="intern">{% for c in l.candidates.all %}<option value="{{ c.pk }}">{{ c.full_name }} · {{ c.phone }} · {{ c.get_status_display }}</option>{% empty %}<option value="">Кандидатов по телефону нет</option>{% endfor %}</select></div>
+    </form>
+    <form method="post" action="{% url 'tgbot:link_decide' l.pk %}" id="{{ l.ui_form }}-reject">{% csrf_token %}<input type="hidden" name="decision" value="reject"></form>
+    {% ui_slot "footer" %}<span style="margin-right:auto">{% ui_button "Отклонить" variant="ghost" type="submit" form=l.ui_form|add:"-reject" %}</span>{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Привязать" variant="primary" type="submit" form=l.ui_form %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endfor %}
+{% endblock %}

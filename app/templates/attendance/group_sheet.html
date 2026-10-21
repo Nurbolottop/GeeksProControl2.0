@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}Табель группы {{ group.code }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<nav class="crumbs">
+    <a href="{% url 'attendance:dashboard' %}">Табель</a>
+    {% if group.project %}
+        <span class="crumbs__sep">›</span>
+        <a href="{{ group.project.get_absolute_url }}">{{ group.project.name }}</a>
+    {% endif %}
+    <span class="crumbs__sep">›</span>
+    <a href="{% url 'attendance:group_meetings' group.pk %}">Собрания команды</a>
+    <span class="crumbs__sep">›</span>
+    <span class="crumbs__current">Табель за месяц</span>
+</nav>
+
+<div class="page-head">
+    <div>
+        <h1>Табель группы {{ group.code }}</h1>
+        <div class="sub" style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
+            {% if group.project %}<a href="{{ group.project.get_absolute_url }}" class="badge badge--gray">{{ group.project.name }}</a>{% endif %}
+            {% if sheet.activity is not None %}
+                <span class="badge badge--{% if sheet.activity >= 8 %}green{% elif sheet.activity >= 5 %}yellow{% else %}red{% endif %}">
+                    Активность: {{ sheet.activity }} из 10
+                </span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'attendance:meeting_create' group.pk %}?year={{ year }}&month={{ month }}"
+           class="btn">+ Создать собрание</a>
+    </div>
+</div>
+
+<div class="month-nav">
+    <a href="?year={{ prev_month.year }}&month={{ prev_month.month }}" class="btn btn--secondary btn--sm">‹ {{ prev_month|date:'F' }}</a>
+    <strong>{{ current|date:'F Y' }}</strong>
+    <a href="?year={{ next_month.year }}&month={{ next_month.month }}" class="btn btn--secondary btn--sm">{{ next_month|date:'F' }} ›</a>
+    <span class="att-legend">
+        <span><i class="att-mark att-mark--present">✓</i> был</span>
+        <span><i class="att-mark att-mark--absent">✕</i> не был</span>
+        <span><i class="att-mark att-mark--late">О</i> опоздал</span>
+        <span><i class="att-mark att-mark--excused">У</i> уважительная</span>
+    </span>
+</div>
+
+{% if sheet.by_kind %}
+    <div class="kind-summary">
+        {% for kind in sheet.by_kind %}
+            <div class="kind-summary__item">
+                <span class="kind-summary__label">{{ kind.label }}</span>
+                <strong>Проведено {{ kind.held }} из {{ kind.total }}</strong>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+{% if sheet.meetings %}
+    <div class="panel" style="padding: 0;">
+        <div class="table-wrap">
+            <table class="data att-table">
+                <thead>
+                <tr>
+                    <th class="att-name">Человек</th>
+                    {% for meeting in sheet.meetings %}
+                        <th class="att-day">
+                            <div class="att-day__weekday">{{ meeting.date|date:'D' }}</div>
+                            <div class="att-day__date">{{ meeting.date|date:'d.m' }}</div>
+                            <div class="att-day__kind">{{ meeting.short_kind }}</div>
+                        </th>
+                    {% endfor %}
+                    <th class="att-total">Активность</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in sheet.rows %}
+                    <tr>
+                        <td class="att-name">
+                            <a href="{{ row.intern.get_absolute_url }}"><strong>{{ row.intern.full_name }}</strong></a>
+                            <div style="font-size:11.5px; color: var(--text-muted)">{{ row.member.get_role_display }}</div>
+                        </td>
+                        {% for cell in row.cells %}
+                            {% include 'attendance/partials/cell.html' with intern=row.intern %}
+                        {% endfor %}
+                        <td class="att-total">
+                            {% if row.activity is not None %}
+                                <span class="badge badge--{% if row.activity >= 8 %}green{% elif row.activity >= 5 %}yellow{% else %}red{% endif %}">{{ row.activity }}</span>
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="20" class="empty" style="text-align:center; padding: 24px;">
+                        В группе нет участников — добавьте команду, чтобы вести табель.
+                    </td></tr>
+                {% endfor %}
+                </tbody>
+                <tfoot>
+                <tr>
+                    <td class="att-name" style="color: var(--text-muted); font-size: 11.5px">Удалить собрание</td>
+                    {% for meeting in sheet.meetings %}
+                        <td class="att-cell">
+                            <form method="post" action="{% url 'attendance:meeting_delete' meeting.pk %}"
+                                  style="margin:0" data-confirm="Удалить собрание {{ meeting.date|date:'d.m.Y' }} вместе с отметками?">
+                                {% csrf_token %}
+                                <button type="submit" class="att-remove" title="Удалить собрание">✕</button>
+                            </form>
+                        </td>
+                    {% endfor %}
+                    <td></td>
+                </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    <div class="sub" style="color: var(--text-muted); font-size: 12.5px">
+        Клик по клетке: пусто → был → не был → опоздал → уважительная → пусто.
+        Колонки — дни собраний (PM — с PM, ТЛ — с тимлидом, Вн — внутреннее).
+        Цифра под отметкой — балл активности за период до этого собрания;
+        он ставится внутри собрания на вкладке «Оценка работы».
+    </div>
+{% else %}
+    <div class="panel empty" style="text-align:center; padding: 36px 20px;">
+        <p style="margin: 0 0 6px"><strong>В этом месяце собраний нет.</strong></p>
+        <p style="margin: 0 0 16px">
+            Нажмите «Создать собрание», выберите вид и дни недели — собрания появятся в табеле.
+        </p>
+        <a href="{% url 'attendance:meeting_create' group.pk %}?year={{ year }}&month={{ month }}"
+           class="btn">+ Создать собрание</a>
+    </div>
+{% endif %}
+{% endblock %}

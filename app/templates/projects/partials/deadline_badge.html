@@ -1,0 +1,11 @@
+{% if not status %}
+    <span class="badge badge--gray">—</span>
+{% elif status == 'overdue' %}
+    <span class="badge badge--red">⚠ Просрочен</span>
+{% elif status == 'behind' %}
+    <span class="badge badge--orange">▲ Отставание</span>
+{% elif status == 'at_risk' %}
+    <span class="badge badge--yellow">● Риск задержки</span>
+{% else %}
+    <span class="badge badge--green">✓ По графику</span>
+{% endif %}

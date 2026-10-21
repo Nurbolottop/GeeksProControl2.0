@@ -1,0 +1,64 @@
+{% load ui %}
+{% if scope == 'lead' %}{% include "projects/card/_profile_link.html" %}{% endif %}
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-4); margin-bottom: var(--space-5); align-items: start">
+    {% ui_card title="Набор стажёров" subtitle="Закрытый набор — проект не показывается в Telegram-боте среди доступных." %}
+        <div class="gp-cluster gp-cluster--between">
+            <div>{% if project.recruitment_open %}{% ui_badge "Открыт" tone="success" dot=True %}{% else %}{% ui_badge "Закрыт" dot=True %}{% endif %}
+                {% if project.recruitment_changed_at %}<span class="gp-muted gp-small">{{ project.recruitment_changed_by.display_name|default:"" }} · {{ project.recruitment_changed_at|date:"d.m.Y H:i" }}</span>{% endif %}</div>
+            {% if can_recruit %}
+            <form method="post" action="{% url 'projects:recruitment_set' project.pk %}">
+                {% csrf_token %}<input type="hidden" name="tab" value="team">
+                {% if project.recruitment_open %}<input type="hidden" name="open" value="0">{% ui_button "Закрыть набор" type="submit" %}
+                {% else %}<input type="hidden" name="open" value="1">{% ui_button "Открыть набор" variant="primary" type="submit" %}{% endif %}
+            </form>
+            {% endif %}
+        </div>
+    {% end_ui_card %}
+    {% ui_card title="Состав" subtitle="Уникальные люди" %}
+        <div class="gp-grid gp-grid--3" style="--grid-gap: var(--space-3)">
+            <div><div class="gp-muted gp-small">Новые</div><div style="font-size: var(--text-2xl); font-weight: 700">{{ team.new }}</div></div>
+            <div><div class="gp-muted gp-small">Старые</div><div style="font-size: var(--text-2xl); font-weight: 700">{{ team.old }}</div></div>
+            <div><div class="gp-muted gp-small">Всего</div><div style="font-size: var(--text-2xl); font-weight: 700">{{ team.unique }}</div></div>
+        </div>
+        <p class="gp-muted gp-small" style="margin: var(--space-3) 0 0">Новый — один проект; старый — до двух проектов и не больше 4 в направлении. Вступление — при открытом наборе.</p>
+    {% end_ui_card %}
+</div>
+
+<form method="get" class="gp-cluster" style="margin-bottom: var(--space-4); align-items: flex-end" aria-label="Фильтр команды">
+    <input type="hidden" name="tab" value="team">
+    <div class="gp-field"><label class="gp-label" for="t-direction">Направление</label><select class="gp-select" id="t-direction" name="direction" onchange="this.form.submit()"><option value="">Все</option>{% for key, label in team.directions %}<option value="{{ key }}"{% if team.filters.direction == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="gp-field"><label class="gp-label" for="t-kind">Тип стажёра</label><select class="gp-select" id="t-kind" name="kind" onchange="this.form.submit()"><option value="">Все</option><option value="new"{% if team.filters.kind == 'new' %} selected{% endif %}>Новые</option><option value="old"{% if team.filters.kind == 'old' %} selected{% endif %}>Старые</option></select></div>
+    <label class="gp-check" style="padding-bottom: var(--space-2)"><input type="checkbox" name="left" value="1"{% if team.include_left %} checked{% endif %} onchange="this.form.submit()"><span class="gp-check__text">Показать вышедших ({{ team.left_count }})</span></label>
+    <noscript>{% ui_button "Применить" type="submit" %}</noscript>
+    {% if team_add_url %}<span style="margin-left:auto">{% ui_button "Добавить вручную" href=team_add_url icon_name="plus" %}</span>{% endif %}
+</form>
+
+{% for section in team.sections %}
+    {% ui_card title=section.label flush=True %}
+        {% ui_slot "actions" %}{% if section.is_direction %}{% ui_badge section.new_label %}{% ui_badge section.old_label tone="primary" %}{% endif %}{% end_ui_slot %}
+        {% if section.old_over %}<div style="padding: var(--space-3) var(--space-5) 0">{% ui_alert "Старых стажёров больше 4 — это нарушает правило направления." level="danger" %}</div>{% elif section.new_over_target %}<div style="padding: var(--space-3) var(--space-5) 0">{% ui_alert "Новых больше ориентира 4 — допустимо, но проверьте нагрузку тимлида." level="warning" %}</div>{% endif %}
+        {% if not section.members %}<div class="gp-cluster gp-cluster--between" style="padding: var(--space-4) var(--space-5)"><span class="gp-muted gp-small">Пока никого.</span>{% if team_add_url %}{% ui_button "Добавить" size="sm" href=team_add_url|add:"?role="|add:section.role icon_name="plus" %}{% endif %}</div>{% else %}
+        <div class="gp-table-wrap gp-table--stack" style="border:0">
+            <table class="gp-table">
+                <caption class="gp-sr-only">{{ section.label }}</caption>
+                <thead><tr><th scope="col">ФИО</th><th scope="col">Город</th><th scope="col">Тип</th><th scope="col">Контакты</th><th scope="col">С</th><th scope="col">Статус</th><th scope="col" class="is-actions"><span class="gp-sr-only">Действия</span></th></tr></thead>
+                <tbody>
+                {% for m in section.members %}
+                    <tr>
+                        <td class="is-primary" data-label="ФИО">{% if m.intern %}{% if m.ui_url %}<a class="gp-link gp-table__primary" href="{{ m.ui_url }}">{{ m.intern.full_name }}</a>{% else %}<span class="gp-table__primary">{{ m.intern.full_name }}</span>{% endif %}<span class="gp-table__secondary">{{ m.intern.specialization|default:m.ui_role }}</span>{% else %}{{ m.person_name }}{% endif %}</td>
+                        <td data-label="Город">{{ m.ui_city|default:"—" }}</td>
+                        <td data-label="Тип">{% if m.ui_is_staff %}<span class="gp-muted">{{ m.ui_role }}</span>{% elif m.ui_old %}{% ui_badge "старый" tone="primary" %}{% else %}{% ui_badge "новый" tone="info" %}{% endif %}</td>
+                        <td data-label="Контакты">{% if m.intern.phone %}<a class="gp-link" href="tel:{{ m.intern.phone }}">{{ m.intern.phone }}</a>{% endif %}{% if m.intern.telegram %}<span class="gp-table__secondary">{{ m.intern.telegram }}</span>{% endif %}{% if not m.intern.phone and not m.intern.telegram %}—{% endif %}</td>
+                        <td data-label="С">{{ m.joined_at|date:"d.m.Y"|default:"—" }}</td>
+                        <td data-label="Статус">{% if m.status == 'active' %}{% if m.intern.status == 'paused' %}{% ui_badge m.intern.get_status_display tone="warning" %}{% else %}{% ui_badge "в команде" tone="success" %}{% endif %}{% else %}{% ui_badge "вышел" %}<span class="gp-table__secondary">{{ m.left_at|date:"d.m.Y" }}{% if m.left_reason %} · {{ m.get_left_reason_display }}{% endif %}</span>{% endif %}</td>
+                        <td class="is-actions" data-label="">{% if m.ui_edit_url %}{% ui_button "Изменить" size="sm" variant="ghost" href=m.ui_edit_url %}{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>{% endif %}
+    {% end_ui_card %}
+    <div style="height: var(--space-4)"></div>
+{% empty %}
+    <div class="gp-card">{% ui_empty "В команде пока никого" text="Стажёры вступают через Telegram-бота при открытом наборе; ответственных назначает руководитель." icon_name="users" %}</div>
+{% endfor %}

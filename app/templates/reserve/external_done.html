@@ -1,0 +1,12 @@
+{% extends "layouts/public.html" %}
+{% load ui %}
+{% block title %}Заявка принята — GeeksPro{% endblock %}
+{% block width %} gp-public__inner--narrow{% endblock %}
+{% block content %}
+{% ui_card %}
+    <div class="gp-stack" style="text-align:center; align-items:center">
+        <span style="color: var(--color-success)">{% ui_icon "check-circle" "lg" %}</span>
+        <p class="gp-text" style="margin:0">{% if limited %}Слишком много заявок с вашего адреса. Попробуйте позже.{% else %}Спасибо! Заявка получена, мы свяжемся с вами после рассмотрения.{% endif %}</p>
+    </div>
+{% end_ui_card %}
+{% endblock %}

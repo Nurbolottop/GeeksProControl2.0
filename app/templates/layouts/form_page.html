@@ -1,0 +1,15 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{# Простая страница-форма 2.0: title, subtitle, form, cols, submit_label, cancel_url #}
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% if crumbs %}{% ui_breadcrumbs crumbs %}{% endif %}{% endblock %}
+{% block page %}
+{% firstof subtitle project.name "" as page_subtitle %}{% ui_page_header title=title subtitle=page_subtitle %}{% end_ui_page_header %}
+{% ui_card %}
+    <form method="post" class="gp-form">
+        {% csrf_token %}
+        {% ui_form form cols=cols|default:1 %}
+        <div class="gp-form-actions">{% ui_button submit_label|default:"Сохранить" variant="primary" type="submit" %}{% ui_button "Отмена" variant="ghost" href=cancel_url %}</div>
+    </form>
+{% end_ui_card %}
+{% endblock %}

@@ -1,0 +1,52 @@
+# В build context попадает только то, что нужно для образа: код app/,
+# requirements.txt, docker/, scripts/. Всё чувствительное — исключено.
+
+# VCS и служебное
+.git
+.gitignore
+.github
+.claude
+.vscode
+.idea
+**/.DS_Store
+docs
+deploy
+README.md
+
+# Окружение и секреты
+.env
+.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/id_rsa*
+**/id_ed25519*
+app/secrets
+**/*credentials*.json
+**/*service-account*.json
+**/google-sheets*.json
+
+# Данные: загрузки, импортные таблицы, дампы, бэкапы
+app/media
+app/data
+storage
+backups
+**/*.sql
+**/*.sql.gz
+**/*.dump
+**/*.backup
+**/*.bak
+**/*.xlsx
+**/*.xls
+**/*.csv
+**/*.docx
+
+# Сборка и кэш
+app/staticfiles
+**/__pycache__
+**/*.py[cod]
+.venv
+venv
+**/celerybeat-schedule*
+**/*.log

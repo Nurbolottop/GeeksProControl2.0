@@ -1,0 +1,202 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% comment %}
+Карточка человека (UI-04A). Один профиль: все стажировки, участия, выпуск,
+заморозки, оценки и события. Даты не выдумываются: нет данных — «—».
+{% endcomment %}
+{% block title %}{{ intern.full_name }} — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title=intern.full_name subtitle=intern.specialization|default:"Направление не указано" %}
+    {% ui_slot "eyebrow" %}
+        {% if intern.is_archived %}{% ui_badge "В архиве" tone="danger" %}{% else %}{% ui_badge intern.get_status_display tone=status_tone %}{% endif %}
+        {% if is_graduate %}{% ui_badge "Выпускник" tone="primary" dot=True %}{% elif not is_lead %}{% ui_badge "Новый стажёр" tone="info" %}{% endif %}
+        {% if is_lead and intern.is_archived or was_lead and intern.is_archived %}{% ui_badge "Бывший тимлид" %}{% elif is_lead %}{% ui_badge "Тимлид" tone="warning" %}{% endif %}
+        {% if active_warnings %}{% ui_badge warnings_label tone="danger" dot=True %}{% endif %}
+        {% if intern.in_resume_bank %}{% ui_badge "Банк резюме" tone="info" %}{% endif %}
+    {% end_ui_slot %}
+    {% url 'interns:update' intern.pk as edit_url %}{% ui_button "Редактировать" href=edit_url icon_name="pencil" %}
+    {% if not intern.is_archived %}
+        {% if intern.status == 'paused' %}{% ui_button "Вернуть из заморозки" data_gp_open="return-modal" icon_name="check" %}
+        {% elif intern.status == 'active' or intern.status == 'ready' or intern.status == 'waiting' %}{% ui_button "Заморозить" data_gp_open="freeze-modal" icon_name="clock" %}{% endif %}
+    {% endif %}
+    {% ui_dropdown label="Ещё" icon="more-horizontal" %}
+        {% if not intern.is_archived %}{% url 'interns:project_add' intern.pk as add_url %}{% ui_menu_item "Добавить в проект" href=add_url icon_name="plus" %}{% endif %}
+        {% url 'interns:evaluate' intern.pk as eval_url %}{% ui_menu_item "Оценить" href=eval_url icon_name="check" %}
+        {% if is_pm %}{% url 'interns:grant_access' intern.pk as access_url %}{% ui_menu_item access_label href=access_url icon_name="user" %}{% endif %}
+        {% if is_lead %}{% url 'interns:grant_lead_access' intern.pk as lead_access_url %}{% ui_menu_item lead_access_label href=lead_access_url icon_name="user" %}{% endif %}
+        {% if not intern.is_archived %}
+            {% if intern.position == 'lead' %}{% ui_menu_item "Снять с тимлида" type="submit" form="demote-form" icon_name="arrow-down" %}
+            {% else %}{% ui_menu_item "Повысить до тимлида" type="submit" form="promote-form" icon_name="arrow-up" %}{% endif %}
+            {% ui_menu_item "В архив" type="submit" form="archive-form" icon_name="inbox" %}
+        {% else %}{% ui_menu_item "Вернуть из архива" type="submit" form="unarchive-form" icon_name="inbox" %}{% endif %}
+        <div class="gp-menu__divider" role="separator"></div>
+        {% if active_memberships %}{% ui_menu_item "Выдать предупреждение" icon_name="alert-triangle" data_gp_open="warn-modal" %}{% endif %}
+        {% if leave_allowed %}{% ui_menu_item "Выход из одного проекта" icon_name="log-out" data_gp_open="leave-modal" %}{% endif %}
+        {% if is_stopped %}{% ui_menu_item "Повторная стажировка" icon_name="plus" data_gp_open="reenroll-modal" %}
+        {% elif not intern.is_archived %}{% ui_menu_item "Отмена — ушёл самостоятельно" icon_name="log-out" data_gp_open="cancel-modal" %}{% endif %}
+        <div class="gp-menu__divider" role="separator"></div>
+        {% ui_menu_item "Удалить из базы" icon_name="trash" danger=True data_gp_open="delete-modal" %}
+    {% end_ui_dropdown %}
+{% end_ui_page_header %}
+
+<form method="post" action="{% url 'interns:promote_lead' intern.pk %}" id="promote-form" hidden>{% csrf_token %}</form>
+<form method="post" action="{% url 'interns:demote_lead' intern.pk %}" id="demote-form" hidden>{% csrf_token %}</form>
+<form method="post" action="{% url 'interns:archive' intern.pk %}" id="archive-form" hidden>{% csrf_token %}</form>
+<form method="post" action="{% url 'interns:unarchive' intern.pk %}" id="unarchive-form" hidden>{% csrf_token %}</form>
+
+{% if intern.is_archived %}<div style="margin-bottom: var(--space-4)">{% ui_alert archived_text level="warning" title=archived_title %}</div>{% endif %}
+{% if pending_case %}<div style="margin-bottom: var(--space-4)">{% ui_alert "Три активных предупреждения — нужно решение руководителя: отчислить или оставить (страница «Решения по стажёрам»)." level="danger" title="Ждёт решения" %}</div>{% endif %}
+{% if pending_requests %}<div style="margin-bottom: var(--space-4)">{% url 'interns:internship_requests' as req_url %}{% ui_alert "Заявка ждёт решения руководителя на странице «Заморозки»." level="warning" title=pending_title %}</div>{% endif %}
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Личные данные" %}
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>Телефон</dt><dd style="white-space:normal; overflow-wrap:anywhere">{% if intern.phone %}<a class="gp-link" href="tel:{{ intern.phone }}">{{ intern.phone }}</a>{% else %}—{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Telegram</dt><dd style="white-space:normal; overflow-wrap:anywhere">{{ intern.telegram|default:"—" }}{% if intern.telegram_chat_id %} · бот подключён{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Email</dt><dd style="white-space:normal; overflow-wrap:anywhere">{{ intern.email|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Город</dt><dd>{{ branch }}</dd></div>
+            <div class="gp-metrics__row"><dt>Направление</dt><dd>{{ intern.specialization|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Регистрация в системе</dt><dd>{{ intern.created_at|date:"d.m.Y" }}</dd></div>
+            {% if intern.rating %}<div class="gp-metrics__row"><dt>Рейтинг</dt><dd>{{ intern.rating }}</dd></div>{% endif %}
+        </dl>
+        {% if intern.comment %}<p class="gp-text gp-small" style="margin: var(--space-3) 0 0; white-space: pre-line">{{ intern.comment }}</p>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Текущая стажировка" %}
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>Статус</dt><dd>{% ui_badge intern.get_status_display tone=status_tone %}</dd></div>
+            <div class="gp-metrics__row"><dt>Стажировка</dt><dd>{% if current_period %}№{{ current_period.number }}{% else %}{{ intern.internship_attempt }}-я по карточке{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Начало<span class="gp-metrics__note">{% if current_period %}{{ current_period.get_source_display|lower }}{% else %}из карточки{% endif %}</span></dt><dd>{% if current_period.started_on %}{{ current_period.started_on|date:"d.m.Y" }}{% else %}{{ intern.internship_start_date|date:"d.m.Y"|default:"—" }}{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Активные предупреждения</dt><dd>{{ active_warnings }}</dd></div>
+            <div class="gp-metrics__row"><dt>Дальнейшая деятельность</dt><dd>{% ui_badge activity.0 tone=activity.1 %}</dd></div>
+        </dl>
+        <h3 class="gp-h3" style="margin-top: var(--space-4)">Текущие проекты</h3>
+        {% if active_memberships %}
+        <ul class="gp-attention">{% for m in active_memberships %}<li><a href="{{ m.project.get_absolute_url }}?tab=team"><span class="gp-attention__dot" aria-hidden="true"></span><span class="gp-attention__text">{{ m.project.name }}<span class="gp-attention__meta">{{ m.get_role_display }} · с {{ m.joined_at|date:"d.m.Y"|default:"—" }}{% if m.ui_leads %} · тимлид: {% for lead in m.ui_leads %}{{ lead.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</span></span><span class="gp-attention__action">Открыть</span></a></li>{% endfor %}</ul>
+        {% if not intern.is_archived %}<div class="gp-cluster" style="--cluster-gap: var(--space-2); margin-top: var(--space-3)">{% for m in active_memberships %}<form method="post" action="{% url 'interns:project_remove' intern.pk m.pk %}" style="margin:0">{% csrf_token %}{% ui_button m.ui_remove_label size="sm" variant="ghost" type="submit" icon_name="x" %}</form>{% endfor %}</div>{% endif %}
+        {% else %}<p class="gp-muted gp-small" style="margin:0">Сейчас ни в одном проекте.</p>{% endif %}
+    {% end_ui_card %}
+</div>
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start; margin-top: var(--space-5)">
+    {% ui_card title="Выпуск" %}
+        {% if is_graduate %}
+            <dl class="gp-metrics">
+                <div class="gp-metrics__row"><dt>Первый подтверждённый выпуск</dt><dd>{{ first_graduation|date:"d.m.Y"|default:"дата не записана" }}</dd></div>
+            </dl>
+            {% if graduated_projects %}<p class="gp-small" style="margin: var(--space-3) 0 0"><span class="gp-muted">Завершённые проекты:</span> {% for item in graduated_projects %}{{ item.1 }} ({{ item.2|date:"d.m.Y" }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+            <p class="gp-muted gp-small" style="margin: var(--space-2) 0 0">Основания: {{ graduation_evidence|join:"; " }}. Статус выпускника постоянный.</p>
+        {% else %}
+            <p class="gp-muted gp-small" style="margin:0">Подтверждённого выпуска нет — новый стажёр.</p>
+            {% for item in graduation_review %}{% ui_alert item.reason level="warning" title="Нужна сверка" %}{% endfor %}
+        {% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Стажировки" flush=True %}
+        {% if periods %}
+        <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for period in periods %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot{% if not period.is_open %} gp-attention__dot--warning{% endif %}" aria-hidden="true"></span><span class="gp-small">Стажировка №{{ period.number }} · {{ period.started_on|date:"d.m.Y"|default:"начало не записано" }} — {% if period.is_open %}идёт{% else %}{{ period.ended_on|date:"d.m.Y"|default:"дата не записана" }}{% endif %}<span class="gp-attention__meta">{% if period.end_reason %}{{ period.get_end_reason_display }}{% else %}{{ period.get_source_display }}{% endif %}{% if period.note %} · {{ period.note }}{% endif %}</span><span class="gp-attention__meta">Выпуск в периоде: {{ period.graduated_on|date:"d.m.Y"|default:"нет" }} · Сертификат: {% if period.ui_certificate %}{{ period.ui_certificate.number|default:"номер не указан" }}{% if period.ui_certificate.issued_on %}, {{ period.ui_certificate.issued_on|date:"d.m.Y" }}{% endif %} ({{ period.ui_certificate.get_source_display|lower }}){% else %}Нет данных{% endif %}</span></span></span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-5)"><p class="gp-muted gp-small" style="margin:0">Периоды стажировок ещё не записаны.</p></div>{% endif %}
+    {% end_ui_card %}
+</div>
+
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Прошлые проекты" subtitle=projects_subtitle flush=True %}
+    {% if past_memberships %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0">
+        <table class="gp-table">
+            <caption class="gp-sr-only">Прошлые проекты</caption>
+            <thead><tr><th scope="col">Проект</th><th scope="col">Роль</th><th scope="col">Период</th><th scope="col">Итог</th></tr></thead>
+            <tbody>
+            {% for m in past_memberships %}
+                <tr><td class="is-primary" data-label="Проект">{% if m.project %}<a class="gp-link gp-table__primary" href="{{ m.project.get_absolute_url }}">{{ m.project.name }}</a>{% else %}—{% endif %}</td><td data-label="Роль">{{ m.get_role_display }}</td><td data-label="Период">{{ m.joined_at|date:"d.m.Y"|default:"—" }} — {{ m.left_at|date:"d.m.Y"|default:"—" }}</td><td data-label="Итог">{% if m.ui_delivered %}{% ui_badge "проект сдан" tone="success" %}{% else %}{% ui_badge "вышел(а) из команды" %}{% endif %}{% if m.ui_reason %}<span class="gp-table__secondary">{{ m.ui_reason }}</span>{% endif %}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Прошлых проектов нет" icon_name="folder" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start; margin-top: var(--space-5)">
+    {% ui_card title="Оценки" flush=True %}
+        {% if evaluations %}
+        <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for e in evaluations %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><strong>{{ e.average }}</strong><span class="gp-small">{{ e.created_at|date:"d.m.Y" }}{% if e.project %} · {{ e.project.name }}{% endif %}{% if e.evaluator %} · {{ e.evaluator.display_name }}{% endif %}{% if e.comment %}<span class="gp-attention__meta">{{ e.comment }}</span>{% endif %}</span></span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Оценок пока нет" icon_name="check" %}</div>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Предупреждения и заявки" flush=True %}
+        {% if warnings or requests %}
+        <ul class="gp-attention" style="padding: 0 var(--space-5)">
+            {% for w in warnings %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot{% if w.status == 'active' %} gp-attention__dot--danger{% endif %}" aria-hidden="true"></span><span class="gp-small">Предупреждение · {{ w.created_at|date:"d.m.Y" }}{% if w.status != 'active' %} · {{ w.get_status_display|lower }}{% endif %}<span class="gp-attention__meta">{{ w.reason }}{% if w.project %} · {{ w.project.name }}{% endif %}</span></span></span></li>{% endfor %}
+            {% for r in requests %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot{% if r.status == 'pending' %} gp-attention__dot--warning{% endif %}" aria-hidden="true"></span><span class="gp-small">{{ r.get_kind_display }} · {{ r.get_status_display|lower }} · {{ r.created_at|date:"d.m.Y" }}<span class="gp-attention__meta">{{ r.reason }}{% if r.chosen_project %} · выбрал(а): {{ r.chosen_project.name }}{% endif %}</span></span></span></li>{% endfor %}
+        </ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Нет предупреждений и заявок" icon_name="inbox" %}</div>{% endif %}
+    {% end_ui_card %}
+</div>
+
+<div style="margin-top: var(--space-5)">
+{% ui_card title="История" subtitle="Все записанные события — новые сверху." %}
+    <ol class="gp-timeline">
+        {% for event in timeline %}<li class="gp-timeline__item gp-timeline__item--{{ event.tone }}"><span class="gp-timeline__icon" aria-hidden="true">{% ui_icon event.icon "sm" %}</span><div><p class="gp-timeline__title">{{ event.title }}</p>{% if event.meta %}<p class="gp-timeline__meta">{{ event.meta }}</p>{% endif %}</div><span class="gp-timeline__date">{% if event.at %}{{ event.at|date:"d.m.Y" }}{% else %}дата не записана{% endif %}</span></li>{% endfor %}
+    </ol>
+{% end_ui_card %}
+</div>
+
+{% if not intern.is_archived and intern.status != 'paused' %}
+{% ui_modal id="freeze-modal" title="Заморозить стажировку" %}
+    <form method="post" action="{% url 'interns:pause' intern.pk %}" class="gp-stack" id="freeze-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">{{ intern.full_name }} сразу выйдет из всех активных проектов, незавершённые задачи вернутся «К выполнению». История сохранится.</p>
+        <div class="gp-field"><label class="gp-label" for="freeze-reason">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="freeze-reason" name="reason" rows="2" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Заморозить" variant="primary" type="submit" form="freeze-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% if not intern.is_archived and intern.status == 'paused' %}
+{% ui_modal id="return-modal" title="Вернуть из заморозки" %}
+    <form method="post" action="{% url 'interns:unpause' intern.pk %}" class="gp-stack" id="return-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">Прежнее участие не восстанавливается: стажёр выберет новый проект в боте (направление PM — назначит руководитель).</p>
+        <div class="gp-field"><label class="gp-label" for="return-reason">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="return-reason" name="reason" rows="2" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Вернуть" variant="primary" type="submit" form="return-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% if active_memberships %}
+{% ui_modal id="warn-modal" title="Выдать предупреждение" %}
+    <form method="post" action="{% url 'interns:warn' intern.pk %}" class="gp-stack" id="warn-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">Сейчас активных: {{ active_warnings }}. Три активных предупреждения создают заявку руководителю — это ещё не отчисление.</p>
+        <div class="gp-field"><label class="gp-label" for="warn-project">Проект</label><select class="gp-select" id="warn-project" name="project">{% for m in active_memberships %}<option value="{{ m.project_id }}">{{ m.project.name }}</option>{% endfor %}</select></div>
+        <div class="gp-field"><label class="gp-label" for="warn-reason">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="warn-reason" name="reason" rows="2" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Выдать" variant="primary" type="submit" form="warn-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% if leave_allowed %}
+{% ui_modal id="leave-modal" title="Выход из одного проекта" %}
+    <form method="post" action="{% url 'interns:leave_project' intern.pk %}" class="gp-stack" id="leave-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">Только для выпускника в двух проектах. После одобрения руководителем участие прекратится только в выбранном проекте; второй проект и статус выпускника не меняются.</p>
+        <div class="gp-field"><label class="gp-label" for="leave-project">Проект</label><select class="gp-select" id="leave-project" name="project">{% for m in active_memberships %}<option value="{{ m.project_id }}">{{ m.project.name }}</option>{% endfor %}</select></div>
+        <div class="gp-field"><label class="gp-label" for="leave-reason">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="leave-reason" name="reason" rows="2" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Создать заявку" variant="primary" type="submit" form="leave-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% if is_stopped %}
+{% ui_modal id="reenroll-modal" title="Повторная стажировка" %}
+    <form method="post" action="{% url 'interns:reenroll' intern.pk %}" class="gp-stack" id="reenroll-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">Тот же профиль, вся история сохранится. Порядок: продажи подтверждают оплату → руководитель одобряет → открывается новый период, предупреждения с нуля.</p>
+        <div class="gp-field"><label class="gp-label" for="reenroll-reason">Основание<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="reenroll-reason" name="reason" rows="2" required placeholder="например, повторная покупка стажировки"></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Создать заявку" variant="primary" type="submit" form="reenroll-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% elif not intern.is_archived %}
+{% ui_modal id="cancel-modal" title="Отмена — ушёл самостоятельно" %}
+    <form method="post" action="{% url 'interns:cancel' intern.pk %}" class="gp-stack" id="cancel-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">Это не отчисление и не заморозка. Участия во всех проектах завершатся, незавершённые задачи вернутся «К выполнению», период стажировки закроется. Оценки, предупреждения и история сохранятся.</p>
+        <div class="gp-field"><label class="gp-label" for="cancel-reason">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="cancel-reason" name="reason" rows="2" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Оформить отмену" variant="danger" type="submit" form="cancel-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% ui_modal id="delete-modal" title="Удалить из базы?" %}
+    <form method="post" action="{% url 'interns:delete' intern.pk %}" id="delete-form">{% csrf_token %}<p class="gp-text" style="margin:0">Карточка {{ intern.full_name }} будет удалена вместе с участием в командах. Обычно достаточно архива — история при этом сохраняется.</p></form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Удалить" variant="danger" type="submit" form="delete-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endblock %}

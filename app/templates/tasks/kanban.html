@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Задачи: Kanban — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div><h1>Задачи — Kanban</h1></div>
+    <div class="page-actions">
+        <a href="{% url 'tasks:list' %}" class="btn btn--secondary">Таблица</a>
+        <a href="{% url 'tasks:create' %}" class="btn">+ Новая задача</a>
+    </div>
+</div>
+
+<div class="kanban">
+    {% for column in columns %}
+        <div class="kanban__col" data-status="{{ column.key }}">
+            <div class="kanban__title">
+                <span>{{ column.label }}</span>
+                <span>{{ column.tasks|length }}</span>
+            </div>
+            <div class="kanban__cards">
+                {% for task in column.tasks %}
+                    <div class="kanban-card" draggable="true" data-task="{{ task.pk }}">
+                        <div class="kanban-card__title">
+                            <a href="{{ task.get_absolute_url }}">{{ task.title }}</a>
+                        </div>
+                        <div class="kanban-card__meta">
+                            {% if task.project %}<span>{{ task.project.name }}</span>{% endif %}
+                            {% if task.deadline %}<span>Deadline: {{ task.deadline|date:'d.m.Y' }}</span>{% endif %}
+                            <span>
+                                {% if task.priority == 'critical' %}<span class="badge badge--red">Critical</span>
+                                {% elif task.priority == 'high' %}<span class="badge badge--orange">High</span>
+                                {% elif task.priority == 'medium' %}<span class="badge badge--blue">Medium</span>
+                                {% else %}<span class="badge badge--gray">Low</span>{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    let dragged = null;
+    document.querySelectorAll('.kanban-card').forEach(function (card) {
+        card.addEventListener('dragstart', function () { dragged = card; });
+    });
+    document.querySelectorAll('.kanban__col').forEach(function (col) {
+        col.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            col.classList.add('is-over');
+        });
+        col.addEventListener('dragleave', function () { col.classList.remove('is-over'); });
+        col.addEventListener('drop', function (e) {
+            e.preventDefault();
+            col.classList.remove('is-over');
+            if (!dragged) return;
+            fetch('/tasks/' + dragged.dataset.task + '/status/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({status: col.dataset.status}),
+            }).then(function (resp) {
+                if (resp.ok) { window.location.reload(); }
+            });
+            dragged = null;
+        });
+    });
+})();
+</script>
+{% endblock %}

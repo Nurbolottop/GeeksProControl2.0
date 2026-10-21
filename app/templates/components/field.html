@@ -1,0 +1,21 @@
+{% if kind == 'hidden' %}{{ widget }}{% else %}
+<div class="gp-field{% if wide %} gp-field--wide{% endif %}">
+    {% if kind == 'checkbox' %}
+        <label class="gp-check" for="{{ field.id_for_label }}">{{ widget }}<span class="gp-check__text">{{ label }}{% if field.field.required %}<span class="gp-required" aria-hidden="true">*</span>{% endif %}</span></label>
+    {% elif kind == 'choices' %}
+        <fieldset class="gp-field" style="border:0;margin:0;padding:0;min-width:0">
+            <legend class="gp-label">{{ label }}{% if field.field.required %}<span class="gp-required" aria-hidden="true">*</span>{% endif %}</legend>
+            <ul class="gp-choice-list">
+                {% for option in choices %}
+                    <li><label class="gp-check" for="{{ option.id_for_label }}">{{ option.tag }}<span class="gp-check__text">{{ option.choice_label }}</span></label></li>
+                {% endfor %}
+            </ul>
+        </fieldset>
+    {% else %}
+        <label class="gp-label" for="{{ field.id_for_label }}">{{ label }}{% if field.field.required %}<span class="gp-required" aria-hidden="true">*</span>{% endif %}</label>
+        {{ widget }}
+    {% endif %}
+    {% if help %}<span class="gp-help" id="{{ field.auto_id }}_help">{{ help }}</span>{% endif %}
+    {% if field.errors %}<div class="gp-error" id="{{ field.auto_id }}_error">{{ error_icon }}<span>{{ field.errors|join:" " }}</span></div>{% endif %}
+</div>
+{% endif %}

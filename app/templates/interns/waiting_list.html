@@ -1,0 +1,30 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title=title subtitle="Выпускники, которые через бота выбрали «Продолжить стажировку». Поставьте человека на проект — бот сам сообщит, что место нашлось." %}
+    {% url 'interns:graduates' as graduates_url %}{% ui_button "Все выпускники" href=graduates_url icon_name="graduation-cap" %}
+{% end_ui_page_header %}
+{% ui_card flush=True %}
+{% if people %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">{{ title }}</caption>
+        <thead><tr><th scope="col">ФИО</th><th scope="col">Направление</th><th scope="col">Последний проект</th><th scope="col">Выпуск</th><th scope="col">Телефон</th><th scope="col" class="is-actions"><span class="gp-sr-only">Действия</span></th></tr></thead>
+        <tbody>
+        {% for person in people %}
+            <tr>
+                <td class="is-primary" data-label="ФИО"><a class="gp-link gp-table__primary" style="overflow-wrap:anywhere" href="{{ person.get_absolute_url }}?from=graduates">{{ person.full_name }}</a></td>
+                <td data-label="Направление">{{ person.specialization|default:"—" }}</td>
+                <td data-label="Последний проект">{{ person.graduated_project|default:"—" }}</td>
+                <td data-label="Выпуск">{{ person.graduated_at|date:"d.m.Y"|default:"—" }}</td>
+                <td data-label="Телефон">{% if person.phone %}<a class="gp-link" href="tel:{{ person.phone }}">{{ person.phone }}</a>{% else %}—{% endif %}</td>
+                <td class="is-actions" data-label="">{% url 'interns:project_add' person.pk as add_url %}{% ui_button "Распределить на проект" size="sm" variant="primary" href=add_url %}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Сейчас никто не ждёт проект" icon_name="clock" %}</div>{% endif %}
+{% end_ui_card %}
+{% endblock %}

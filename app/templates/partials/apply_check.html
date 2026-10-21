@@ -1,0 +1,9 @@
+{# Чекбокс: галочка слева от текста, а не подпись над пустым квадратом #}
+<label class="acheck {% if field.errors %}is-error{% endif %}">
+    {{ field }}
+    <span>
+        {{ field.label }}{% if field.field.required %} <span class="afield__req">*</span>{% elif mark_optional %}<span class="afield__opt">необязательно</span>{% endif %}
+        {% if field.help_text %}<em>{{ field.help_text }}</em>{% endif %}
+        {% if field.errors %}<strong>{{ field.errors.0 }}</strong>{% endif %}
+    </span>
+</label>

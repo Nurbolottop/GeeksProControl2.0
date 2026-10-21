@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="form-page">
+    <div class="page-head">
+        <div>
+            <h1>{{ title }}</h1>
+            <div class="sub">Группа = команда, которая ведёт один проект</div>
+        </div>
+    </div>
+    <form method="post" class="panel">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="message message--error">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="form-row">
+            <div class="form-field">
+                <label for="{{ form.number.id_for_label }}">Номер группы в потоке</label>
+                {{ form.number }}
+                {% if form.number.errors %}<div class="form-errors">{{ form.number.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.project.id_for_label }}">Проект группы</label>
+                {{ form.project }}
+                {% if form.project.errors %}<div class="form-errors">{{ form.project.errors.0 }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-field" style="margin-top:16px">
+            <label for="{{ form.name.id_for_label }}">Название (необязательно)</label>
+            {{ form.name }}
+        </div>
+        <div class="form-field" style="margin-top:16px">
+            <label for="{{ form.comment.id_for_label }}">Комментарий</label>
+            {{ form.comment }}
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn">Сохранить</button>
+            <a href="{% if group %}{{ group.get_absolute_url }}{% else %}{{ flow.get_absolute_url }}{% endif %}" class="btn btn--secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

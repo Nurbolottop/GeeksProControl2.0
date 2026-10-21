@@ -1,0 +1,178 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ candidate.full_name }} — кандидат GeeksPro</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <link rel="stylesheet" href="{% static 'css/reserve-share.css' %}">
+</head>
+<body class="apply-body">
+<div class="apply-page share-page">
+    <div class="apply-hero__brand share-brand">Geeks<span>Pro</span> · резерв кадров</div>
+    {% if back_url %}<a href="{{ back_url }}" class="share-back">← Все кандидаты подборки</a>{% endif %}
+
+    <section class="acard share-head">
+        {% if candidate.photo %}
+            <img src="{{ candidate.photo.url }}" alt="" class="share-head__photo">
+        {% else %}
+            <span class="share-head__photo share-head__photo--empty">{{ candidate.full_name|slice:':1' }}</span>
+        {% endif %}
+        <div class="share-head__body">
+            <h1>{{ candidate.full_name }}</h1>
+            <div class="share-head__position">
+                {{ candidate.recommended_position|default:candidate.desired_position|default:candidate.direction }}{% if candidate.city %} · {{ candidate.city }}{% endif %}
+            </div>
+            <div class="reserve-head__badges">
+                <span class="badge badge--gray">{{ candidate.direction }}</span>
+                {% if candidate.geekspro_level %}<span class="badge badge--blue">{{ candidate.get_geekspro_level_display }}</span>{% endif %}
+                {% if candidate.is_looking_for_job %}
+                    <span class="badge badge--green">Ищет работу · {{ candidate.readiness }}</span>
+                {% else %}
+                    <span class="badge badge--gray">Не ищет работу</span>
+                {% endif %}
+            </div>
+            {% if candidate.skills_list %}
+                <div class="share-skills">
+                    {% for skill in candidate.skills_list %}<span class="chip">{{ skill }}</span>{% endfor %}
+                </div>
+            {% endif %}
+            <div class="reserve-head__links">
+                {% if candidate.resume_file %}<a href="{{ candidate.resume_file.url }}" target="_blank" rel="noopener">Резюме (файл)</a>{% endif %}
+                {% if candidate.resume_url %}<a href="{{ candidate.resume_url }}" target="_blank" rel="noopener">Резюме</a>{% endif %}
+                {% if candidate.github_url %}<a href="{{ candidate.github_url }}" target="_blank" rel="noopener">GitHub</a>{% endif %}
+                {% if candidate.portfolio_url %}<a href="{{ candidate.portfolio_url }}" target="_blank" rel="noopener">Портфолио</a>{% endif %}
+                {% if candidate.behance_url %}<a href="{{ candidate.behance_url }}" target="_blank" rel="noopener">Behance</a>{% endif %}
+                {% if candidate.linkedin_url %}<a href="{{ candidate.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>{% endif %}
+                {% if candidate.website_url %}<a href="{{ candidate.website_url }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
+            </div>
+        </div>
+        {% if candidate.rating %}
+            <div class="share-head__rating">
+                <strong>{{ candidate.rating }}</strong>
+                <span>из 10 · оценка GeeksPro</span>
+            </div>
+        {% endif %}
+    </section>
+
+    {% if link.show_contacts %}
+        <section class="acard">
+            <h2 class="share-title">Контакты</h2>
+            <dl class="def-grid">
+                <div class="def"><dt>Телефон</dt><dd>{% if candidate.phone %}<a href="tel:{{ candidate.phone }}">{{ candidate.phone }}</a>{% else %}—{% endif %}</dd></div>
+                <div class="def"><dt>Telegram</dt><dd>{{ candidate.telegram|default:'—' }}</dd></div>
+                <div class="def"><dt>Email</dt><dd>{% if candidate.email %}<a href="mailto:{{ candidate.email }}">{{ candidate.email }}</a>{% else %}—{% endif %}</dd></div>
+            </dl>
+        </section>
+    {% endif %}
+
+    {% if candidate.is_evaluated or candidate.strengths %}
+        <section class="acard">
+            <h2 class="share-title">Оценка GeeksPro</h2>
+            {% if has_scores %}
+                <div class="reserve-scores">
+                    {% for label, value in candidate.scores %}
+                        {% if value %}
+                            <div class="reserve-score">
+                                <span class="reserve-score__label">{{ label }}</span>
+                                <span class="reserve-score__value">{{ value }}</span>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                    {% if candidate.rating %}
+                        <div class="reserve-score reserve-score--total">
+                            <span class="reserve-score__label">Общий рейтинг</span>
+                            <span class="reserve-score__value">{{ candidate.rating }} / 10</span>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+            {% if candidate.strengths %}
+                <h3 class="share-subtitle">Сильные стороны</h3>
+                <p>{{ candidate.strengths|linebreaksbr }}</p>
+            {% endif %}
+        </section>
+    {% endif %}
+
+    <section class="acard">
+        <h2 class="share-title">Что ищет</h2>
+        <dl class="def-grid">
+            <div class="def"><dt>Желаемая должность</dt><dd>{{ candidate.desired_position|default:'—' }}</dd></div>
+            <div class="def"><dt>Формат работы</dt><dd>{{ candidate.get_work_format_display|default:'—' }}</dd></div>
+            <div class="def"><dt>Занятость</dt><dd>{{ candidate.get_employment_type_display|default:'—' }}</dd></div>
+            <div class="def"><dt>Готов(а) приступить</dt><dd>{{ candidate.available_from|date:'d.m.Y'|default:'—' }}</dd></div>
+            <div class="def"><dt>Готов(а) к стажировке</dt><dd>{% if candidate.ready_for_internship %}Да{% else %}Нет{% endif %}</dd></div>
+            <div class="def"><dt>Готов(а) к переезду</dt><dd>{% if candidate.ready_to_relocate %}Да{% else %}Нет{% endif %}</dd></div>
+            <div class="def"><dt>Желаемая зарплата</dt><dd>{{ candidate.desired_salary|default:'—' }}</dd></div>
+            <div class="def"><dt>Английский</dt><dd>{{ candidate.english_level|default:'—' }}</dd></div>
+            {% if candidate.other_languages %}<div class="def"><dt>Другие языки</dt><dd>{{ candidate.other_languages }}</dd></div>{% endif %}
+        </dl>
+        {% if candidate.target_positions %}
+            <h3 class="share-subtitle">Какие вакансии рассматривает</h3>
+            <p>{{ candidate.target_positions|linebreaksbr }}</p>
+        {% endif %}
+    </section>
+
+    {% if candidate.about %}
+        <section class="acard">
+            <h2 class="share-title">О себе</h2>
+            <p>{{ candidate.about|linebreaksbr }}</p>
+        </section>
+    {% endif %}
+
+    {% if memberships %}
+        <section class="acard">
+            <h2 class="share-title">Проекты в GeeksPro</h2>
+            <ul class="share-projects">
+                {% for member in memberships %}
+                    <li>
+                        <strong>{{ member.project.name|default:'—' }}</strong>
+                        <span>{{ member.get_role_display }} · {{ member.joined_at|date:'m.Y'|default:'—' }} — {{ member.left_at|date:'m.Y'|default:'сейчас' }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    {% if candidate.work_experience or candidate.internship_experience or candidate.project_links_list %}
+        <section class="acard">
+            <h2 class="share-title">Опыт</h2>
+            {% if candidate.work_experience %}
+                <h3 class="share-subtitle">Опыт работы</h3>
+                <p>{{ candidate.work_experience|linebreaksbr }}</p>
+            {% endif %}
+            {% if candidate.internship_experience %}
+                <h3 class="share-subtitle">Опыт стажировки</h3>
+                <p>{{ candidate.internship_experience|linebreaksbr }}</p>
+            {% endif %}
+            {% if candidate.project_links_list %}
+                <h3 class="share-subtitle">Ссылки на проекты</h3>
+                <ul>
+                    {% for url in candidate.project_links_list %}
+                        <li><a href="{{ url }}" target="_blank" rel="noopener">{{ url }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </section>
+    {% endif %}
+
+    {% if candidate.education or candidate.courses %}
+        <section class="acard">
+            <h2 class="share-title">Образование</h2>
+            {% if candidate.education %}<p>{{ candidate.education|linebreaksbr }}</p>{% endif %}
+            {% if candidate.courses %}
+                <h3 class="share-subtitle">Пройденные курсы</h3>
+                <p>{{ candidate.courses|linebreaksbr }}</p>
+            {% endif %}
+        </section>
+    {% endif %}
+
+    <p class="share-foot">
+        Кандидата рекомендует GeeksPro.
+        {% if not link.show_contacts %}Чтобы связаться с кандидатом, напишите сотруднику GeeksPro, который отправил вам эту ссылку.{% endif %}
+    </p>
+</div>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<tr id="stage-{{ stage.pk }}" class="stage-row--editing">
+    <td colspan="7">
+        <form hx-post="{% url 'projects:stage_update' stage.pk %}"
+              hx-target="#stage-{{ stage.pk }}"
+              hx-swap="outerHTML"
+              class="stage-form">
+            {% csrf_token %}
+            <strong class="stage-form__title">{{ stage.get_key_display }}</strong>
+            <div class="form-field">
+                <label>Статус</label>
+                {{ form.status }}
+            </div>
+            <div class="form-field">
+                <label>Deadline</label>
+                {{ form.deadline }}
+                {% if form.deadline.errors %}<div class="form-errors">{{ form.deadline.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-field" style="flex: 1; min-width: 180px">
+                <label>Комментарий</label>
+                {{ form.comment }}
+            </div>
+            <div class="stage-form__actions">
+                <button type="submit" class="btn btn--sm">Сохранить</button>
+                <button type="button" class="btn btn--secondary btn--sm"
+                        hx-get="{% url 'projects:stage_row' stage.pk %}"
+                        hx-target="#stage-{{ stage.pk }}" hx-swap="outerHTML">Отмена</button>
+            </div>
+        </form>
+    </td>
+</tr>

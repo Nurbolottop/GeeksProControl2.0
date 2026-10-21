@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}Загрузить группы академии — GeeksPro Control{% endblock %}
+
+{% block content %}
+<style>
+    .import-text textarea { width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.55; }
+    .import-row--error td { background: var(--red-bg); }
+    .import-row--same td { color: var(--text-muted); }
+    .branch-choice { display: flex; gap: 10px; margin-top: 2px; }
+    .branch-choice__item {
+        display: flex; align-items: center; gap: 8px; cursor: pointer;
+        padding: 8px 16px; border: 1px solid var(--border-strong); border-radius: 10px;
+        font-size: 14px; font-weight: 600; color: var(--text) !important;
+    }
+    .branch-choice__item:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+    .branch-choice__item input { accent-color: var(--primary); margin: 0; }
+</style>
+
+<div class="page-head">
+    <div>
+        <h1>Загрузить группы из сообщения</h1>
+        <div class="sub">
+            Вставьте текст, который прислала академия, как есть — с эмодзи и звёздочками.
+            Сначала покажем, что добавится и что изменится, сохранится только после подтверждения.
+        </div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'training:plan' %}" class="btn btn--secondary">Отмена</a>
+    </div>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="panel import-text">
+        <div class="form-field">
+            <label>{{ form.branch.label }}</label>
+            <div class="branch-choice">
+                {% for radio in form.branch %}
+                    <label class="branch-choice__item">{{ radio.tag }} {{ radio.choice_label }}</label>
+                {% endfor %}
+            </div>
+            <div class="sub">{{ form.branch.help_text }}</div>
+            {% if form.branch.errors %}<div class="form-errors">Выберите филиал.</div>{% endif %}
+        </div>
+        <div class="form-field" style="margin-top: 16px;">
+            <label for="{{ form.text.id_for_label }}">{{ form.text.label }}</label>
+            {{ form.text }}
+            {% if form.text.errors %}<div class="form-errors">{{ form.text.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="sub" style="margin-top: 8px;">
+            Повторная вставка того же сообщения не создаёт дубли: группа узнаётся по филиалу, направлению и номеру, у неё обновятся даты и численность.
+            Design считается как UX/UI, Flutter — как Mobile.
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn {% if rows %}btn--secondary{% endif %}">Проверить</button>
+        </div>
+    </div>
+
+    {% if rows is not None %}
+        <div class="panel" style="padding: 0;">
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Что будет</th>
+                        <th>Филиал</th>
+                        <th>Направление</th>
+                        <th>Группа</th>
+                        <th>Старт</th>
+                        <th>Конец</th>
+                        <th>Студентов</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in rows %}
+                        <tr class="import-row--{{ row.action }}">
+                            <td>
+                                {% if row.action == 'create' %}<span class="badge badge--green">новая</span>
+                                {% elif row.action == 'update' %}<span class="badge badge--yellow">изменится: {{ row.changes|join:', ' }}</span>
+                                {% elif row.action == 'same' %}<span class="badge badge--gray">без изменений</span>
+                                {% else %}<span class="badge badge--red">ошибка</span>{% endif %}
+                            </td>
+                            <td>{{ row.branch|default:'—' }}</td>
+                            <td>
+                                {% if row.specialization %}{{ row.specialization }}{% if row.direction_name|lower != row.specialization.name|lower %} <span class="sub">({{ row.direction_name }})</span>{% endif %}
+                                {% else %}{{ row.direction_name|default:'—' }}{% endif %}
+                            </td>
+                            {% if row.errors %}
+                                <td colspan="4">
+                                    {% for error in row.errors %}<div><strong>{{ error }}</strong></div>{% endfor %}
+                                    <div class="sub">{{ row.line }}</div>
+                                </td>
+                            {% else %}
+                                <td><strong>{{ row.number }}</strong></td>
+                                <td>{{ row.start_date|date:'d.m.Y' }}</td>
+                                <td>{{ row.end_date|date:'d.m.Y' }}</td>
+                                <td>
+                                    {% if row.students_count is None %}<span class="badge badge--gray">неизвестно</span>
+                                    {% else %}<strong>{{ row.students_count }}</strong>{% endif %}
+                                    {% if row.students_note %}<div class="sub">{{ row.students_note }}</div>{% endif %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="7" class="empty" style="text-align:center; padding: 24px;">
+                            В тексте не нашлось ни одной группы. Нужны строки вида «39 группа — старт: 09.06.2026 · конец: 06.10.2026 — 4 студента».
+                        </td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if has_changes %}
+            <div class="form-actions">
+                <button type="submit" name="confirm" value="1" class="btn">Сохранить группы</button>
+                <span class="sub">Строки с ошибками будут пропущены.</span>
+            </div>
+        {% elif rows %}
+            <div class="sub" style="margin-top: 12px;">Всё уже загружено — сохранять нечего.</div>
+        {% endif %}
+    {% endif %}
+</form>
+{% endblock %}

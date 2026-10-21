@@ -1,0 +1,52 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Тимлиды" subtitle="Сотрудники GeeksPro. Права — только на назначенные проекты и своё направление." %}
+    {% ui_button "Назначить на проект" variant="primary" icon_name="plus" data_gp_open="assign-modal" %}
+{% end_ui_page_header %}
+
+{% if uncovered %}<div style="margin-bottom: var(--space-4)">{% ui_card title="Направления без тимлида" subtitle="В направлении есть стажёры, а тимлида этого направления нет — назначьте." %}
+    <ul class="gp-attention">{% for item in uncovered %}<li><a href="{{ item.project.get_absolute_url }}?tab=team"><span class="gp-attention__dot gp-attention__dot--warning" aria-hidden="true"></span><span class="gp-attention__text">{{ item.project.name }}<span class="gp-attention__meta">{{ item.label }}</span></span><span class="gp-attention__action">Открыть</span></a></li>{% endfor %}</ul>
+{% end_ui_card %}</div>{% endif %}
+
+{% include "teams/_staff_filters.html" %}
+
+{% ui_card flush=True %}
+{% if page.object_list %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Тимлиды</caption>
+        <thead><tr><th scope="col">ФИО</th><th scope="col">Направление · город</th><th scope="col">Контакты</th><th scope="col">Кадровый статус</th><th scope="col">Текущие проекты</th><th scope="col" class="is-numeric">Участников</th><th scope="col">Резерв</th></tr></thead>
+        <tbody>
+        {% for person in page.object_list %}
+            <tr>
+                <td class="is-primary" data-label="ФИО"><a class="gp-link gp-table__primary" style="overflow-wrap:anywhere" href="{% url 'teams:staff_detail' person.pk %}">{{ person.full_name }}</a>{% if person.ui_past %}<span class="gp-table__secondary">Прошлые проекты: {{ person.ui_past|length }}</span>{% endif %}</td>
+                <td data-label="Направление · город">{{ person.specialization|default:"—" }}<span class="gp-table__secondary">{{ person.ui_branch }}</span></td>
+                <td data-label="Контакты" style="overflow-wrap:anywhere">{% if person.phone %}<a class="gp-link" href="tel:{{ person.phone }}">{{ person.phone }}</a>{% endif %}{% if person.telegram %}<span class="gp-table__secondary">{{ person.telegram }}</span>{% endif %}{% if not person.phone and not person.telegram %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td data-label="Кадровый статус">{% if person.staff_status %}{% ui_badge person.get_staff_status_display tone=person.ui_staff_tone %}{% else %}<span class="gp-muted">не оформлен</span>{% endif %}</td>
+                <td data-label="Текущие проекты">{% for m in person.ui_active %}{{ m.project.name }} <span class="gp-muted gp-small">с {{ m.joined_at|date:"d.m.Y"|default:"—" }}</span>{% if not forloop.last %}, {% endif %}{% empty %}<span class="gp-muted">не ведёт ни одного активного проекта</span>{% endfor %}</td>
+                <td class="is-numeric" data-label="Участников направления">{{ person.ui_people }}</td>
+                <td data-label="Резерв">{% if person.ui_reserve %}{% ui_badge person.ui_reserve.get_status_display %}{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Тимлидов не найдено" icon_name="users" %}</div>{% endif %}
+{% end_ui_card %}
+<div style="margin-top: var(--space-4)">{% ui_pagination page label="тимлидов" %}</div>
+{% if archived_leads %}<div style="margin-top: var(--space-5)">{% ui_card title="Архив" subtitle="У нас больше не работают — история сохранена." %}
+    <ul class="gp-attention">{% for p in archived_leads %}<li><a href="{% url 'teams:staff_detail' p.pk %}"><span class="gp-attention__dot" aria-hidden="true"></span><span class="gp-attention__text">{{ p.full_name }}<span class="gp-attention__meta">{{ p.specialization|default:"" }} · в архиве с {{ p.archived_at|date:"d.m.Y" }}</span></span></a></li>{% endfor %}</ul>
+{% end_ui_card %}</div>{% endif %}
+
+{% ui_modal id="assign-modal" title="Назначить тимлида на проект" %}
+    <form method="post" action="{% url 'teams:lead_add' %}" class="gp-stack" id="assign-form">{% csrf_token %}
+        <div class="gp-field"><label class="gp-label" for="a-project">Проект</label><select class="gp-select" id="a-project" name="project" required>{% for project in projects %}<option value="{{ project.pk }}">{{ project.name }}</option>{% endfor %}</select></div>
+        <div class="gp-field"><label class="gp-label" for="a-intern">Тимлид</label><select class="gp-select" id="a-intern" name="intern" required>{% for p in candidates %}<option value="{{ p.pk }}">{{ p.full_name }} · {{ p.specialization|default:"без направления" }}</option>{% endfor %}</select><span class="gp-help">Направление на проекте — по специализации тимлида.</span></div>
+        <label class="gp-check"><input type="checkbox" name="promote" value="1"><span class="gp-check__text">Это стажёр — повысить до штатного тимлида (стажировка завершится, станет выпускником)</span></label>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Назначить" variant="primary" type="submit" form="assign-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endblock %}

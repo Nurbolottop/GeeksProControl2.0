@@ -1,0 +1,37 @@
+{% extends "layouts/app.html" %}
+{% load ui static %}
+{% block title %}{{ project.name }} — GeeksPro Control{% endblock %}
+{% block legacy_assets %}{% if is_legacy_tab %}<link rel="stylesheet" href="{% static 'gp2/legacy.css' %}"><script src="{% static 'js/confirm-modal.js' %}" defer></script>{% endif %}{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block mobile_title %}{{ project.name }}{% endblock %}
+{% block page %}
+{% ui_page_header title=project.name subtitle=subtitle %}
+    {% ui_slot "eyebrow" %}
+        {% ui_badge project.get_status_display tone=status_tone %}
+        {% if stage_confirmed %}{% ui_badge "Этап: "|add:stage_label tone="primary" %}{% else %}{% ui_badge "Этап не подтверждён" tone="warning" dot=True %}{% endif %}
+        {% if project.recruitment_open %}{% ui_badge "Набор открыт" tone="success" dot=True %}{% else %}{% ui_badge "Набор закрыт" %}{% endif %}
+    {% end_ui_slot %}
+    {% if is_head %}
+    {% if project.group %}{% url 'attendance:group_meetings' project.group.pk as sheet_url %}{% ui_button "Табель" href=sheet_url icon_name="clipboard-check" %}{% endif %}
+    {% ui_dropdown label="Ещё" icon="more-horizontal" %}
+        {% for item in extra_tabs %}{% ui_menu_item item.label href=item.href %}{% endfor %}
+    {% end_ui_dropdown %}
+    {% url 'projects:update' project.pk as edit_url %}{% ui_button "Редактировать" variant="primary" href=edit_url icon_name="pencil" %}
+    {% endif %}
+{% end_ui_page_header %}
+
+{% ui_tabs tabs active=tab label="Разделы проекта" %}
+
+{% if tab == 'overview' %}{% include "projects/card/_overview.html" %}
+{% elif tab == 'stages' %}{% include "projects/card/_stages.html" %}
+{% elif tab == 'team' %}{% include "projects/card/_team.html" %}
+{% elif tab == 'documents' %}{% include "documents/_project_tab.html" %}
+{% elif tab == 'tasks' %}{% include "tasks/_project_tab.html" %}
+{% elif tab == 'report' %}{% include "projects/card/_reports.html" %}
+{% elif tab == 'attendance' %}{% include "projects/card/_attendance.html" %}
+{% elif tab == 'client' %}{% include "projects/card/_client.html" %}
+{% else %}
+    {% ui_alert "Раздел переносится на новый интерфейс в следующем этапе; данные и действия — прежние." title="Переходный вид" %}
+    <div class="gp-legacy" style="margin-top: var(--space-4)">{% include "projects/legacy/tab_"|add:tab|add:".html" %}</div>
+{% endif %}
+{% endblock %}

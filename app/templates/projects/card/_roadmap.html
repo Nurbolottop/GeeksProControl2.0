@@ -1,0 +1,16 @@
+{% load ui %}
+{# Путь проекта (UI-03C): этапы дорожкой — пройдено, сейчас, впереди. Данные — apps.projects.graphics.stage_roadmap #}
+{% ui_card title="Путь проекта" subtitle=roadmap_label %}
+    {% ui_slot "actions" %}{% ui_badge roadmap_percent_label tone="primary" %}{% end_ui_slot %}
+    {% if roadmap.segments %}
+    <ol class="gp-road" aria-label="Этапы проекта">
+        {% for seg in roadmap.segments %}
+            <li class="gp-road__step gp-road__step--{{ seg.state }}" style="--share: {{ seg.share }}">
+                <span class="gp-road__bar" aria-hidden="true"><span style="width: {{ seg.progress }}%"></span></span>
+                <span class="gp-road__title">{{ seg.title }}{% if seg.is_current %} {% ui_badge "сейчас" tone="primary" dot=True %}{% endif %}</span>
+                <span class="gp-road__meta">{% if seg.state == 'done' %}завершён{% elif seg.state == 'current' %}в работе · {{ seg.progress }}%{% else %}впереди{% endif %}{% if seg.date %} · {% if seg.date_is_plan %}до {% endif %}{{ seg.date|date:"d.m" }}{% endif %}</span>
+            </li>
+        {% endfor %}
+    </ol>
+    {% else %}<p class="gp-muted gp-small" style="margin:0">Этапов нет — они появятся по типу проекта.</p>{% endif %}
+{% end_ui_card %}

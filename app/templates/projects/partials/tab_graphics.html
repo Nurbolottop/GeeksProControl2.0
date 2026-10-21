@@ -1,0 +1,50 @@
+<section class="gx">
+    {% include 'projects/partials/graphics_stage.html' %}
+
+    {# ── Живые цифры ── #}
+    <div class="gx-tiles">
+        {% for tile in pulse %}
+            <div class="gx-tile gx-tile--{{ tile.tone }}" style="--delay: {{ forloop.counter0 }}">
+                <div class="gx-tile__label">{{ tile.label }}</div>
+                <div class="gx-tile__value">
+                    {% if tile.text %}
+                        {{ tile.text }}
+                    {% else %}
+                        <span data-count="{{ tile.value }}">0</span>
+                        <small>{{ tile.unit }}</small>
+                    {% endif %}
+                </div>
+                <div class="gx-tile__hint">{{ tile.hint }}</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {# ── Хронология этапов ── #}
+    {% if timeline %}
+        <div class="gx-card">
+            <h3 class="gx-card__title">Хронология этапов</h3>
+            <ol class="gx-timeline">
+                {% for row in timeline %}
+                    <li class="gx-timeline__item is-{{ row.segment.state }}{% if row.overdue %} is-overdue{% endif %}">
+                        <span class="gx-timeline__dot"></span>
+                        <div class="gx-timeline__body">
+                            <b>{{ row.segment.title }}</b>
+                            <span>
+                                {% if row.start %}начат {{ row.start|date:'d.m.Y' }}{% endif %}
+                                {% if row.end %}{% if row.start %} · {% endif %}закрыт {{ row.end|date:'d.m.Y' }}
+                                {% elif row.deadline %}{% if row.start %} · {% endif %}срок {{ row.deadline|date:'d.m.Y' }}{% endif %}
+                            </span>
+                        </div>
+                        <span class="gx-timeline__tag">
+                            {% if row.segment.state == 'done' %}Готово
+                            {% elif row.overdue %}Просрочен
+                            {% elif row.segment.state == 'current' %}В работе
+                            {% else %}Впереди{% endif %}
+                        </span>
+                    </li>
+                {% endfor %}
+            </ol>
+        </div>
+    {% endif %}
+</section>
+

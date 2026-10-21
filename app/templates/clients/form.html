@@ -1,0 +1,13 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title=title %}{% end_ui_page_header %}
+{% ui_card %}
+    <form method="post" class="gp-form">
+        {% csrf_token %}
+        {% ui_form form cols=2 %}
+        <div class="gp-form-actions">{% ui_button "Сохранить" variant="primary" type="submit" %}{% url 'clients:list' as list_url %}{% ui_button "Отмена" variant="ghost" href=list_url %}</div>
+    </form>
+{% end_ui_card %}
+{% endblock %}

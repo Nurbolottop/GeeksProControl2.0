@@ -1,0 +1,105 @@
+{% load ui %}
+{% comment %}
+Вкладка «Документы» (UI-03B) — одна и та же у руководителя, ПМ и тимлида.
+Контекст: project, docs (project_documents.overview), doc_urls, brief_link.
+Права решает сервер (docs.rights); здесь только показываем доступные действия.
+{% endcomment %}
+<div class="gp-stack gp-stack--lg">
+    {% if docs.closed %}
+        {% if docs.rights.correction %}{% ui_alert "Проект закрыт. Документы можно исправить только с указанием причины — исправление попадёт в журнал." level="warning" title="Исправление закрытого проекта" %}
+        {% else %}{% ui_alert "Проект закрыт — документы доступны только для просмотра." title="Только просмотр" %}{% endif %}
+    {% endif %}
+
+    {% ui_card title="Обязательные документы" subtitle="Бриф, договор, ТЗ и подписанный акт — без них проект не закрывается." flush=True %}
+        {% ui_slot "actions" %}{% if docs.missing %}{% ui_badge docs.present_label tone="warning" dot=True %}{% else %}{% ui_badge docs.present_label tone="success" dot=True %}{% endif %}{% end_ui_slot %}
+        <ul class="gp-docs">
+        {% for row in docs.rows %}
+            <li class="gp-doc{% if row.document %} gp-doc--present{% endif %}">
+                <span class="gp-doc__icon">{% if row.document %}{% ui_icon "check" %}{% else %}{% ui_icon "file-text" %}{% endif %}</span>
+                <div style="min-width:0">
+                    <p class="gp-doc__title">{{ row.label }}
+                        {% if row.document %}{% if row.is_brief and not row.document.file %}{% ui_badge "Заполнен заказчиком" tone="success" %}{% else %}{% ui_badge "Загружен" tone="success" %}{% endif %}
+                        {% else %}{% ui_badge "Нет" tone="warning" %}{% endif %}
+                    </p>
+                    {% if row.document %}
+                        <p class="gp-doc__meta">{% if row.document.title and row.document.title != row.label %}{{ row.document.title }} · {% endif %}{{ row.document.created_at|date:"d.m.Y H:i" }} · {% if row.document.uploaded_by %}{{ row.document.uploaded_by.display_name }}{% else %}{% if row.is_brief %}форма брифа{% else %}автор не указан{% endif %}{% endif %}{% if row.document.original_name %} · {{ row.document.original_name }}{% endif %}</p>
+                    {% else %}
+                        <p class="gp-doc__meta">{% if row.is_brief %}Заказчик заполняет бриф по ссылке ниже, или загрузите файл брифа.{% else %}Ещё не загружен.{% endif %}</p>
+                    {% endif %}
+                </div>
+                <div class="gp-doc__actions">
+                    {% if row.document.file %}<a class="gp-btn gp-btn--sm" href="{{ row.document.file.url }}" target="_blank" rel="noopener">{% ui_icon "eye" "sm" %}<span>Открыть</span></a>{% endif %}
+                    {% if row.is_brief and docs.brief %}{% ui_button "Ответы брифа" size="sm" data_gp_open="brief-answers" icon_name="file-text" %}{% endif %}
+                    {% if docs.rights.edit or docs.rights.correction %}
+                        {% if row.document %}{% ui_button "Заменить" size="sm" icon_name="upload" data_gp_open="doc-upload-"|add:row.code %}
+                            {% ui_button "Удалить" size="sm" variant="ghost" icon_name="trash" data_gp_open="doc-delete-"|add:row.code %}
+                        {% else %}{% ui_button "Загрузить" size="sm" variant="primary" icon_name="upload" data_gp_open="doc-upload-"|add:row.code %}{% endif %}
+                    {% endif %}
+                </div>
+                {% if row.history %}
+                <details class="gp-doc__history">
+                    <summary>История версий ({{ row.history|length }})</summary>
+                    <ul class="gp-doc__versions">
+                        {% for old in row.history %}
+                        <li>{{ old.title|default:row.label }} · загружен {{ old.created_at|date:"d.m.Y H:i" }}{% if old.uploaded_by %} ({{ old.uploaded_by.display_name }}){% endif %}{% if old.removed_at %} · {{ old.get_removed_reason_display|lower }} {{ old.removed_at|date:"d.m.Y H:i" }}{% if old.removed_by %} ({{ old.removed_by.display_name }}){% endif %}{% endif %}{% if old.file %} · <a class="gp-link" href="{{ old.file.url }}" target="_blank" rel="noopener">файл</a>{% endif %}</li>
+                        {% endfor %}
+                    </ul>
+                </details>
+                {% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+    {% end_ui_card %}
+
+    {% if docs.rights.edit %}
+    {% ui_card title="Ссылка на бриф" subtitle="Отправьте заказчику сами — он заполнит бриф без входа в систему. Внутренние данные проекта форма не показывает." %}
+        {% if brief_link %}
+            <div class="gp-copyline{% if request.GET.brief == 'new' %} gp-copyline--fresh{% endif %}" id="brief-link">
+                <a class="gp-copyline__url" id="brief-link-url" href="{{ brief_link.get_absolute_url }}" target="_blank" rel="noopener">{{ request.scheme }}://{{ request.get_host }}{{ brief_link.get_absolute_url }}</a>
+                {% ui_button "Копировать" size="sm" icon_name="copy" data_gp_copy="brief-link-url" %}
+            </div>
+            <p class="gp-muted gp-small" style="margin: var(--space-2) 0 0">Заполнений: {{ brief_link.submissions }}{% if brief_link.expires_at %} · действует до {{ brief_link.expires_at|date:"d.m.Y" }}{% endif %}</p>
+        {% else %}<p class="gp-muted gp-small" style="margin:0">Действующей ссылки нет.</p>{% endif %}
+        {% ui_slot "footer" %}
+            <form method="post" action="{{ doc_urls.brief_link }}">{% csrf_token %}{% if brief_link %}{% ui_button "Новая ссылка (старая перестанет работать)" size="sm" type="submit" %}{% else %}{% ui_button "Создать ссылку" size="sm" variant="primary" type="submit" icon_name="plus" %}{% endif %}</form>
+        {% end_ui_slot %}
+    {% end_ui_card %}
+    {% endif %}
+</div>
+
+{% if docs.rights.edit or docs.rights.correction %}
+{% for row in docs.rows %}
+    {% ui_modal id="doc-upload-"|add:row.code title=row.label %}
+        <form method="post" enctype="multipart/form-data" action="{{ doc_urls.upload }}" class="gp-stack" id="doc-upload-form-{{ row.code }}">
+            {% csrf_token %}<input type="hidden" name="doc_type" value="{{ row.code }}">
+            {% if row.document %}<p class="gp-text gp-small" style="margin:0">Новый файл станет действующей версией. Прежняя версия не удаляется — она останется в истории.</p>{% endif %}
+            <div class="gp-field"><label class="gp-label" for="f-{{ row.code }}-file">Файл</label><input class="gp-input" type="file" id="f-{{ row.code }}-file" name="file" required></div>
+            <div class="gp-field"><label class="gp-label" for="f-{{ row.code }}-title">Название</label><input class="gp-input" id="f-{{ row.code }}-title" name="title" maxlength="200" placeholder="{{ row.label }}"></div>
+            <div class="gp-field"><label class="gp-label" for="f-{{ row.code }}-date">Дата документа</label><input class="gp-input" type="date" id="f-{{ row.code }}-date" name="document_date"></div>
+            <div class="gp-field"><label class="gp-label" for="f-{{ row.code }}-comment">Комментарий</label><textarea class="gp-textarea" id="f-{{ row.code }}-comment" name="comment" rows="2"></textarea></div>
+            {% if docs.rights.correction %}<div class="gp-field"><label class="gp-label" for="f-{{ row.code }}-reason">Причина исправления</label><textarea class="gp-textarea" id="f-{{ row.code }}-reason" name="reason" rows="2" required></textarea></div>{% endif %}
+        </form>
+        {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Загрузить" variant="primary" type="submit" form="doc-upload-form-"|add:row.code icon_name="upload" %}{% end_ui_slot %}
+    {% end_ui_modal %}
+    {% if row.document %}
+    {% ui_modal id="doc-delete-"|add:row.code title="Удалить документ?" %}
+        <form method="post" action="{% url doc_urls.delete_name project.pk row.document.pk %}" class="gp-stack" id="doc-delete-form-{{ row.code }}">
+            {% csrf_token %}
+            <p class="gp-text" style="margin:0">«{{ row.label }}» перестанет считаться загруженным{% if not docs.closed %} — проект не закроется, пока документ не загрузят снова{% endif %}. Файл сохранится в истории версий.</p>
+            {% if docs.rights.correction %}<div class="gp-field"><label class="gp-label" for="d-{{ row.code }}-reason">Причина</label><textarea class="gp-textarea" id="d-{{ row.code }}-reason" name="reason" rows="2" required></textarea></div>{% endif %}
+        </form>
+        {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Удалить" variant="danger" type="submit" form="doc-delete-form-"|add:row.code icon_name="trash" %}{% end_ui_slot %}
+    {% end_ui_modal %}
+    {% endif %}
+{% endfor %}
+{% endif %}
+
+{% if docs.brief %}
+{% ui_modal id="brief-answers" title="Бриф заказчика" size="lg" %}
+    <p class="gp-muted gp-small" style="margin: 0 0 var(--space-3)">Заполнен {{ docs.brief.submitted_at|date:"d.m.Y H:i" }}</p>
+    <dl class="gp-metrics">
+        {% for label, value in docs.brief.display_rows %}{% if value %}<div class="gp-metrics__row" style="display:block"><dt>{{ label }}</dt><dd style="text-align:left; white-space: pre-line; font-weight: 400; margin-top: var(--space-1)">{{ value }}</dd></div>{% endif %}{% endfor %}
+        {% if docs.brief.requirements_file %}<div class="gp-metrics__row"><dt>Готовое ТЗ / документация</dt><dd><a class="gp-link" href="{{ docs.brief.requirements_file.url }}" target="_blank" rel="noopener">Открыть файл</a></dd></div>{% endif %}
+    </dl>
+{% end_ui_modal %}
+{% endif %}

@@ -1,0 +1,85 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Еженедельные отчёты — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Еженедельные отчёты" subtitle=week.label %}
+{% end_ui_page_header %}
+
+<form method="get" class="gp-filters" aria-label="Фильтры отчётов" style="margin-bottom: var(--space-4)">
+    <div class="gp-field"><label class="gp-label" for="f-week">Неделя</label><select class="gp-select" id="f-week" name="week">{% for w in weeks %}<option value="{{ w.key }}"{% if w.key == week.key %} selected{% endif %}>{{ w.label }}</option>{% endfor %}</select></div>
+    <div class="gp-field"><label class="gp-label" for="f-project">Проект</label><select class="gp-select" id="f-project" name="project"><option value="">Все</option>{% for p in projects %}<option value="{{ p.pk }}"{% if params.project == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></div>
+    <div class="gp-field"><label class="gp-label" for="f-direction">Направление</label><select class="gp-select" id="f-direction" name="direction"><option value="">Все</option>{% for key, label in directions %}<option value="{{ key }}"{% if params.direction == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div style="align-self: flex-end">{% ui_button "Применить" type="submit" icon_name="filter" %}</div>
+</form>
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Отчёты тимлидов" subtitle="Минимум один обязательный в неделю по каждому закреплённому проекту и направлению" %}
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>Обязательных</dt><dd>{{ labels.expected }}</dd></div>
+            <div class="gp-metrics__row"><dt>Сдано</dt><dd>{{ labels.submitted }}</dd></div>
+            <div class="gp-metrics__row"><dt>Не сдано</dt><dd>{{ labels.missed }}</dd></div>
+            {% if counts.pending %}<div class="gp-metrics__row"><dt>Ожидается</dt><dd>{{ counts.pending }}</dd></div>{% endif %}
+        </dl>
+    {% end_ui_card %}
+    {% ui_card title="Отчёты ПМ" subtitle="Один сводный в неделю; в срок — пятница или суббота" %}
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>В срок</dt><dd>{{ labels.pm_on_time }}</dd></div>
+            <div class="gp-metrics__row"><dt>Не в срок</dt><dd>{{ labels.pm_late }}</dd></div>
+            <div class="gp-metrics__row"><dt>Не сдано</dt><dd>{{ labels.pm_missing }}</dd></div>
+        </dl>
+    {% end_ui_card %}
+</div>
+
+{% if missing or pm_summary.missing_people %}
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Отсутствуют обязательные отчёты" flush=True %}
+    <ul class="gp-attention" style="padding: 0 var(--space-5)">
+    {% for o in missing %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot gp-attention__dot--danger" aria-hidden="true"></span><span class="gp-small">{{ o.lead_name }} — «{{ o.project.name }}»<span class="gp-attention__meta">тимлид · {{ o.ui_direction }}</span></span></span></li>{% endfor %}
+    {% for p in pm_summary.missing_people %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot gp-attention__dot--danger" aria-hidden="true"></span><span class="gp-small">{{ p.name }}<span class="gp-attention__meta">ПМ · сводный отчёт</span></span></span></li>{% endfor %}
+    </ul>
+{% end_ui_card %}
+</div>
+{% endif %}
+
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Обязательства тимлидов" flush=True %}
+    {% if obligations %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0">
+        <table class="gp-table">
+            <caption class="gp-sr-only">Обязательные отчёты тимлидов</caption>
+            <thead><tr><th scope="col">Тимлид</th><th scope="col">Проект</th><th scope="col">Направление</th><th scope="col">Статус</th><th scope="col">Сдан</th></tr></thead>
+            <tbody>{% for o in obligations %}<tr><td class="is-primary" data-label="Тимлид">{{ o.lead_name }}</td><td data-label="Проект">{{ o.project.name }}</td><td data-label="Направление">{{ o.ui_direction }}</td><td data-label="Статус">{% ui_badge o.label tone=o.tone dot=True %}</td><td data-label="Сдан">{{ o.report.created_at|date:"d.m.Y H:i"|default:"—" }}</td></tr>{% endfor %}</tbody>
+        </table>
+    </div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Обязательств нет" "На этой неделе не было закреплённых тимлидов." icon_name="calendar" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start; margin-top: var(--space-5)">
+    {% ui_card title="Отчёты ПМ" flush=True %}
+        {% if pm_reports %}
+        <ul class="gp-timeline" style="padding: 0 var(--space-5)">{% for r in pm_reports %}<li class="gp-timeline__item gp-timeline__item--{% if r.on_time %}success{% else %}warning{% endif %}"><span class="gp-timeline__icon">{% ui_icon "file-text" %}</span><div style="min-width:0"><p class="gp-timeline__title">{{ r.pm.full_name }} · {% if r.on_time %}в срок{% else %}не в срок{% endif %}</p><p class="gp-timeline__meta">{% for p in r.projects.all %}{{ p.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p><p class="gp-timeline__meta">{{ r.text }}</p></div><span class="gp-timeline__date">{{ r.created_at|date:"d.m.Y H:i" }}</span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Отчётов ПМ нет" icon_name="file-text" %}</div>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Отчёты тимлидов" flush=True %}
+        {% if lead_reports %}
+        <ul class="gp-timeline" style="padding: 0 var(--space-5)">{% for r in lead_reports %}<li class="gp-timeline__item"><span class="gp-timeline__icon">{% ui_icon "file-text" %}</span><div style="min-width:0"><p class="gp-timeline__title">{{ r.lead.full_name }} · «{{ r.project.name }}» · {{ r.ui_direction }}{% if r.kind == 'extra' %} · дополнительный{% endif %}</p><p class="gp-timeline__meta">{{ r.text }}</p></div><span class="gp-timeline__date">{{ r.created_at|date:"d.m.Y H:i" }}</span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Отчётов тимлидов нет" icon_name="file-text" %}</div>{% endif %}
+    {% end_ui_card %}
+</div>
+
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Еженедельные оценки стажёров" subtitle="Шкала 1–10. Архивные оценки по семи критериям — в карточке стажёра, в эту шкалу не переводятся." flush=True %}
+    {% if evaluations %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0">
+        <table class="gp-table">
+            <caption class="gp-sr-only">Оценки недели</caption>
+            <thead><tr><th scope="col">Стажёр</th><th scope="col">Проект</th><th scope="col">Оценка</th><th scope="col">Тимлид</th><th scope="col">Комментарий</th></tr></thead>
+            <tbody>{% for e in evaluations %}<tr><td class="is-primary" data-label="Стажёр"><a class="gp-link" href="{{ e.intern.get_absolute_url }}">{{ e.intern.full_name }}</a></td><td data-label="Проект">{{ e.project.name }}</td><td data-label="Оценка">{{ e.score }}/10</td><td data-label="Тимлид">{{ e.lead.full_name }}</td><td data-label="Комментарий">{{ e.comment|default:"—"|truncatechars:120 }}</td></tr>{% endfor %}</tbody>
+        </table>
+    </div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Оценок за неделю нет" icon_name="check-circle" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+{% endblock %}

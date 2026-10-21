@@ -1,0 +1,6 @@
+{% load ui %}<div class="gp-empty">
+    <div class="gp-empty__icon">{% ui_icon icon %}</div>
+    <p class="gp-empty__title">{{ title }}</p>
+    {% if text %}<p class="gp-empty__text">{{ text }}</p>{% endif %}
+    {% if action_label and action_href %}<div class="gp-empty__actions">{% ui_button action_label variant="primary" href=action_href %}</div>{% endif %}
+</div>

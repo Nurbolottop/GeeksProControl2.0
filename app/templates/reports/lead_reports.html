@@ -1,0 +1,61 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Отчёты и оценки — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Отчёты и оценки" subtitle=direction %}
+{% end_ui_page_header %}
+
+<form method="get" class="gp-filters" aria-label="Неделя" style="margin-bottom: var(--space-4)">
+    <div class="gp-field"><label class="gp-label" for="f-week">Неделя</label><select class="gp-select" id="f-week" name="week">{% for w in weeks %}<option value="{{ w.key }}"{% if w.key == week_key %} selected{% endif %}>{{ w.label }}</option>{% endfor %}</select></div>
+    <div style="align-self: flex-end">{% ui_button "Показать" type="submit" %}</div>
+</form>
+<p class="gp-muted gp-small" style="margin: 0 0 var(--space-4)">Обязательный отчёт — минимум один в неделю по каждому проекту, в любой день. Дополнительный — по запросу, в счёт обязательного не идёт. Оценка 1–10 — по фактической работе стажёра за неделю.</p>
+
+{% for item in projects %}
+<section id="p{{ item.project.pk }}" style="margin-bottom: var(--space-5)">
+{% ui_card title=item.title %}
+    {% ui_slot "actions" %}{% if item.obligation %}{% ui_badge item.obligation.label tone=item.obligation.tone dot=True %}{% endif %}{% end_ui_slot %}
+    <div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+        <form method="post" action="{{ item.submit_url }}" class="gp-stack">{% csrf_token %}<input type="hidden" name="week" value="{{ week_key }}"><input type="hidden" name="direction" value="{{ item.direction }}">
+            <h3 class="gp-h3" style="margin:0">Отчёт за неделю</h3>
+            <div class="gp-field"><label class="gp-label" for="r-kind-{{ item.project.pk }}">Вид</label><select class="gp-select" id="r-kind-{{ item.project.pk }}" name="kind"><option value="weekly"{% if item.obligation.status != 'submitted' %} selected{% endif %}>Еженедельный (обязательный)</option><option value="extra"{% if item.obligation.status == 'submitted' %} selected{% endif %}>Дополнительный</option></select></div>
+            <div class="gp-field"><label class="gp-label" for="r-text-{{ item.project.pk }}">Что сделано, проблемы, планы<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="r-text-{{ item.project.pk }}" name="text" rows="5" required></textarea></div>
+            <div>{% ui_button "Отправить отчёт" variant="primary" type="submit" %}</div>
+        </form>
+        <div class="gp-stack">
+            <h3 class="gp-h3" style="margin:0">Оценки стажёров</h3>
+            {% for row in item.interns %}
+            <form method="post" action="{{ item.evaluate_url }}" class="gp-stack" style="padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border)" id="{{ row.ui_form }}">{% csrf_token %}
+                <input type="hidden" name="week" value="{{ week_key }}"><input type="hidden" name="intern" value="{{ row.intern_id }}">
+                <p class="gp-text" style="margin:0; overflow-wrap:anywhere"><strong>{{ row.intern.full_name }}</strong>{% if row.ui_mark %} · {{ row.ui_mark.score }}/10{% if row.ui_foreign %} (поставил другой тимлид){% endif %}{% endif %}</p>
+                {% if not row.ui_foreign %}
+                <div class="gp-cluster" style="align-items: flex-end">
+                    <div class="gp-field" style="width: 96px"><label class="gp-label" for="{{ row.ui_form }}-s">Оценка</label><select class="gp-select" id="{{ row.ui_form }}-s" name="score" required>{% for n in scale %}<option value="{{ n }}"{% if row.ui_mark.score == n %} selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+                    <div class="gp-field" style="flex: 1 1 160px; min-width: 0"><label class="gp-label" for="{{ row.ui_form }}-c">Комментарий</label><input class="gp-input" id="{{ row.ui_form }}-c" name="comment" maxlength="4000" value="{{ row.ui_mark.comment|default:'' }}"></div>
+                    {% if row.ui_mark %}{% ui_button "Обновить" type="submit" %}{% else %}{% ui_button "Сохранить" variant="primary" type="submit" %}{% endif %}
+                </div>
+                {% endif %}
+            </form>
+            {% empty %}{% ui_empty "Активных стажёров вашего направления нет" icon_name="users" %}{% endfor %}
+        </div>
+    </div>
+{% end_ui_card %}
+</section>
+{% empty %}
+{% ui_empty "Закреплённых проектов нет" "Отчёты и оценки появятся, когда руководитель назначит вас на проект." icon_name="folder" %}
+{% endfor %}
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Мои отчёты" flush=True %}
+        {% if history %}
+        <ul class="gp-timeline" style="padding: 0 var(--space-5)">{% for r in history %}<li class="gp-timeline__item"><span class="gp-timeline__icon">{% ui_icon "file-text" %}</span><div style="min-width:0"><p class="gp-timeline__title">«{{ r.project.name }}» · неделя с {{ r.week_start|date:"d.m" }} · {{ r.get_kind_display|lower }}</p><p class="gp-timeline__meta">{{ r.text|truncatechars:300 }}</p></div><span class="gp-timeline__date">{{ r.created_at|date:"d.m.Y H:i" }}</span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Отчётов ещё нет" icon_name="file-text" %}</div>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="История оценок" flush=True %}
+        {% if evaluations %}
+        <ul class="gp-timeline" style="padding: 0 var(--space-5)">{% for e in evaluations %}<li class="gp-timeline__item"><span class="gp-timeline__icon">{% ui_icon "check-circle" %}</span><div style="min-width:0"><p class="gp-timeline__title">{{ e.intern.full_name }} · {{ e.score }}/10</p><p class="gp-timeline__meta">«{{ e.project.name }}» · неделя с {{ e.week_start|date:"d.m.Y" }}{% if e.comment %} · {{ e.comment|truncatechars:120 }}{% endif %}</p></div><span class="gp-timeline__date">{{ e.updated_at|date:"d.m.Y" }}</span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Оценок ещё нет" icon_name="check-circle" %}</div>{% endif %}
+    {% end_ui_card %}
+</div>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% load ui %}<div id="demo-tab-panel" role="tabpanel">
+    {% if tab == 'team' %}{% ui_empty "В команде пока никого" text="Добавьте участников — тимлида, стажёров, ПМ." icon_name="users" action_label="Добавить участника" action_href="#tabs" %}
+    {% elif tab == 'documents' %}<p class="gp-text">Содержимое вкладки «Документы» подгружено через htmx — URL обновился, история браузера работает.</p>
+    {% elif tab == 'history' %}{% ui_skeleton lines=4 %}
+    {% else %}<p class="gp-text">Вкладки-ссылки: каждая вкладка — обычная ссылка с <span class="gp-code">?tab=</span>. С <span class="gp-code">hx_target</span> содержимое подменяется без перезагрузки страницы.</p>{% endif %}
+</div>

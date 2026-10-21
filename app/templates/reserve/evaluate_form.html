@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Оценка: {{ candidate.full_name }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Оценка: {{ candidate.full_name }}</h1>
+        <div class="sub">Шкала 1–10. Общий рейтинг считается автоматически по заполненным критериям. Кандидат этих данных не видит.</div>
+    </div>
+    <div class="page-actions">
+        <a href="{{ candidate.get_absolute_url }}?tab=evaluation" class="btn btn--secondary">К карточке</a>
+    </div>
+</div>
+
+<form method="post" class="panel">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="message message--error">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div class="form-grid">
+        {% include 'partials/form_fields.html' %}
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn">Сохранить оценку</button>
+        <a href="{{ candidate.get_absolute_url }}" class="btn btn--secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}

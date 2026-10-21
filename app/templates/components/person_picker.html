@@ -1,0 +1,44 @@
+{% load ui %}{# Выбор человека из базы или новый человек (2.0). Контекст: people, selected_id, selected_name, specializations #}
+{{ people|json_script:"people-data" }}
+<div x-data="{ newPerson: false }" class="gp-stack gp-stack--sm">
+    <div x-show="!newPerson" class="gp-cluster" style="--cluster-gap: var(--space-2); flex-wrap: nowrap; align-items: flex-start">
+        <div class="gp-picker" style="position: relative; flex: 1 1 auto; min-width: 0"
+             x-data="{
+                open: false,
+                query: '{{ selected_name|default:''|escapejs }}',
+                selectedId: '{{ selected_id|default:'' }}',
+                people: JSON.parse(document.getElementById('people-data').textContent),
+                get filtered() {
+                    const q = this.query.trim().toLowerCase();
+                    const list = q ? this.people.filter(p => p.name.toLowerCase().includes(q)) : this.people;
+                    return list.slice(0, 30);
+                },
+                choose(person) { this.selectedId = person.id; this.query = person.name; this.open = false; }
+             }"
+             @click.outside="open = false" @keydown.escape="open = false">
+            <input type="hidden" name="intern" :value="selectedId">
+            <label class="gp-sr-only" for="person-query">Участник</label>
+            <input class="gp-input" id="person-query" type="text" x-model="query" @focus="open = true" @input="open = true; selectedId = ''"
+                   placeholder="Начните вводить имя" autocomplete="off" role="combobox" :aria-expanded="open">
+            <div class="gp-dropdown__menu gp-dropdown__menu--start" x-show="open" x-cloak style="left:0; right:0; max-width:none; max-height: 280px; overflow:auto" role="listbox">
+                <template x-for="person in filtered" :key="person.id">
+                    <button type="button" class="gp-menu__item" role="option" @click="choose(person)">
+                        <span x-text="person.name"></span><span class="gp-muted gp-small" style="margin-left:auto" x-text="person.spec"></span>
+                    </button>
+                </template>
+                <div class="gp-muted gp-small" style="padding: var(--space-3)" x-show="filtered.length === 0">Никого не найдено — нажмите «+», чтобы завести человека</div>
+            </div>
+        </div>
+        {% ui_button "Новый человек" icon_name="plus" label_hidden=True x_on_click="newPerson = true" %}
+    </div>
+    <div x-show="newPerson" x-cloak class="gp-stack gp-stack--sm">
+        <div class="gp-cluster" style="--cluster-gap: var(--space-2); flex-wrap: nowrap">
+            <label class="gp-sr-only" for="new-person">Фамилия и имя</label>
+            <input class="gp-input" id="new-person" type="text" name="new_person" autocomplete="off" placeholder="Фамилия и имя нового человека">
+            {% ui_button "Выбрать из базы" icon_name="x" label_hidden=True x_on_click="newPerson = false" %}
+        </div>
+        <label class="gp-sr-only" for="new-spec">Направление</label>
+        <select class="gp-select" id="new-spec" name="new_spec"><option value="">Направление</option>{% for spec in specializations %}<option value="{{ spec.pk }}">{{ spec.name }}</option>{% endfor %}</select>
+        <span class="gp-help">Человек добавится в базу стажёров и сразу в эту команду.</span>
+    </div>
+</div>

@@ -1,0 +1,19 @@
+<td class="att-cell">
+    <button type="button"
+            class="att-mark att-mark--{{ cell.status|default:'empty' }}"
+            title="{{ cell.meeting.get_kind_display }} {{ cell.meeting.date|date:'d.m.Y' }}"
+            hx-post="{% url 'attendance:toggle' cell.meeting.pk %}"
+            hx-vals='{"intern": "{{ intern.pk }}"}'
+            hx-target="closest td"
+            hx-swap="outerHTML">
+        {% if cell.status == 'present' %}✓
+        {% elif cell.status == 'absent' %}✕
+        {% elif cell.status == 'late' %}О
+        {% elif cell.status == 'excused' %}У
+        {% endif %}
+    </button>
+    {% if cell.score is not None %}
+        <div class="att-score att-score--{% if cell.score >= 8 %}high{% elif cell.score >= 5 %}mid{% else %}low{% endif %}"
+             title="Активность за период до {{ cell.meeting.date|date:'d.m.Y' }}">{{ cell.score }}</div>
+    {% endif %}
+</td>

@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>{{ title }}</h1>
+        <div class="sub">Проект: <a href="{{ project.get_absolute_url }}?tab=access">{{ project.name }}</a></div>
+    </div>
+</div>
+
+<form method="post" class="panel">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="message message--error">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div class="form-grid">
+        {% include 'partials/form_fields.html' %}
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn">Сохранить</button>
+        <a href="{{ project.get_absolute_url }}?tab=access" class="btn btn--secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}

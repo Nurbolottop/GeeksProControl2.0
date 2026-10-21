@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Резерв кадров — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head" x-data>
+    <div>
+        <h1>Резерв кадров по направлениям</h1>
+        <div class="sub">
+            Сколько кандидатов в каждом направлении и на какой они стадии.
+            Нажмите на направление, чтобы увидеть людей.
+        </div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'reserve:list' %}" class="btn btn--secondary">Все кандидаты</a>
+        {% if can_edit and totals.total %}
+            <button type="button" class="btn btn--secondary"
+                    @click="$dispatch('share-collection', { filters: '', title: 'Все направления', count: {{ totals.total }} })">Поделиться всеми направлениями</button>
+        {% endif %}
+        {% if can_edit %}
+            <a href="{% url 'reserve:create' %}" class="btn">+ Новый кандидат</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="kpi-grid">
+    <div class="kpi-card kpi-card--info">
+        <div class="kpi-card__value">{{ totals.total }}</div>
+        <div class="kpi-card__label">Всего кандидатов</div>
+    </div>
+    <div class="kpi-card kpi-card--yellow">
+        <div class="kpi-card__value">{{ totals.new }}</div>
+        <div class="kpi-card__label">Ждут проверки</div>
+    </div>
+    <div class="kpi-card kpi-card--green">
+        <div class="kpi-card__value">{{ totals.available }}</div>
+        <div class="kpi-card__label">В резерве, можно предлагать</div>
+    </div>
+    <div class="kpi-card kpi-card--blue">
+        <div class="kpi-card__value">{{ totals.in_progress }}</div>
+        <div class="kpi-card__label">На собеседованиях</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-card__value">{{ totals.employed }}</div>
+        <div class="kpi-card__label">Трудоустроены</div>
+    </div>
+</div>
+
+{% include 'reserve/partials/share_collections.html' %}
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Направление</th>
+                <th>Всего кандидатов</th>
+                <th>Ждут проверки</th>
+                <th>В резерве</th>
+                <th>На собеседованиях</th>
+                <th>Трудоустроены</th>
+                {% if can_edit %}<th></th>{% endif %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+                <tr>
+                    <td>
+                        <a href="{% url 'reserve:list' %}?specialization={{ row.key }}">
+                            <strong>{{ row.specialization|default:'Без направления' }}</strong>
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{% url 'reserve:list' %}?specialization={{ row.key }}">
+                            <strong style="font-size:15px">{{ row.total }}</strong>
+                        </a>
+                    </td>
+                    <td>
+                        {% if row.new %}
+                            <a href="{% url 'reserve:list' %}?specialization={{ row.key }}&status=review" class="badge badge--yellow">{{ row.new }}</a>
+                        {% else %}<span class="badge badge--gray">0</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if row.available %}
+                            <a href="{% url 'reserve:list' %}?specialization={{ row.key }}&status=reserve" class="badge badge--green">{{ row.available }}</a>
+                        {% else %}<span class="badge badge--gray">0</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if row.in_progress %}
+                            <a href="{% url 'reserve:list' %}?specialization={{ row.key }}&status=interview" class="badge badge--blue">{{ row.in_progress }}</a>
+                        {% else %}<span class="badge badge--gray">0</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if row.employed %}
+                            <a href="{% url 'reserve:list' %}?specialization={{ row.key }}&status=employed" class="badge badge--gray">{{ row.employed }}</a>
+                        {% else %}<span class="badge badge--gray">0</span>{% endif %}
+                    </td>
+                    {% if can_edit %}
+                        <td style="text-align: right;" x-data>
+                            {% if row.total %}
+                                <button type="button" class="btn btn--secondary btn--sm"
+                                        @click="$dispatch('share-collection', { filters: 'specialization={{ row.key }}', title: '{{ row.specialization|default:'Без направления'|escapejs }}', count: {{ row.total }} })">Поделиться</button>
+                            {% endif %}
+                        </td>
+                    {% endif %}
+                </tr>
+            {% empty %}
+                <tr><td colspan="{% if can_edit %}7{% else %}6{% endif %}" class="empty" style="text-align:center; padding: 24px;">Кандидатов пока нет.</td></tr>
+            {% endfor %}
+            </tbody>
+            {% if rows %}
+                <tfoot>
+                <tr>
+                    <td><strong>Итого</strong></td>
+                    <td><strong>{{ totals.total }}</strong></td>
+                    <td>{{ totals.new }}</td>
+                    <td>{{ totals.available }}</td>
+                    <td>{{ totals.in_progress }}</td>
+                    <td>{{ totals.employed }}</td>
+                    {% if can_edit %}<td></td>{% endif %}
+                </tr>
+                </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% if can_edit %}
+    <link rel="stylesheet" href="{% static 'css/reserve-share.css' %}">
+    <div class="cmodal" :class="{ 'is-open': open }"
+         x-data="{ open: false, filters: '', title: '', count: 0 }"
+         @share-collection.window="filters = $event.detail.filters; title = $event.detail.title; count = $event.detail.count; open = true"
+         @keydown.escape.window="open = false">
+        <div class="cmodal__overlay" @click="open = false"></div>
+        <form method="post" action="{% url 'reserve:share_collection_create' %}" class="cmodal__card reserve-share__modal">
+            {% csrf_token %}
+            <input type="hidden" name="filters" :value="filters">
+            <input type="hidden" name="next" value="overview">
+            <div class="cmodal__title">Ссылка на подборку: <span x-text="title"></span></div>
+            <p class="reserve-share__hint">
+                В подборку попадут все кандидаты — <strong x-text="count"></strong>.
+                Работодатель увидит список{% if rows|length > 1 %}, разбитый по направлениям,{% endif %} и откроет профиль каждого.
+                Внутренние комментарии и история не видны.
+            </p>
+            <input type="text" name="recipient" maxlength="255" placeholder="Для кого (компания, контакт)">
+            <select name="ttl_days" title="Срок действия ссылки">
+                {% for value, label in share_form.fields.ttl_days.choices %}
+                    <option value="{{ value }}" {% if value == '30' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <label class="reserve-share__check">
+                <input type="checkbox" name="show_contacts">
+                <span>Показывать контакты (телефон, Telegram, email)</span>
+            </label>
+            <div class="reserve-share__buttons">
+                <button type="button" class="btn btn--secondary btn--sm" @click="open = false">Отмена</button>
+                <button type="submit" class="btn btn--sm">Создать ссылку</button>
+            </div>
+        </form>
+    </div>
+    <script>
+        document.querySelectorAll('[data-copy]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                navigator.clipboard.writeText(document.getElementById(button.dataset.copy).href).then(function () {
+                    button.textContent = 'Скопировано';
+                    setTimeout(function () { button.textContent = 'Копировать'; }, 1500);
+                });
+            });
+        });
+    </script>
+{% endif %}
+{% endblock %}

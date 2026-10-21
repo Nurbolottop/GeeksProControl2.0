@@ -1,0 +1,47 @@
+<tr id="task-{{ task.pk }}" class="task-row task-row--{{ task.status }}">
+    <td>
+        <a href="{{ task.get_absolute_url }}"><strong>{{ task.title }}</strong></a>
+        {% if task.project %}
+            <div style="font-size:12px; color: var(--text-muted)">
+                <a href="{{ task.project.get_absolute_url }}">{{ task.project.name }}</a>
+            </div>
+        {% else %}
+            <div style="font-size:12px; color: var(--text-muted)">Без проекта</div>
+        {% endif %}
+    </td>
+    <td>
+        {% if task.priority == 'critical' %}<span class="badge badge--red">Critical</span>
+        {% elif task.priority == 'high' %}<span class="badge badge--orange">High</span>
+        {% elif task.priority == 'medium' %}<span class="badge badge--blue">Medium</span>
+        {% else %}<span class="badge badge--gray">Low</span>{% endif %}
+    </td>
+    <td>
+        {% if task.deadline %}
+            {{ task.deadline|date:'d.m.Y' }}
+            {% if task.is_open and task.deadline < today %}
+                <span class="badge badge--red">просрочена</span>
+            {% endif %}
+        {% else %}—{% endif %}
+    </td>
+    <td>
+        <form hx-post="{% url 'tasks:set_status' task.pk %}"
+              hx-target="#task-{{ task.pk }}" hx-swap="outerHTML"
+              style="margin:0; display:flex; align-items:center; gap:8px">
+            {% if task.status == 'done' %}<span class="task-done-mark">✓</span>{% endif %}
+            <select name="status" onchange="this.form.requestSubmit()"
+                    class="task-status task-status--{{ task.status }}">
+                {% for value, label in statuses %}
+                    <option value="{{ value }}" {% if task.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </td>
+    <td style="white-space: nowrap; text-align: right">
+        <a href="{% url 'tasks:update' task.pk %}" class="btn btn--secondary btn--sm">Изменить</a>
+        <form method="post" action="{% url 'tasks:delete' task.pk %}" style="display:inline"
+              data-confirm="Удалить задачу «{{ task.title|escapejs }}»?">
+            {% csrf_token %}
+            <button type="submit" class="btn btn--secondary btn--sm" title="Удалить">✕</button>
+        </form>
+    </td>
+</tr>

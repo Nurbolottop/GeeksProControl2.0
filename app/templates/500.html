@@ -1,0 +1,10 @@
+{% extends "layouts/auth.html" %}
+{% load ui %}
+{% comment %}Без обращений к БД и контексту: шаблон должен открыться, даже когда сломалось всё остальное.{% endcomment %}
+{% block title %}Ошибка сервера — GeeksPro Control{% endblock %}
+{% block card %}
+    <p class="gp-muted gp-small" style="margin:0 0 var(--space-2); font-weight: var(--weight-semibold)">Ошибка 500</p>
+    <h1 class="gp-auth__title">Что-то пошло не так</h1>
+    <p class="gp-auth__subtitle">Внутренняя ошибка сервера. Мы уже знаем о проблеме — попробуйте обновить страницу чуть позже.</p>
+    {% ui_button "На главную" variant="primary" href="/" icon_name="home" block=True %}
+{% endblock %}

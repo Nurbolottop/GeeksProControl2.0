@@ -1,0 +1,32 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Новое собрание — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Новое собрание" subtitle="Ссылка на видеовстречу у каждого участника своя — личность подтверждает она, а не имя в видеосервисе" %}
+{% end_ui_page_header %}
+{% if not pairs %}
+    {% ui_empty "Нет направлений для собраний" "Собрание направления назначает активный тимлид этого направления в идущем проекте." icon_name="calendar" %}
+{% else %}
+<form method="get" class="gp-filters" style="margin-bottom: var(--space-4)">
+    <div class="gp-field" style="flex: 1 1 260px"><label class="gp-label" for="f-pair">{% if scope == 'pm' %}Проект{% else %}Проект и направление{% endif %}</label><select class="gp-select" id="f-pair" name="pair">{% for p in pairs %}<option value="{{ p.key }}"{% if chosen and p.key == chosen.key %} selected{% endif %}>{{ p.label }}</option>{% endfor %}</select></div>
+    <div style="align-self: flex-end">{% ui_button "Выбрать" type="submit" %}</div>
+</form>
+{% ui_card title=chosen.label %}
+    <form method="post" class="gp-stack">{% csrf_token %}<input type="hidden" name="pair" value="{{ chosen.key }}">
+        <div class="gp-form-grid gp-form-grid--2">
+            <div class="gp-field"><label class="gp-label" for="m-topic">Тема<span class="gp-required" aria-hidden="true">*</span></label><input class="gp-input" id="m-topic" name="topic" maxlength="255" required value="{{ post.topic|default:'' }}"></div>
+            <div class="gp-field"><label class="gp-label" for="m-kind">Вид</label><select class="gp-select" id="m-kind" name="kind">{% for key, label in kinds %}<option value="{{ key }}"{% if post.kind == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="m-date">Дата</label><input class="gp-input" type="date" id="m-date" name="date" required value="{% if post.date %}{{ post.date }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}"></div>
+            <div class="gp-field"><label class="gp-label" for="m-time">Время (Бишкек)</label><input class="gp-input" type="time" id="m-time" name="time" required value="{{ post.time|default:'19:00' }}"></div>
+            <div class="gp-field"><label class="gp-label" for="m-duration">Длительность, мин</label><input class="gp-input" type="number" id="m-duration" name="duration" min="15" max="240" value="{{ post.duration|default:'60' }}"></div>
+        </div>
+        <fieldset class="gp-field" style="border:0; padding:0; margin:0"><legend class="gp-label">Участники ({{ people|length }})</legend>
+            {% for m in people %}<label class="gp-check" style="display:flex; gap: var(--space-2); align-items:center"><input type="checkbox" name="people" value="{{ m.intern_id }}" checked> {{ m.intern.full_name }}{% if not m.intern.telegram_chat_id %} <span class="gp-muted gp-small">— нет Telegram, приглашение не дойдёт</span>{% endif %}</label>{% empty %}<p class="gp-muted gp-small" style="margin:0">Активных участников нет.</p>{% endfor %}
+        </fieldset>
+        <p class="gp-muted gp-small" style="margin:0">Приглашения с персональной ссылкой уйдут через Telegram-бота (в stage исходящие отключены). Ссылку не пересылают: она подтверждает личность.</p>
+        <div>{% ui_button "Назначить собрание" variant="primary" type="submit" %}</div>
+    </form>
+{% end_ui_card %}
+{% endif %}
+{% endblock %}

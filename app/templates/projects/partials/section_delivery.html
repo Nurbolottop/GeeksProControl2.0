@@ -1,0 +1,84 @@
+{% comment %}Завершение проекта: проверки и кнопка — во вкладке «Обзор».{% endcomment %}
+<div class="panel" id="section-delivery">
+    <div class="panel-head">
+        <h2>Завершение проекта</h2>
+        {% if project.status == 'completed' %}
+            <span class="badge badge--green">Завершён</span>
+        {% elif delivery_ready %}
+            <span class="badge badge--green">Готов к завершению</span>
+        {% else %}
+            <span class="badge badge--yellow">Осталось {{ delivery_failed|length }}</span>
+        {% endif %}
+    </div>
+
+    {% if project.status == 'completed' %}
+        <div class="message message--success" style="margin:0">
+            Проект завершён {{ project.actual_end_date|date:'d.m.Y' }}.
+            {% if project.delay_days is not None %}
+                {% if project.delay_days > 0 %}Задержка: {{ project.delay_days }} дн.
+                {% else %}Сдан в срок.{% endif %}
+            {% endif %}
+        </div>
+    {% else %}
+        <div x-data="{ open: false, force: false }">
+            {% if delivery_ready %}
+                <div class="message message--success">Все условия выполнены — можно завершать.</div>
+            {% else %}
+                <div class="delivery-left">
+                    <div class="delivery-left__title">
+                        Не выполнено — завершение заблокировано:
+                    </div>
+                    <ul class="delivery-left__list">
+                        {% for check in delivery_failed %}
+                            <li>
+                                <span class="badge badge--red">✗</span>
+                                {{ check.label }}
+                                <span class="delivery-left__hint">— {{ check.hint }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px">
+                <form method="post" action="{% url 'projects:complete' project.pk %}" style="margin:0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn">Завершить проект</button>
+                </form>
+                <button type="button" class="btn btn--secondary" @click="force = !force"
+                        x-text="force ? 'Отмена' : 'Завершить принудительно'"></button>
+                <button type="button" class="btn btn--secondary" @click="open = !open"
+                        x-text="open ? 'Скрыть проверки' : 'Все проверки'"></button>
+            </div>
+
+            <form method="post" action="{% url 'projects:complete' project.pk %}"
+                  x-show="force" x-cloak class="delivery-force"
+                  data-confirm="Завершить проект принудительно, минуя проверки?">
+                {% csrf_token %}
+                <input type="hidden" name="force" value="1">
+                <input type="text" name="reason" required autocomplete="off"
+                       placeholder="Причина: например, клиент принял работу без акта">
+                <button type="submit" class="btn">Завершить без проверок</button>
+            </form>
+
+            <div x-show="open" x-cloak style="margin-top:14px">
+                {% regroup delivery_checks by group as check_groups %}
+                {% for group in check_groups %}
+                    <div class="delivery-group">{{ group.grouper }}</div>
+                    <ul class="attention-list">
+                        {% for check in group.list %}
+                            <li>
+                                {% if check.ok %}
+                                    <span class="badge badge--green">✓</span> {{ check.label }}
+                                {% else %}
+                                    <span class="badge badge--red">✗</span> {{ check.label }}
+                                    <span class="delivery-left__hint">— {{ check.hint }}</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>

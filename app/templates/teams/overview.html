@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Команды — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Команды и загрузка</h1>
+        <div class="sub">0–50% — свободен · 51–80% — норма · 81–100% — высокая · >100% — перегруз</div>
+    </div>
+</div>
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Человек</th>
+                <th>Загрузка</th>
+                <th>Состояние</th>
+                <th>Проекты</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for person in people %}
+                <tr>
+                    <td><strong>{{ person.name }}</strong></td>
+                    <td>
+                        <div class="progress">
+                            <div class="progress__bar">
+                                <div class="progress__fill" style="width: {% if person.total > 100 %}100{% else %}{{ person.total }}{% endif %}%;
+                                     {% if person.total > 100 %}background: var(--red){% elif person.total > 80 %}background: var(--orange){% endif %}"></div>
+                            </div>
+                            <span class="progress__label">{{ person.total }}%</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if person.band == 'overload' %}<span class="badge badge--red">⚠ {{ person.band_label }}</span>
+                        {% elif person.band == 'high' %}<span class="badge badge--orange">{{ person.band_label }}</span>
+                        {% elif person.band == 'normal' %}<span class="badge badge--green">{{ person.band_label }}</span>
+                        {% else %}<span class="badge badge--gray">{{ person.band_label }}</span>{% endif %}
+                    </td>
+                    <td style="font-size: 12px">
+                        {% for member in person.memberships %}
+                            <div>
+                                <a href="{{ member.project.get_absolute_url }}?tab=team">{{ member.project.name }}</a>
+                                — {{ member.get_role_display }}, {{ member.workload }}%
+                            </div>
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4" class="empty" style="text-align:center; padding: 24px;">
+                    Пока никто не назначен на проекты. Добавляйте участников из карточки проекта (вкладка «Команда»).
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "layouts/public.html" %}
+{% load ui %}
+{% comment %}
+Публичный бриф (без входа). Показываем только название проекта по ссылке —
+никаких внутренних данных: команды, статусов, этапов, других проектов.
+{% endcomment %}
+{% block title %}Бриф проекта — GeeksPro{% endblock %}
+{% block content %}
+<h1 class="gp-public__title">{% if project %}Бриф проекта «{{ project.name }}»{% else %}Бриф нового проекта{% endif %}</h1>
+<p class="gp-public__lead">Заполните, пожалуйста, анкету — по ней команда будет готовить проект. Если что-то не знаете точно, напишите примерно. Поля со звёздочкой обязательны.</p>
+
+<form method="post" enctype="multipart/form-data" class="gp-form" novalidate>
+    {% csrf_token %}
+    {% if form.errors %}{% ui_alert "Проверьте выделенные поля — бриф не отправлен." level="danger" %}{% for error in form.non_field_errors %}{% ui_alert error level="danger" %}{% endfor %}{% endif %}
+    {% if form.website %}<div class="gp-public__trap" aria-hidden="true"><label for="id_website">Сайт</label><input type="text" name="website" id="id_website" tabindex="-1" autocomplete="off"></div>{% endif %}
+
+    {% ui_card title="Компания и контакты" subtitle="Кто вы и как с вами связаться." %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% if form.project_name %}{% ui_field form.project_name wide=True %}{% endif %}
+            {% ui_field form.organization %}{% ui_field form.contact_name %}
+            {% ui_field form.phone %}{% ui_field form.email %}
+        </div>
+    {% end_ui_card %}
+    {% ui_card title="О проекте" subtitle="Что делаем и для кого." %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% ui_field form.about_business wide=True %}{% ui_field form.goal wide=True %}
+            {% ui_field form.target_audience wide=True %}{% ui_field form.required_features wide=True %}
+            {% ui_field form.references wide=True %}{% ui_field form.deadline_wish %}
+        </div>
+    {% end_ui_card %}
+    {% ui_card title="Технические детали" subtitle="Если чего-то ещё нет — так и напишите «нет»." %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% ui_field form.existing_site_url %}{% ui_field form.domain %}
+            {% ui_field form.integrations wide=True %}{% ui_field form.languages %}{% ui_field form.content_owner %}
+            {% ui_field form.social_links wide=True %}
+        </div>
+    {% end_ui_card %}
+    {% ui_card title="Дополнительно" subtitle="Необязательно, но поможет команде." %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% ui_field form.competitors wide=True %}{% ui_field form.brand_materials %}{% ui_field form.decision_maker %}
+            {% ui_field form.requirements_file wide=True %}{% ui_field form.preferred_contact %}
+            {% ui_field form.additional_notes wide=True %}
+        </div>
+    {% end_ui_card %}
+    <div class="gp-form-actions">{% ui_button "Отправить бриф" variant="primary" type="submit" size="lg" %}</div>
+</form>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "layouts/auth.html" %}
+{% load ui %}
+{% block title %}Нет доступа — GeeksPro Control{% endblock %}
+{% block card %}
+    <p class="gp-muted gp-small" style="margin:0 0 var(--space-2); font-weight: var(--weight-semibold)">Ошибка 403</p>
+    <h1 class="gp-auth__title">Веб-кабинет недоступен</h1>
+    <p class="gp-auth__subtitle">Для вашей учётной записи нет доступа к панели управления. Стажёры работают через Telegram-бот GeeksPro. Если доступ нужен по работе — обратитесь к руководителю.</p>
+    <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        {% ui_button "Выйти" variant="primary" type="submit" icon_name="log-out" block=True %}
+    </form>
+{% endblock %}

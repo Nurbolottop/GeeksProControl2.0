@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>{{ title }}</h1>
+        <div class="sub">Все, кто прошёл проверку в боте, и что они выбрали. Всего: {{ people|length }}</div>
+    </div>
+</div>
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>ФИО</th>
+                <th>Направление</th>
+                <th>Что выбрал(а)</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for person in people %}
+                <tr>
+                    <td><a href="{{ person.get_absolute_url }}"><strong>{{ person.full_name }}</strong></a></td>
+                    <td>{{ person.specialization|default:'—' }}</td>
+                    <td>
+                        {% if person.bot_outcome == 'pending' %}
+                            <span class="badge badge--yellow">Прошёл(ла) проверку, ещё не выбрал(а)</span>
+                        {% elif person.bot_outcome == 'waiting' %}
+                            <a href="{% url 'interns:graduates' %}?status=waiting" class="badge badge--blue">Продолжает — ждёт свободный проект</a>
+                        {% elif person.bot_outcome == 'resume_bank' %}
+                            {% if person.resume_bank_status == 'approved' %}
+                                <a href="{% url 'interns:resume_bank' %}" class="badge badge--green">В банк резюме — принят</a>
+                            {% elif person.resume_bank_status == 'revision' %}
+                                <a href="{% url 'interns:resume_bank' %}" class="badge badge--red">В банк резюме — на доработке</a>
+                            {% else %}
+                                <a href="{% url 'interns:resume_bank' %}" class="badge badge--yellow">В банк резюме — ожидает проверки</a>
+                            {% endif %}
+                        {% else %}
+                            {% if person.bot_project %}
+                                <span class="badge badge--blue">Продолжил(а) — {{ person.bot_project.name }}</span>
+                            {% else %}
+                                <span class="badge badge--gray">Продолжил(а), но сейчас не в команде</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="3" class="empty" style="text-align:center; padding: 24px;">Пока никто не писал боту.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

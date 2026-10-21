@@ -1,0 +1,17 @@
+{% load ui %}{% for project in alerts %}
+<div class="gp-alert gp-alert--danger" role="alert" style="margin-bottom: var(--space-3)">
+    {% ui_icon "alert-circle" %}
+    <div class="gp-alert__body">
+        <p class="gp-alert__title">{{ reminder_from }} просит обновить этап проекта «{{ project.name }}» на актуальный.</p>
+        <p class="gp-alert__text">Сейчас указан этап «{{ project.get_current_stage_display }}». Если он уже другой — отметьте в «Этапах»; если всё верно — подтвердите.</p>
+        <div class="gp-cluster" style="--cluster-gap: var(--space-2); margin-top: var(--space-2)">
+            <a class="gp-btn gp-btn--sm gp-btn--primary" href="{% url 'pm_portal:project_detail' project.pk %}?tab=stages"><span>Обновить этап</span></a>
+            <form method="post" action="{% url 'pm_portal:stages_confirm' project.pk %}" style="margin:0">
+                <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                {% ui_button "Этап актуален" size="sm" type="submit" %}
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}

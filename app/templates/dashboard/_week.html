@@ -1,0 +1,61 @@
+{% load ui %}{% url 'dashboard_week' as week_url %}
+<div id="week-block" class="gp-busy-region">
+{% ui_card title="Неделя" subtitle=activity.week.label flush=True %}
+    {% ui_slot "actions" %}
+        <div class="gp-tabs" role="tablist" aria-label="Неделя" style="margin:0; border:0">
+            {% for week in activity_weeks %}
+                <button type="button" role="tab" class="gp-tabs__tab{% if week.key == activity.week.key %} is-active{% endif %}" aria-selected="{% if week.key == activity.week.key %}true{% else %}false{% endif %}"
+                        hx-get="{{ week_url }}?week={{ week.key }}" hx-target="#week-block" hx-swap="outerHTML">{% if week.complete %}Прошлая{% else %}Текущая{% endif %}</button>
+            {% endfor %}
+        </div>
+    {% end_ui_slot %}
+    {% if not activity.week.complete %}
+        <div style="padding: var(--space-4) var(--space-5) 0">{% ui_alert "Неделя ещё идёт — цифры неполные, сравнивать их с прошлыми неделями нельзя." level="warning" %}</div>
+    {% endif %}
+    <div class="gp-grid gp-grid--3" style="--grid-gap: 0; padding: var(--space-2) var(--space-5) var(--space-4); column-gap: var(--space-8)">
+        <section aria-label="Стажёры">
+            <h3 class="gp-section-title" style="margin-top: var(--space-3)">Стажёры</h3>
+            <dl class="gp-metrics">
+                <div class="gp-metrics__row"><dt>Зарегистрировано новых</dt><dd>{{ activity.registered }}</dd></div>
+                <div class="gp-metrics__row"><dt>Получили статус выпускника</dt><dd>{{ activity.graduated }}</dd></div>
+                <div class="gp-metrics__row"><dt>Заморозки<span class="gp-metrics__note">по журналу: кнопка «Заморозить» и смена статуса в карточке</span></dt><dd>{{ activity.frozen }}</dd></div>
+                <div class="gp-metrics__row"><dt>Добровольные отмены<span class="gp-metrics__note">выход с причиной «Сам ушёл»</span></dt><dd>{{ activity.self_left }}</dd></div>
+                <div class="gp-metrics__row"><dt>Отчисления<span class="gp-metrics__note">«Не подошёл», «Не отвечает»</span></dt><dd>{{ activity.expelled }}</dd></div>
+            </dl>
+        </section>
+        <section aria-label="Проекты и собрания">
+            <h3 class="gp-section-title" style="margin-top: var(--space-3)">Проекты и собрания</h3>
+            <dl class="gp-metrics">
+                <div class="gp-metrics__row"><dt>Завершено проектов</dt><dd>{{ activity.projects_completed }}</dd></div>
+                <div class="gp-metrics__row"><dt>Обязательных собраний<span class="gp-metrics__note">по одному на каждое направление проекта со стажёрами</span></dt><dd>{{ activity.meetings.obligations }}</dd></div>
+                <div class="gp-metrics__row"><dt>— проведено{% if activity.meetings.video.fulfilled_manual %}<span class="gp-metrics__note">из них отмечено вручную: {{ activity.meetings.video.fulfilled_manual }}</span>{% endif %}</dt><dd>{{ activity.meetings.video.fulfilled }}</dd></div>
+                <div class="gp-metrics__row"><dt>— не выполнено{% if activity.meetings.obligations_reason %}<span class="gp-metrics__note">{{ activity.meetings.obligations_reason }}</span>{% endif %}</dt><dd>{% ui_value activity.meetings.obligations_missed empty="неделя идёт" %}</dd></div>
+                {% if activity.meetings.video.insufficient %}<div class="gp-metrics__row"><dt>— недостаточно данных<span class="gp-metrics__note">запланировано, но видеосервис ничего не прислал</span></dt><dd>{{ activity.meetings.video.insufficient }}</dd></div>{% endif %}
+                {% if activity.meetings.video.no_lead %}<div class="gp-metrics__row"><dt>— нет тимлида направления</dt><dd>{{ activity.meetings.video.no_lead }}</dd></div>{% endif %}
+                <div class="gp-metrics__row"><dt>Запланировано встреч</dt><dd>{{ activity.meetings.video.meetings_planned }}</dd></div>
+                <div class="gp-metrics__row"><dt>Уникальных участников<span class="gp-metrics__note">подтверждено персональной ссылкой</span></dt><dd>{{ activity.meetings.video.unique_participants }}</dd></div>
+                <div class="gp-metrics__row"><dt>Подтверждённая посещаемость</dt><dd>{{ activity.meetings.video.confirmed_attendance }} из {{ activity.meetings.video.invited }}{% if activity.meetings.video.attendance_no_data %} · нет данных: {{ activity.meetings.video.attendance_no_data }}{% endif %}</dd></div>
+                {% if activity.meetings.video.pm_meetings %}<div class="gp-metrics__row"><dt>Встреч ПМ с тимлидами<span class="gp-metrics__note">не обязательные, в норму не входят</span></dt><dd>{{ activity.meetings.video.pm_meetings }}</dd></div>{% endif %}
+                <div class="gp-metrics__row"><dt>Собраний в табеле: проведено</dt><dd>{{ activity.meetings.held }}</dd></div>
+                <div class="gp-metrics__row"><dt>— не проведено{% if activity.meetings.missed_unmarked %}<span class="gp-metrics__note">из них не отмечено: {{ activity.meetings.missed_unmarked }}</span>{% endif %}</dt><dd>{{ activity.meetings.missed }}</dd></div>
+                {% if activity.meetings.upcoming %}<div class="gp-metrics__row"><dt>— ещё впереди</dt><dd>{{ activity.meetings.upcoming }}</dd></div>{% endif %}
+            </dl>
+        </section>
+        <section aria-label="Обязательные отчёты">
+            <h3 class="gp-section-title" style="margin-top: var(--space-3)">Обязательные отчёты</h3>
+            <dl class="gp-metrics">
+                <div class="gp-metrics__row"><dt>Отчёты ПМ: ожидалось<span class="gp-metrics__note">один отчёт в неделю на ПМ, срок — пт или сб</span></dt><dd>{{ activity.pm_reports.expected }}</dd></div>
+                <div class="gp-metrics__row"><dt>— сдано в срок</dt><dd>{{ activity.pm_reports.on_time }}</dd></div>
+                {% if activity.pm_reports.other_day %}<div class="gp-metrics__row"><dt>— сдано в другой день</dt><dd>{{ activity.pm_reports.other_day }}</dd></div>{% endif %}
+                <div class="gp-metrics__row"><dt>— не сдано</dt><dd>{% if activity.pm_reports.due %}{{ activity.pm_reports.missing }}{% else %}<span class="gp-nodata">срок ещё не наступил</span>{% endif %}</dd></div>
+                <div class="gp-metrics__row"><dt>Отчёты тимлидов: ожидалось<span class="gp-metrics__note">минимум один в неделю на каждый закреплённый проект</span></dt><dd>{{ activity.lead_reports.expected }}</dd></div>
+                <div class="gp-metrics__row"><dt>— сдано</dt><dd>{{ activity.lead_reports.submitted }}</dd></div>
+                <div class="gp-metrics__row"><dt>— не сдано</dt><dd>{% if activity.lead_reports.due %}{{ activity.lead_reports.missing }}{% else %}<span class="gp-nodata">неделя не закончилась</span>{% endif %}</dd></div>
+                {% if activity.lead_reports.pending %}<div class="gp-metrics__row"><dt>— ожидается</dt><dd>{{ activity.lead_reports.pending }}</dd></div>{% endif %}
+                {% if activity.lead_reports.extra %}<div class="gp-metrics__row"><dt>Дополнительных отчётов<span class="gp-metrics__note">в счёт обязательных не идут</span></dt><dd>{{ activity.lead_reports.extra }}</dd></div>{% endif %}
+                <div class="gp-metrics__row"><dt>Все отчёты недели</dt><dd><a class="gp-link" href="{% url 'weekly_reports:board' %}?week={{ activity.week.key }}">открыть</a></dd></div>
+            </dl>
+        </section>
+    </div>
+{% end_ui_card %}
+</div>

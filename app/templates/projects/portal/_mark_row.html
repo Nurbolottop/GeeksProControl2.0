@@ -1,0 +1,12 @@
+{% load ui %}<li class="gp-mark" id="mark-{{ member.intern_id }}">
+    <span class="gp-avatar gp-avatar--sm" aria-hidden="true">{{ member.person_name|first|upper }}</span>
+    <span class="gp-mark__name">{{ member.person_name }}</span>
+    {% if editable %}
+    <button type="button" class="gp-mark__state gp-mark__state--{{ member.mark.status|default:'none' }}"
+        hx-post="{{ mark_url }}" hx-vals='{"intern": "{{ member.intern_id }}"}'
+        hx-target="#mark-{{ member.intern_id }}" hx-swap="outerHTML"
+        aria-label="Отметка {{ member.person_name }}: {% if member.mark %}{{ member.mark.get_status_display }}{% else %}нет{% endif %}. Нажмите, чтобы сменить">
+        {% if member.mark %}{{ member.mark.get_status_display }}{% else %}Отметить{% endif %}
+    </button>
+    {% else %}<span class="gp-mark__state gp-mark__state--{{ member.mark.status|default:'none' }}">{% if member.mark %}{{ member.mark.get_status_display }}{% else %}нет отметки{% endif %}</span>{% endif %}
+</li>

@@ -1,0 +1,30 @@
+{% load ui %}{% if rows %}
+<div class="gp-table-wrap{% if stack %} gp-table--stack{% endif %}">
+    <table class="gp-table">
+        {% if caption %}<caption>{{ caption }}</caption>{% endif %}
+        <thead>
+            <tr>
+                {% for column in columns %}
+                    <th scope="col" class="{% if column.numeric %}is-numeric{% endif %}{% if column.actions %} is-actions{% endif %}">
+                        {% if column.sort %}{% ui_sort column.label column.sort hx_target=hx_target %}{% elif column.actions %}<span class="gp-sr-only">{{ column.label }}</span>{% else %}{{ column.label }}{% endif %}
+                    </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for cells in rows %}
+                <tr>
+                    {% for cell in cells %}
+                        <td data-label="{{ cell.column.label }}" class="{% if cell.column.numeric %}is-numeric{% endif %}{% if cell.column.primary %} is-primary{% endif %}{% if cell.column.actions %} is-actions{% endif %}">
+                            {% if cell.badge %}{% ui_badge cell.badge tone=cell.tone %}{% elif cell.href %}<a class="gp-link gp-table__primary" href="{{ cell.href }}">{{ cell.text }}</a>{% elif cell.column.primary %}<span class="gp-table__primary">{{ cell.text }}</span>{% else %}{{ cell.text }}{% endif %}
+                            {% if cell.secondary %}<span class="gp-table__secondary">{{ cell.secondary }}</span>{% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="gp-card">{% ui_empty empty_title text=empty_text %}</div>
+{% endif %}

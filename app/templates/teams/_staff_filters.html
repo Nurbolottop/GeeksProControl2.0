@@ -1,0 +1,10 @@
+{% load ui %}<form method="get" class="gp-card" style="margin-bottom: var(--space-4)" role="search" aria-label="Фильтры">
+    <div class="gp-card__body">
+        <div class="gp-filters">
+            <div class="gp-field gp-filters__wide"><label class="gp-label" for="s-q">Поиск</label><input class="gp-input" id="s-q" type="search" name="q" value="{{ params.q|default:'' }}" placeholder="ФИО, телефон или Telegram"></div>
+            <div class="gp-field"><label class="gp-label" for="s-dir">Направление</label><select class="gp-select" id="s-dir" name="direction"><option value="">Все</option>{% for spec in directions %}<option value="{{ spec.pk }}"{% if params.direction == spec.pk|stringformat:'s' %} selected{% endif %}>{{ spec.name }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="s-staff">Кадровый статус</label><select class="gp-select" id="s-staff" name="staff"><option value="">Любой</option>{% for value, label in staff_statuses %}<option value="{{ value }}"{% if params.staff == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="gp-cluster" style="margin-top: var(--space-4)">{% ui_button "Применить" variant="primary" type="submit" icon_name="filter" %}<span class="gp-muted gp-small" style="margin-left:auto">Найдено {{ page.paginator.count }} из {{ total }}</span></div>
+    </div>
+</form>

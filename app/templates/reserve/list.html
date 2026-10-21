@@ -1,0 +1,316 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Резерв кадров — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Резерв кадров</h1>
+        <div class="sub">Проверенные стажёры и выпускники, которых мы рекомендуем компаниям. Всего: {{ page.paginator.count }}</div>
+    </div>
+    {% if can_edit %}
+        <div class="page-actions">
+            <form method="post" action="{% url 'reserve:from_intern' %}" style="margin: 0; display: flex; gap: 8px;">
+                {% csrf_token %}
+                <select name="intern" class="form-link__ttl" required>
+                    <option value="">Добавить из стажёров…</option>
+                    {% for intern in free_interns %}
+                        <option value="{{ intern.pk }}">{{ intern.full_name }}{% if intern.specialization %} — {{ intern.specialization }}{% endif %}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn--secondary">Взять в резерв</button>
+            </form>
+            <form method="post" action="{% url 'reserve:invite_create' %}" style="margin: 0; display: flex; gap: 8px;">
+                {% csrf_token %}
+                <select name="ttl_days" class="form-link__ttl" title="Срок действия ссылки">
+                    {% for value, label in invite_form.fields.ttl_days.choices %}
+                        <option value="{{ value }}" {% if value == '7' %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn--secondary">Новая ссылка на анкету</button>
+            </form>
+            <a href="{% url 'reserve:create' %}" class="btn">+ Новый кандидат</a>
+        </div>
+    {% endif %}
+</div>
+
+{% if can_edit %}
+    <div class="form-link {% if not open_invites %}form-link--off{% endif %}">
+        <div class="form-link__body">
+            <div class="form-link__label">Ссылки на анкету</div>
+            {% for invite in open_invites %}
+                <div class="form-link__row">
+                    <div>
+                        <a class="form-link__url" id="invite-url-{{ invite.pk }}" href="{{ invite.get_absolute_url }}" target="_blank" rel="noopener">{{ request.scheme }}://{{ request.get_host }}{{ invite.get_absolute_url }}</a>
+                        <div class="form-link__meta">
+                            {% if invite.recipient %}{{ invite.recipient }} · {% endif %}
+                            создана {{ invite.created_at|date:'d.m.Y H:i' }}
+                            · {% if invite.expires_at %}действует до {{ invite.expires_at|date:'d.m.Y H:i' }}{% else %}без срока{% endif %}
+                            · заполнений: {{ invite.submissions }}
+                        </div>
+                    </div>
+                    <div class="form-link__actions">
+                        <button type="button" class="btn btn--secondary btn--sm" data-copy="invite-url-{{ invite.pk }}">Копировать</button>
+                        <form method="post" action="{% url 'reserve:invite_disable' invite.pk %}" style="margin: 0;"
+                              data-confirm="Отключить ссылку? Анкету по ней больше не заполнить."
+                              data-confirm-ok="Отключить">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn--secondary btn--sm">Отключить</button>
+                        </form>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="form-link__meta">Действующих ссылок нет. Создайте ссылку кнопкой выше и раздайте кандидатам — анкету заполняют сами, доступа к платформе не получают.</div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
+
+<form method="get" class="filterbar" x-data="{ more: {% if extra_filters %}true{% else %}false{% endif %} }">
+    <input type="text" name="q" class="filterbar__search" placeholder="Поиск: ФИО, телефон, email, Telegram" value="{{ params.q|default:'' }}">
+    <select name="specialization">
+        <option value="">Направление: все</option>
+        {% for spec in specializations %}
+            <option value="{{ spec.pk }}" {% if params.specialization == spec.pk|stringformat:'s' %}selected{% endif %}>{{ spec.name }}</option>
+        {% endfor %}
+    </select>
+    <select name="status">
+        <option value="">Статус: все</option>
+        {% for value, label in statuses %}
+            <option value="{{ value }}" {% if params.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <select name="sort">
+        {% for value, label in sort_options %}
+            <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn--sm">Применить</button>
+    <button type="button" class="btn btn--secondary btn--sm" @click="more = !more">
+        Ещё фильтры{% if extra_filters %} · {{ extra_filters }}{% endif %}
+    </button>
+    {% if has_filters %}
+        <a href="{% url 'reserve:list' %}" class="btn btn--secondary btn--sm">Сбросить</a>
+    {% endif %}
+
+    <div class="filterbar__more" x-show="more" x-cloak>
+        <label>Уровень
+            <select name="level">
+                <option value="">Все</option>
+                {% for value, label in levels %}
+                    <option value="{{ value }}" {% if params.level == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Технология
+            <input type="text" name="skill" placeholder="Django, Figma…" value="{{ params.skill|default:'' }}">
+        </label>
+        <label>Город
+            <select name="city">
+                <option value="">Все</option>
+                {% for city in cities %}
+                    <option value="{{ city }}" {% if params.city == city %}selected{% endif %}>{{ city }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Формат работы
+            <select name="work_format">
+                <option value="">Любой</option>
+                {% for value, label in work_formats %}
+                    <option value="{{ value }}" {% if params.work_format == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Занятость
+            <select name="employment">
+                <option value="">Любая</option>
+                {% for value, label in employments %}
+                    <option value="{{ value }}" {% if params.employment == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Готовность
+            <select name="readiness">
+                <option value="">Все</option>
+                {% for value, label in readiness_options %}
+                    <option value="{{ value }}" {% if params.readiness == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Рейтинг
+            <select name="rating">
+                <option value="">Любой</option>
+                {% for value, label in rating_options %}
+                    <option value="{{ value }}" {% if params.rating == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+    </div>
+</form>
+
+{% include 'reserve/partials/share_collections.html' %}
+
+<div{% if can_edit %} x-data="{ selected: [], all: [{% for candidate in page.object_list %}'{{ candidate.pk }}'{% if not forloop.last %},{% endif %}{% endfor %}], open: false }"{% endif %}>
+{% if can_edit %}
+    <link rel="stylesheet" href="{% static 'css/reserve-share.css' %}">
+    <div class="reserve-bulk">
+        <span class="sub" x-text="selected.length ? 'Выбрано: ' + selected.length : 'Отметьте кандидатов галочками или поделитесь всем списком по фильтру'"></span>
+        <div class="reserve-share" @keydown.escape="open = false">
+            <button type="button" class="btn btn--sm" @click="open = !open"
+                    x-text="selected.length ? 'Поделиться выбранными (' + selected.length + ')' : 'Поделиться всем списком ({{ page.paginator.count }})'">Поделиться списком</button>
+            <form method="post" action="{% url 'reserve:share_collection_create' %}" class="reserve-share__form" x-show="open" x-cloak @click.outside="open = false">
+                {% csrf_token %}
+                <input type="hidden" name="filters" value="{{ request.GET.urlencode }}">
+                <template x-for="pk in selected" :key="pk"><input type="hidden" name="candidates" :value="pk"></template>
+                <div class="reserve-share__title">Одна ссылка на подборку</div>
+                <p class="reserve-share__hint" x-show="selected.length">В подборку попадут отмеченные кандидаты: <strong x-text="selected.length"></strong>.</p>
+                <p class="reserve-share__hint" x-show="!selected.length">Никто не отмечен — в подборку попадут все по текущему фильтру: <strong>{{ page.paginator.count }}</strong>.</p>
+                <p class="reserve-share__hint">Работодатель увидит список и откроет профиль каждого. Внутренние комментарии и история не видны.</p>
+                <input type="text" name="recipient" maxlength="255" placeholder="Для кого (компания, контакт)">
+                <select name="ttl_days" title="Срок действия ссылки">
+                    {% for value, label in share_form.fields.ttl_days.choices %}
+                        <option value="{{ value }}" {% if value == '30' %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <label class="reserve-share__check">
+                    <input type="checkbox" name="show_contacts">
+                    <span>Показывать контакты (телефон, Telegram, email)</span>
+                </label>
+                <button type="submit" class="btn btn--sm">Создать ссылку</button>
+            </form>
+        </div>
+    </div>
+{% endif %}
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr>
+                    {% if can_edit %}<th style="width: 28px;"><input type="checkbox" title="Отметить всех на странице" :checked="all.length && selected.length === all.length" @change="selected = $event.target.checked ? [...all] : []"></th>{% endif %}
+                    {% if can_drag %}<th style="width: 28px;"></th>{% endif %}
+                    <th>Кандидат</th>
+                    <th>Направление</th>
+                    <th>Уровень</th>
+                    <th>Технологии</th>
+                    <th>Город</th>
+                    <th>Поиск работы</th>
+                    <th>Рейтинг</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+            <tbody{% if can_drag %} id="reserve-rows"{% endif %}>
+                {% for candidate in page.object_list %}
+                    <tr{% if can_drag %} draggable="true" data-id="{{ candidate.pk }}"{% endif %}>
+                        {% if can_edit %}<td><input type="checkbox" value="{{ candidate.pk }}" x-model="selected"></td>{% endif %}
+                        {% if can_drag %}
+                            <td class="drag-handle" title="Перетащите, чтобы поднять выше">⠿</td>
+                        {% endif %}
+                        <td>
+                            <div class="person">
+                                {% if candidate.photo %}
+                                    <img src="{{ candidate.photo.url }}" alt="" class="person__photo">
+                                {% else %}
+                                    <span class="person__photo person__photo--empty">{{ candidate.full_name|slice:':1' }}</span>
+                                {% endif %}
+                                <span>
+                                    <a href="{{ candidate.get_absolute_url }}"><strong>{{ candidate.full_name }}</strong></a>
+                                    <div class="sub">{{ candidate.desired_position|default:candidate.recommended_position|default:'—' }}</div>
+                                </span>
+                            </div>
+                        </td>
+                        <td>{{ candidate.direction }}</td>
+                        <td>{% if candidate.geekspro_level %}<span class="badge badge--blue">{{ candidate.get_geekspro_level_display }}</span>{% else %}—{% endif %}</td>
+                        <td class="reserve-skills">
+                            {% for skill in candidate.skills_list|slice:':4' %}<span class="chip">{{ skill }}</span>{% empty %}—{% endfor %}
+                        </td>
+                        <td>{{ candidate.city|default:'—' }}</td>
+                        <td>
+                            {% if candidate.is_looking_for_job %}
+                                <span class="badge badge--green">Ищет работу</span>
+                            {% else %}
+                                <span class="badge badge--gray">Не ищет</span>
+                            {% endif %}
+                        </td>
+                        <td>{% if candidate.rating %}<strong>{{ candidate.rating }}</strong> / 10{% else %}—{% endif %}</td>
+                        <td><span class="badge badge--{{ candidate.status_tone }}">{{ candidate.get_status_display }}</span></td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="{% if can_drag %}10{% elif can_edit %}9{% else %}8{% endif %}" class="empty" style="text-align:center; padding: 24px;">Кандидатов не найдено.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+
+{% if page.paginator.num_pages > 1 %}
+    <div class="pagination">
+        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">‹</a>{% endif %}
+        <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a href="?page={{ page.next_page_number }}">›</a>{% endif %}
+    </div>
+{% endif %}
+
+{% if can_drag %}
+<div class="sub" style="margin-top: 10px;">
+    Порядок задаёте вы: перетащите строку мышкой за «⠿» — кто выше, тот приоритетнее.
+</div>
+<script>
+(function () {
+    var tbody = document.getElementById('reserve-rows');
+    if (!tbody) return;
+    var dragged = null;
+
+    tbody.querySelectorAll('tr[draggable]').forEach(function (row) {
+        row.addEventListener('dragstart', function () {
+            dragged = row;
+            row.classList.add('is-dragging');
+        });
+        row.addEventListener('dragend', function () {
+            row.classList.remove('is-dragging');
+        });
+        row.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            if (!dragged || dragged === row) return;
+            var box = row.getBoundingClientRect();
+            var below = (e.clientY - box.top) > box.height / 2;
+            tbody.insertBefore(dragged, below ? row.nextSibling : row);
+        });
+    });
+
+    tbody.addEventListener('drop', function (e) {
+        e.preventDefault();
+        if (!dragged) return;
+        dragged = null;
+        var body = new URLSearchParams();
+        tbody.querySelectorAll('tr[data-id]').forEach(function (row) {
+            body.append('order', row.dataset.id);
+        });
+        fetch('{% url "reserve:reorder" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: body,
+        }).then(function (resp) {
+            if (!resp.ok) { window.location.reload(); }
+        });
+    });
+})();
+</script>
+{% endif %}
+
+<script>
+    document.querySelectorAll('[data-copy]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = document.getElementById(button.dataset.copy).href;
+            navigator.clipboard.writeText(url).then(function () {
+                button.textContent = 'Скопировано';
+                setTimeout(function () { button.textContent = 'Копировать'; }, 1500);
+            });
+        });
+    });
+</script>
+{% endblock %}

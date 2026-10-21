@@ -1,0 +1,237 @@
+/*
+ * GeeksPro Control 2.0 — дизайн-токены.
+ *
+ * Единственный источник цветов, шрифтов, отступов, радиусов и теней.
+ * Компоненты используют только var(--…) отсюда — без «сырых» hex и px.
+ * Тема: data-theme="light|dark" на <html>; без атрибута — по системе.
+ *
+ * Порядок слоёв: legacy (стили 1.0 на непереведённых страницах) ниже всех,
+ * поэтому новые правила всегда сильнее старых.
+ */
+@layer legacy, tokens, base, layout, components, utilities;
+
+@font-face {
+  font-family: "Inter";
+  src: url("../fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@layer tokens {
+  :root {
+    color-scheme: light;
+
+    /*
+     * Бренд — ВРЕМЕННЫЙ. Официального логотипа и цвета Geeks в проекте нет;
+     * когда они появятся, меняются только эти переменные (и components/brand.html).
+     */
+    --brand-50: #eef2ff;
+    --brand-100: #e0e7ff;
+    --brand-400: #818cf8;
+    --brand-500: #6366f1;
+    --brand-600: #4f46e5;
+    --brand-700: #4338ca;
+    --brand-900: #1e1b4b;
+
+    /* Типографика: Inter (кириллица), база 15px */
+    --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --text-xs: 0.75rem;     /* 12 */
+    --text-sm: 0.8125rem;   /* 13 */
+    --text-md: 0.9375rem;   /* 15 */
+    --text-lg: 1.0625rem;   /* 17 */
+    --text-xl: 1.25rem;     /* 20 */
+    --text-2xl: 1.5rem;     /* 24 */
+    --text-3xl: 1.875rem;   /* 30 */
+    --leading-tight: 1.25;
+    --leading-normal: 1.5;
+    --weight-regular: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+    --tracking-tight: -0.011em;
+
+    /* Отступы: сетка 4px */
+    --space-0: 0;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-full: 999px;
+
+    /* Поверхности и текст */
+    --color-bg: #f7f8fa;
+    --color-surface: #ffffff;
+    --color-surface-raised: #ffffff;
+    --color-surface-sunken: #f1f3f6;
+    --color-surface-hover: #f3f4f7;
+    --color-overlay: rgb(15 18 25 / 0.45);
+    --color-border: #e4e7ec;
+    --color-border-strong: #cfd4dc;
+    --color-text: #111827;
+    --color-text-muted: #4b5563;
+    --color-text-subtle: #6b7280;
+    --color-text-disabled: #9ca3af;
+
+    /* Действия */
+    --color-primary: var(--brand-600);
+    --color-primary-hover: var(--brand-700);
+    --color-primary-soft: var(--brand-50);
+    --color-primary-soft-text: var(--brand-700);
+    --color-on-primary: #ffffff;
+    --color-link: var(--brand-600);      /* акцентный ТЕКСТ: ссылки, выделения (≥ 4.5:1) */
+    --color-focus: var(--brand-500);
+
+    /* Статусы: основной / фон / текст на фоне */
+    --color-success: #16a34a;
+    --color-success-soft: #ecfdf3;
+    --color-success-text: #15803d;
+    --color-warning: #d97706;
+    --color-warning-soft: #fffaeb;
+    --color-warning-text: #b45309;
+    --color-danger: #dc2626;
+    --color-danger-soft: #fef3f2;
+    --color-danger-text: #b91c1c;
+    --color-info: #2563eb;
+    --color-info-soft: #eff6ff;
+    --color-info-text: #1d4ed8;
+    --color-neutral-soft: #f2f4f7;
+    --color-neutral-text: #374151;
+
+    --shadow-xs: 0 1px 2px rgb(16 24 40 / 0.05);
+    --shadow-sm: 0 1px 3px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.04);
+    --shadow-md: 0 6px 16px -4px rgb(16 24 40 / 0.10), 0 2px 4px -2px rgb(16 24 40 / 0.05);
+    --shadow-lg: 0 20px 40px -12px rgb(16 24 40 / 0.22);
+    --ring: 0 0 0 3px color-mix(in srgb, var(--color-focus) 35%, transparent);
+
+    /* Каркас */
+    --sidebar-width: 256px;
+    --sidebar-rail: 68px;
+    --topbar-height: 60px;
+    --content-max: 1440px;
+    --gutter: var(--space-4);
+    --control-height: 40px;
+    --control-height-sm: 32px;
+    --tap-target: 44px;
+
+    --duration-fast: 120ms;
+    --duration-base: 200ms;
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+
+    --z-sticky: 10;
+    --z-sidebar: 30;
+    --z-dropdown: 35;
+    --z-overlay: 40;
+    --z-modal: 50;
+    --z-toast: 60;
+  }
+
+  @media (min-width: 768px) {
+    :root { --gutter: var(--space-6); }
+  }
+
+  @media (min-width: 1280px) {
+    :root { --gutter: var(--space-8); }
+  }
+
+  @media (pointer: coarse) {
+    :root { --control-height: 44px; --control-height-sm: 36px; }
+  }
+
+  /* Тёмная тема — по системе, если пользователь не выбрал светлую явно */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --color-bg: #0b0d12;
+      --color-surface: #13161d;
+      --color-surface-raised: #181c24;
+      --color-surface-sunken: #0f1217;
+      --color-surface-hover: #1c212a;
+      --color-overlay: rgb(0 0 0 / 0.6);
+      --color-border: #252a34;
+      --color-border-strong: #343b48;
+      --color-text: #eceef2;
+      --color-text-muted: #b2b8c3;
+      --color-text-subtle: #8a92a0;
+      --color-text-disabled: #5d6573;
+      --color-primary: var(--brand-600);
+      --color-primary-hover: var(--brand-500);
+      --color-link: var(--brand-400);
+      --color-primary-soft: color-mix(in srgb, var(--brand-500) 16%, transparent);
+      --color-primary-soft-text: #c7d2fe;
+      --color-on-primary: #ffffff;
+      --color-focus: var(--brand-400);
+      --color-success: #22c55e;
+      --color-success-soft: color-mix(in srgb, #22c55e 14%, transparent);
+      --color-success-text: #86efac;
+      --color-warning: #f59e0b;
+      --color-warning-soft: color-mix(in srgb, #f59e0b 14%, transparent);
+      --color-warning-text: #fcd34d;
+      --color-danger: #ef4444;
+      --color-danger-soft: color-mix(in srgb, #ef4444 14%, transparent);
+      --color-danger-text: #fca5a5;
+      --color-info: #3b82f6;
+      --color-info-soft: color-mix(in srgb, #3b82f6 14%, transparent);
+      --color-info-text: #93c5fd;
+      --color-neutral-soft: #1f242d;
+      --color-neutral-text: #d0d5dd;
+      --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4);
+      --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.5);
+      --shadow-md: 0 8px 20px -6px rgb(0 0 0 / 0.6);
+      --shadow-lg: 0 24px 48px -12px rgb(0 0 0 / 0.7);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-bg: #0b0d12;
+    --color-surface: #13161d;
+    --color-surface-raised: #181c24;
+    --color-surface-sunken: #0f1217;
+    --color-surface-hover: #1c212a;
+    --color-overlay: rgb(0 0 0 / 0.6);
+    --color-border: #252a34;
+    --color-border-strong: #343b48;
+    --color-text: #eceef2;
+    --color-text-muted: #b2b8c3;
+    --color-text-subtle: #8a92a0;
+    --color-text-disabled: #5d6573;
+    --color-primary: var(--brand-600);
+    --color-primary-hover: var(--brand-500);
+    --color-link: var(--brand-400);
+    --color-primary-soft: color-mix(in srgb, var(--brand-500) 16%, transparent);
+    --color-primary-soft-text: #c7d2fe;
+    --color-on-primary: #ffffff;
+    --color-focus: var(--brand-400);
+    --color-success: #22c55e;
+    --color-success-soft: color-mix(in srgb, #22c55e 14%, transparent);
+    --color-success-text: #86efac;
+    --color-warning: #f59e0b;
+    --color-warning-soft: color-mix(in srgb, #f59e0b 14%, transparent);
+    --color-warning-text: #fcd34d;
+    --color-danger: #ef4444;
+    --color-danger-soft: color-mix(in srgb, #ef4444 14%, transparent);
+    --color-danger-text: #fca5a5;
+    --color-info: #3b82f6;
+    --color-info-soft: color-mix(in srgb, #3b82f6 14%, transparent);
+    --color-info-text: #93c5fd;
+    --color-neutral-soft: #1f242d;
+    --color-neutral-text: #d0d5dd;
+    --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.5);
+    --shadow-md: 0 8px 20px -6px rgb(0 0 0 / 0.6);
+    --shadow-lg: 0 24px 48px -12px rgb(0 0 0 / 0.7);
+  }
+}

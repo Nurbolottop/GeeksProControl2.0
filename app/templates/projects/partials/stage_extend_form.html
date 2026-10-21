@@ -1,0 +1,32 @@
+<tr id="stage-{{ stage.pk }}" class="stage-row--editing">
+    <td colspan="7">
+        <form hx-post="{% url 'projects:stage_extend' stage.pk %}"
+              hx-target="#stage-{{ stage.pk }}"
+              hx-swap="outerHTML"
+              class="stage-form">
+            {% csrf_token %}
+            <strong class="stage-form__title">
+                {{ stage.get_key_display }}
+                <span style="display:block; font-weight:500; font-size:12px; color:var(--text-muted)">
+                    Текущий: {{ stage.deadline|date:'d.m.Y'|default:'не задан' }}
+                </span>
+            </strong>
+            <div class="form-field">
+                <label>Новый deadline</label>
+                {{ form.deadline }}
+                {% if form.deadline.errors %}<div class="form-errors">{{ form.deadline.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-field" style="flex: 1; min-width: 220px">
+                <label>Причина продления</label>
+                {{ form.reason }}
+                {% if form.reason.errors %}<div class="form-errors">{{ form.reason.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="stage-form__actions">
+                <button type="submit" class="btn btn--sm">Продлить</button>
+                <button type="button" class="btn btn--secondary btn--sm"
+                        hx-get="{% url 'projects:stage_row' stage.pk %}"
+                        hx-target="#stage-{{ stage.pk }}" hx-swap="outerHTML">Отмена</button>
+            </div>
+        </form>
+    </td>
+</tr>

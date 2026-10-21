@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>{{ title }}</h1>
+        <div class="sub">Текст сохраняется как есть — переносы строк и абзацы не потеряются</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'scripts:list' %}" class="btn btn--secondary">Отмена</a>
+    </div>
+</div>
+
+<div class="panel form-page">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-field form-field--lg">
+            <label for="{{ form.title.id_for_label }}">Название</label>
+            {{ form.title }}
+            {% if form.title.errors %}<div class="form-errors">{{ form.title.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+            <label for="{{ form.category.id_for_label }}">Категория</label>
+            {{ form.category }}
+            <datalist id="script-categories">
+                {% for name in categories %}<option value="{{ name }}"></option>{% endfor %}
+            </datalist>
+            <div class="sub">{{ form.category.help_text }}</div>
+        </div>
+        <div class="form-field">
+            <label for="{{ form.body.id_for_label }}">Текст</label>
+            {{ form.body }}
+            {% if form.body.errors %}<div class="form-errors">{{ form.body.errors.0 }}</div>{% endif %}
+        </div>
+        <label class="acheck">
+            {{ form.is_pinned }}
+            <span>Закрепить сверху<em>{{ form.is_pinned.help_text }}</em></span>
+        </label>
+        <div class="form-actions">
+            <button type="submit" class="btn">Сохранить</button>
+            <a href="{% url 'scripts:list' %}" class="btn btn--secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

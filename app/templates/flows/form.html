@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="form-page">
+    <div class="page-head">
+        <div><h1>{{ title }}</h1></div>
+    </div>
+    <form method="post" class="panel">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="message message--error">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="form-row">
+            <div class="form-field">
+                <label for="{{ form.number.id_for_label }}">Номер потока</label>
+                {{ form.number }}
+                {% if form.number.errors %}<div class="form-errors">{{ form.number.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.status.id_for_label }}">Статус</label>
+                {{ form.status }}
+            </div>
+        </div>
+        <div class="form-row" style="margin-top:16px">
+            <div class="form-field">
+                <label for="{{ form.start_date.id_for_label }}">Начало стажировки</label>
+                {{ form.start_date }}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.end_date.id_for_label }}">Окончание</label>
+                {{ form.end_date }}
+            </div>
+        </div>
+        <div class="form-field" style="margin-top:16px">
+            <label for="{{ form.comment.id_for_label }}">Комментарий</label>
+            {{ form.comment }}
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn">Сохранить</button>
+            <a href="{% if flow %}{{ flow.get_absolute_url }}{% else %}{% url 'flows:list' %}{% endif %}" class="btn btn--secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

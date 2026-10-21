@@ -1,0 +1,29 @@
+{% load static ui %}<!DOCTYPE html>
+<html lang="ru">
+<head>
+    {% include "layouts/_head.html" %}
+    <title>{% block title %}GeeksPro{% endblock %}</title>
+    <meta name="robots" content="noindex, nofollow">
+    <script src="{% static 'gp2/app.js' %}" defer></script>
+    <style>
+        .gp-public { min-height: 100dvh; padding: var(--space-8) var(--space-4) var(--space-12); background:
+            radial-gradient(1200px 600px at 10% -10%, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 60%), var(--color-bg); }
+        .gp-public__inner { width: min(860px, 100%); margin: 0 auto; }
+        .gp-public__inner--narrow { width: min(520px, 100%); }
+        .gp-public__brand { display: flex; margin-bottom: var(--space-6); }
+        .gp-public__title { margin: 0 0 var(--space-2); font-size: var(--text-2xl); font-weight: var(--weight-bold); letter-spacing: -0.02em; }
+        .gp-public__lead { margin: 0 0 var(--space-6); color: var(--color-text-muted); }
+        .gp-public__section-num { display: inline-grid; place-items: center; width: 26px; height: 26px; margin-right: var(--space-2); border-radius: 50%; background: var(--color-primary-soft, var(--color-surface-sunken)); color: var(--color-primary); font-size: var(--text-sm); font-weight: var(--weight-bold); }
+        .gp-public__trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+        @media (max-width: 479.98px) { .gp-public { padding-top: var(--space-6); } .gp-public__title { font-size: var(--text-xl); } }
+    </style>
+</head>
+<body>
+<main class="gp-public">
+    <div class="gp-public__inner{% block width %}{% endblock %}">
+        <div class="gp-public__brand">{% include "components/brand.html" %}</div>
+        {% block content %}{% endblock %}
+    </div>
+</main>
+</body>
+</html>

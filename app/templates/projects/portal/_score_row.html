@@ -1,0 +1,25 @@
+{% load ui %}<li class="gp-score gp-score--{{ member.score.level }}" id="score-{{ member.intern.pk }}">
+    <div class="gp-score__who"><strong>{{ member.person_name }}</strong><span class="gp-muted gp-small">{{ member.intern.specialization|default:"" }}</span></div>
+    <div class="gp-score__scale" role="group" aria-label="Оценка {{ member.person_name }}">
+        {% if editable %}
+        <button type="button" class="gp-score__seg gp-score__seg--zero{% if member.score.score == 0 %} is-on{% endif %}" title="Совсем не работал"
+                hx-post="{{ score_url }}" hx-vals='{"intern": "{{ member.intern.pk }}", "score": "{% if member.score.score == 0 %}clear{% else %}0{% endif %}"}'
+                hx-target="#score-{{ member.intern.pk }}" hx-swap="outerHTML">0</button>
+        {% for segment in member.score.segments %}<button type="button" class="gp-score__seg{% if segment.on %} is-on{% endif %}" title="{{ segment.value }} из 10"
+                hx-post="{{ score_url }}" hx-vals='{"intern": "{{ member.intern.pk }}", "score": "{% if member.score.score == segment.value %}clear{% else %}{{ segment.value }}{% endif %}"}'
+                hx-target="#score-{{ member.intern.pk }}" hx-swap="outerHTML">{{ segment.value }}</button>{% endfor %}
+        {% else %}
+        {% for segment in member.score.segments %}<span class="gp-score__seg{% if segment.on %} is-on{% endif %}" aria-hidden="true">{{ segment.value }}</span>{% endfor %}
+        {% endif %}
+    </div>
+    <div class="gp-score__value">{% if member.score.score is None %}<span class="gp-muted">не оценён</span>{% else %}<strong>{{ member.score.score }}</strong>/10{% endif %}
+        {% if member.score.previous is not None %}<span class="gp-score__prev">было {{ member.score.previous }}{% if member.score.delta > 0 %} · <span class="gp-delta gp-delta--up">+{{ member.score.delta }}</span>{% elif member.score.delta < 0 %} · <span class="gp-delta gp-delta--down">{{ member.score.delta }}</span>{% endif %}</span>{% endif %}
+    </div>
+    <div class="gp-score__note">
+        {% if editable %}<label class="gp-sr-only" for="note-{{ member.intern.pk }}">Комментарий к оценке</label>
+        <input class="gp-input" id="note-{{ member.intern.pk }}" type="text" name="comment" placeholder="за что балл" value="{{ member.score.score_comment }}" maxlength="255"
+               hx-post="{{ score_url }}" hx-trigger="change" hx-include="this" hx-vals='{"intern": "{{ member.intern.pk }}"}'
+               hx-target="#score-{{ member.intern.pk }}" hx-swap="outerHTML">
+        {% else %}<span class="gp-small gp-muted">{{ member.score.score_comment|default:"" }}</span>{% endif %}
+    </div>
+</li>

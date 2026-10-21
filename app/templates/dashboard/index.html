@@ -1,0 +1,171 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Главная — GeeksPro Control{% endblock %}
+
+{% block page %}
+{% url 'dashboard_compare' as compare_url %}
+{% ui_page_header title="Главная" subtitle="Состояние GeeksPro по данным системы" %}
+    {% ui_button "Сравнить с прошлой неделей" icon_name="calendar" data_gp_open="compare-drawer" hx_get=compare_url hx_target="#compare-body" hx_indicator="#compare-loading" %}
+    {% url 'projects:create' as create_url %}{% ui_button "Создать проект" variant="primary" icon_name="plus" href=create_url %}
+{% end_ui_page_header %}
+
+{# ---------- Быстрые действия ---------- #}
+<nav class="gp-cluster" aria-label="Быстрые действия" style="margin: calc(var(--space-2) * -1) 0 var(--space-6)">
+    {% url 'interns:list' as interns_url %}{% ui_button "Стажёры" size="sm" variant="ghost" icon_name="graduation-cap" href=interns_url %}
+    {% url 'projects:list' as projects_url %}{% ui_button "Проекты" size="sm" variant="ghost" icon_name="folder" href=projects_url %}
+    {% ui_dropdown label=pending_label icon="inbox" variant="ghost" size="sm" align="start" %}
+        {% for queue in pending %}
+            {% ui_menu_item queue.title href=queue.url %}
+        {% endfor %}
+    {% end_ui_dropdown %}
+    <span class="gp-muted gp-small" style="margin-left:auto">Обновлено {{ generated_at|date:"d.m.Y H:i" }}</span>
+</nav>
+
+{# ---------- KPI ---------- #}
+<section aria-labelledby="kpi-people" style="margin-bottom: var(--space-6)">
+    <h2 class="gp-section-title" id="kpi-people">Стажёры <span class="gp-muted" style="font-weight:400">люди, без повторов</span></h2>
+    <div class="gp-grid gp-grid--4">
+        <a class="gp-stat gp-stat--accent" href="{% url 'interns:list' %}">
+            <span class="gp-stat__label">Активные стажёры</span>
+            <span class="gp-stat__value">{{ people.active }}</span>
+            <span class="gp-stat__caption">{{ people.active_participations }} участий в проектах</span>
+        </a>
+        <div class="gp-stat">
+            <span class="gp-stat__label">Новые стажёры</span>
+            <span class="gp-stat__value">{{ people.new }}</span>
+            <span class="gp-stat__caption">первая стажировка</span>
+        </div>
+        <div class="gp-stat">
+            <span class="gp-stat__label">Старые стажёры</span>
+            <span class="gp-stat__value">{{ people.old }}</span>
+            <span class="gp-stat__caption">выпускники, продолжают участие</span>
+        </div>
+        <div class="gp-stat">
+            <span class="gp-stat__label">Выпускники</span>
+            <span class="gp-stat__value">{{ people.graduates }}</span>
+            <span class="gp-stat__caption">подтверждённый выпуск{% if graduation_review %} · {{ graduation_review|length }} на сверке, не учтены{% endif %}</span>
+        </div>
+    </div>
+</section>
+
+<section aria-labelledby="kpi-projects" style="margin-bottom: var(--space-6)">
+    <h2 class="gp-section-title" id="kpi-projects">Проекты</h2>
+    <div class="gp-grid gp-grid--3">
+        <a class="gp-stat" href="{% url 'projects:list' %}">
+            <span class="gp-stat__label">Всего проектов</span>
+            <span class="gp-stat__value">{{ projects.total }}</span>
+            <span class="gp-stat__caption">приостановлено {{ projects.paused }} · прекращено {{ projects.stopped }}</span>
+        </a>
+        <a class="gp-stat gp-stat--accent" href="{% url 'projects:list' %}?status=active">
+            <span class="gp-stat__label">Активные проекты</span>
+            <span class="gp-stat__value">{{ projects.active }}</span>
+            <span class="gp-stat__caption">статус «Активный»</span>
+        </a>
+        <a class="gp-stat" href="{% url 'projects:list_completed' %}">
+            <span class="gp-stat__label">Завершённые проекты</span>
+            <span class="gp-stat__value">{{ projects.completed }}</span>
+            <span class="gp-stat__caption">статус «Завершён»</span>
+        </a>
+    </div>
+</section>
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); margin-bottom: var(--space-5); align-items: start">
+    {# ---------- Требует внимания ---------- #}
+    {% ui_card title="Требует внимания" subtitle="Конкретные события — каждое ведёт к объекту" flush=True id="attention" %}
+        {% ui_slot "actions" %}{% if attention %}{% ui_badge attention|length tone="danger" %}{% endif %}{% end_ui_slot %}
+        {% if attention %}
+            <ul class="gp-attention" style="padding: 0 var(--space-4)">
+                {% for item in attention|slice:":8" %}{% include "dashboard/_attention_item.html" %}{% endfor %}
+            </ul>
+            {% if attention|length > 8 %}
+                <details style="padding: 0 var(--space-4) var(--space-3)">
+                    <summary class="gp-link gp-small" style="cursor:pointer; padding: var(--space-2) 0">Показать ещё {{ attention|length|add:"-8" }}</summary>
+                    <ul class="gp-attention">{% for item in attention|slice:"8:" %}{% include "dashboard/_attention_item.html" %}{% endfor %}</ul>
+                </details>
+            {% endif %}
+        {% else %}
+            {% ui_empty "Всё под контролем" text="Нет проектов без команды, пропущенных собраний, просроченных отчётов и заявок без решения." icon_name="check-circle" %}
+        {% endif %}
+    {% end_ui_card %}
+
+    {# ---------- Проекты по этапам ---------- #}
+    {% ui_card title="Проекты по основному этапу" subtitle="Каждый проект — в одной категории" id="stages" %}
+        {% if by_stage.total %}
+            <div class="gp-segments" role="img" aria-label="Распределение {{ by_stage.total }} проектов по этапам">
+                {% for category in by_stage.categories %}{% if category.count %}<span class="gp-tone-{{ forloop.counter }}" style="width: {{ category.share|stringformat:'s' }}%" title="{{ category.label }}: {{ category.count }}"></span>{% endif %}{% endfor %}
+            </div>
+            <dl class="gp-metrics" style="margin-top: var(--space-4)">
+                {% for category in by_stage.categories %}
+                    <div class="gp-metrics__row">
+                        <dt class="gp-cluster" style="--cluster-gap: var(--space-2)"><span class="gp-swatch gp-tone-{{ forloop.counter }}"></span>{{ category.label }}
+                            {% if category.stages %}<span class="gp-metrics__note" style="width:100%; padding-left: 18px">{% for stage in category.stages %}{{ stage.label }} — {{ stage.count }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if category.unconfirmed %} · <span class="gp-muted">не подтверждено: {{ category.unconfirmed }}</span>{% endif %}</span>{% endif %}
+                        </dt>
+                        <dd>{{ category.count }} <span class="gp-muted" style="font-weight:400">· {{ category.share|floatformat:0 }}%</span></dd>
+                    </div>
+                {% endfor %}
+            </dl>
+            {% if by_stage.unconfirmed %}
+                <div style="margin-top: var(--space-4)">{% url 'projects:list' as list_url %}{% ui_alert "Учтены по подсказке системы, а не по выбору руководителя или ПМ. Выберите основной этап во вкладке «Этапы» проекта." level="warning" title="Основной этап не выбран у "|add:by_stage.unconfirmed_label %}</div>
+                <p style="margin: var(--space-2) 0 0"><a class="gp-link gp-small" href="{% url 'projects:list' %}?primary_stage=unset">Показать проекты без основного этапа →</a></p>
+            {% endif %}
+            {% if by_stage.stopped %}<p class="gp-muted gp-small" style="margin: var(--space-3) 0 0">Не в распределении: прекращено {{ by_stage.stopped }} (отменён или отказ заказчика).</p>{% endif %}
+        {% else %}
+            {% ui_empty "Проектов пока нет" icon_name="folder" %}
+        {% endif %}
+    {% end_ui_card %}
+</div>
+
+{# ---------- Неделя ---------- #}
+<div style="margin-bottom: var(--space-5)">{% include "dashboard/_week.html" %}</div>
+
+{# ---------- Стажёры по городам и направлениям ---------- #}
+{% ui_card title="Активные стажёры по городам и направлениям" subtitle="Новые — первая стажировка, старые — выпускники. Человек считается один раз." flush=True id="branches" %}
+    {% if branches.totals.total %}
+        <div class="gp-table-wrap" style="border:0">
+            <table class="gp-table gp-table--compact">
+                <caption class="gp-sr-only">Активные стажёры по филиалам и направлениям</caption>
+                <thead><tr><th scope="col">Направление</th><th scope="col" class="is-numeric">Новые</th><th scope="col" class="is-numeric">Старые</th><th scope="col" class="is-numeric">Всего</th></tr></thead>
+                {% for branch in branches.branches %}
+                    <tbody>
+                        <tr style="background: var(--color-surface-sunken)">
+                            <th scope="rowgroup" colspan="1" style="position:static; background:transparent; text-transform:none; font-size: var(--text-sm); color: var(--color-text)">{{ branch.name }}</th>
+                            <td class="is-numeric" data-label="Новые"><strong>{{ branch.totals.new }}</strong></td>
+                            <td class="is-numeric" data-label="Старые"><strong>{{ branch.totals.old }}</strong></td>
+                            <td class="is-numeric" data-label="Всего"><strong>{{ branch.totals.total }}</strong></td>
+                        </tr>
+                        {% for line in branch.lines %}
+                            <tr>
+                                <td class="is-primary" data-label="Направление">
+                                    {% if line.specialization_id %}<a class="gp-link" href="{% url 'interns:list' %}?branch={{ branch.name|urlencode }}&amp;specialization={{ line.specialization_id }}">{{ line.name }}</a>{% else %}{{ line.name }}{% endif %}
+                                </td>
+                                <td class="is-numeric" data-label="Новые">{{ line.new }}</td>
+                                <td class="is-numeric" data-label="Старые">{{ line.old }}</td>
+                                <td class="is-numeric" data-label="Всего">{{ line.total }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4" class="gp-muted" data-label="">Активных стажёров нет</td></tr>
+                        {% endfor %}
+                    </tbody>
+                {% endfor %}
+                <tfoot>
+                    <tr><th scope="row" style="position:static; text-transform:none; font-size: var(--text-sm); color: var(--color-text)">Итого</th>
+                        <td class="is-numeric" data-label="Новые"><strong>{{ branches.totals.new }}</strong></td>
+                        <td class="is-numeric" data-label="Старые"><strong>{{ branches.totals.old }}</strong></td>
+                        <td class="is-numeric" data-label="Всего"><strong>{{ branches.totals.total }}</strong></td></tr>
+                </tfoot>
+            </table>
+        </div>
+    {% else %}
+        {% ui_empty "Активных стажёров нет" icon_name="users" %}
+    {% endif %}
+{% end_ui_card %}
+
+{# ---------- Сравнение недель ---------- #}
+{% ui_drawer id="compare-drawer" title="Сравнение недель" size="wide" %}
+    {# Индикатор вне заменяемой области — иначе после первого ответа htmx его не найдёт #}
+    {% ui_loading "Считаем показатели…" htmx=True id="compare-loading" %}
+    <div id="compare-body">
+        <noscript><a class="gp-link" href="{% url 'dashboard_compare' %}">Открыть сравнение</a></noscript>
+    </div>
+{% end_ui_drawer %}
+{% endblock %}

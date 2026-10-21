@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>{{ title }}</h1>
+        <div class="sub">Анкетная часть и внутренняя учебная информация. Оценки — на отдельной странице.</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% if candidate %}{{ candidate.get_absolute_url }}{% else %}{% url 'reserve:list' %}{% endif %}" class="btn btn--secondary">Отмена</a>
+    </div>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% if form.errors %}
+        <div class="message message--error">
+            Проверьте выделенные поля.
+            {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="panel">
+        <h2>Личные данные</h2>
+        <div class="agrid" style="margin-top: 14px;">
+            {% include 'partials/apply_field.html' with field=form.full_name %}
+            {% include 'partials/apply_field.html' with field=form.phone %}
+            {% include 'partials/apply_field.html' with field=form.email %}
+            {% include 'partials/apply_field.html' with field=form.telegram %}
+            {% include 'partials/apply_field.html' with field=form.city %}
+            {% include 'partials/apply_field.html' with field=form.birth_date %}
+            {% include 'partials/apply_field.html' with field=form.photo wide=1 %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Профессиональные данные</h2>
+        <div class="agrid" style="margin-top: 14px;">
+            {% include 'partials/apply_field.html' with field=form.specialization %}
+            {% include 'partials/apply_field.html' with field=form.direction_other %}
+            {% include 'partials/apply_field.html' with field=form.desired_position %}
+            {% include 'partials/apply_field.html' with field=form.expected_level %}
+            {% include 'partials/apply_field.html' with field=form.skills wide=1 %}
+            {% include 'partials/apply_field.html' with field=form.work_experience wide=1 %}
+            {% include 'partials/apply_field.html' with field=form.internship_experience wide=1 %}
+            {% include 'partials/apply_field.html' with field=form.education wide=1 %}
+            {% include 'partials/apply_field.html' with field=form.courses wide=1 %}
+            {% include 'partials/apply_field.html' with field=form.english_level %}
+            {% include 'partials/apply_field.html' with field=form.other_languages %}
+            {% include 'partials/apply_field.html' with field=form.about wide=1 %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Ссылки и документы</h2>
+        <div class="agrid" style="margin-top: 14px;">
+            {% include 'partials/apply_field.html' with field=form.resume_file %}
+            {% include 'partials/apply_field.html' with field=form.resume_url %}
+            {% include 'partials/apply_field.html' with field=form.github_url %}
+            {% include 'partials/apply_field.html' with field=form.linkedin_url %}
+            {% include 'partials/apply_field.html' with field=form.portfolio_url %}
+            {% include 'partials/apply_field.html' with field=form.behance_url %}
+            {% include 'partials/apply_field.html' with field=form.website_url %}
+            {% include 'partials/apply_field.html' with field=form.project_links wide=1 %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Поиск работы</h2>
+        <div class="agrid" style="margin-top: 14px;">
+            {% include 'partials/apply_field.html' with field=form.work_format %}
+            {% include 'partials/apply_field.html' with field=form.employment_type %}
+            {% include 'partials/apply_field.html' with field=form.available_from %}
+            {% include 'partials/apply_field.html' with field=form.desired_salary %}
+            {% include 'partials/apply_field.html' with field=form.target_positions wide=1 %}
+        </div>
+        <div class="achecks">
+            {% include 'partials/apply_check.html' with field=form.is_looking_for_job %}
+            {% include 'partials/apply_check.html' with field=form.ready_for_internship %}
+            {% include 'partials/apply_check.html' with field=form.ready_to_relocate %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Внутреннее: обучение и статус</h2>
+        <div class="sub" style="margin-top: 4px;">Кандидат этих полей не видит и не заполняет.</div>
+        <div class="agrid" style="margin-top: 14px;">
+            {% include 'partials/apply_field.html' with field=form.intern wide=1 %}
+            {% include 'partials/apply_field.html' with field=form.training_group %}
+            {% include 'partials/apply_field.html' with field=form.study_specialization %}
+            {% include 'partials/apply_field.html' with field=form.teacher %}
+            {% include 'partials/apply_field.html' with field=form.curator %}
+            {% include 'partials/apply_field.html' with field=form.study_start %}
+            {% include 'partials/apply_field.html' with field=form.study_end %}
+            {% include 'partials/apply_field.html' with field=form.status %}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn">Сохранить</button>
+        <a href="{% if candidate %}{{ candidate.get_absolute_url }}{% else %}{% url 'reserve:list' %}{% endif %}" class="btn btn--secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}

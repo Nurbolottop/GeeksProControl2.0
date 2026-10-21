@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Рекомендация: {{ candidate.full_name }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Рекомендовать компании</h1>
+        <div class="sub">{{ candidate.full_name }} · {{ candidate.direction }}{% if candidate.geekspro_level %} · {{ candidate.get_geekspro_level_display }}{% endif %}{% if candidate.rating %} · рейтинг {{ candidate.rating }} / 10{% endif %}</div>
+    </div>
+    <div class="page-actions">
+        <a href="{{ candidate.get_absolute_url }}?tab=recommendations" class="btn btn--secondary">К карточке</a>
+    </div>
+</div>
+
+<form method="post" class="panel">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="message message--error">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div class="form-grid">
+        {% include 'partials/form_fields.html' %}
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn">Сохранить рекомендацию</button>
+        <a href="{{ candidate.get_absolute_url }}" class="btn btn--secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}

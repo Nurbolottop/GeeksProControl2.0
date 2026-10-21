@@ -1,0 +1,63 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Кандидаты GeeksPro</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <link rel="stylesheet" href="{% static 'css/reserve-share.css' %}">
+</head>
+<body class="apply-body">
+<div class="apply-page share-page share-page--wide">
+    <header class="apply-hero">
+        <div class="apply-hero__brand">Geeks<span>Pro</span></div>
+        <h1>Кандидаты, которых мы рекомендуем</h1>
+        <p>
+            Проверенные выпускники и стажёры GeeksPro. Откройте профиль, чтобы увидеть
+            навыки, опыт, проекты и нашу оценку.
+        </p>
+        <div class="apply-hero__to">Кандидатов в подборке: <strong>{{ candidates|length }}</strong></div>
+    </header>
+
+    {% for direction, group in groups %}
+        {% if groups|length > 1 %}<h2 class="share-group">{{ direction }} <span>{{ group|length }}</span></h2>{% endif %}
+        <div class="share-grid">
+            {% for candidate in group %}
+                <a href="?c={{ candidate.pk }}" class="acard share-card">
+                    <div class="share-card__top">
+                        {% if candidate.photo %}
+                            <img src="{{ candidate.photo.url }}" alt="" class="share-card__photo">
+                        {% else %}
+                            <span class="share-card__photo share-card__photo--empty">{{ candidate.full_name|slice:':1' }}</span>
+                        {% endif %}
+                        <div class="share-card__who">
+                            <strong>{{ candidate.full_name }}</strong>
+                            <span>{{ candidate.recommended_position|default:candidate.desired_position|default:candidate.direction }}{% if candidate.city %} · {{ candidate.city }}{% endif %}</span>
+                        </div>
+                        {% if candidate.rating %}<span class="share-card__rating">{{ candidate.rating }}</span>{% endif %}
+                    </div>
+                    <div class="reserve-head__badges">
+                        <span class="badge badge--gray">{{ candidate.direction }}</span>
+                        {% if candidate.geekspro_level %}<span class="badge badge--blue">{{ candidate.get_geekspro_level_display }}</span>{% endif %}
+                        {% if candidate.is_looking_for_job %}<span class="badge badge--green">{{ candidate.readiness }}</span>{% endif %}
+                    </div>
+                    <div>
+                        {% for skill in candidate.skills_list|slice:':6' %}<span class="chip">{{ skill }}</span>{% endfor %}
+                    </div>
+                    <span class="share-card__more">Открыть профиль →</span>
+                </a>
+            {% endfor %}
+        </div>
+    {% empty %}
+        <p class="share-foot">В подборке пока нет кандидатов.</p>
+    {% endfor %}
+
+    <p class="share-foot">
+        Кандидатов рекомендует GeeksPro.
+        {% if not link.show_contacts %}Чтобы связаться с кандидатом, напишите сотруднику GeeksPro, который отправил вам эту ссылку.{% endif %}
+    </p>
+</div>
+</body>
+</html>

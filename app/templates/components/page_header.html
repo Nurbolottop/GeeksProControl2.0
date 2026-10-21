@@ -1,0 +1,8 @@
+<div class="gp-page-header">
+    <div class="gp-page-header__titles">
+        {% if slots.eyebrow %}<div class="gp-cluster" style="margin-bottom: var(--space-2)">{{ slots.eyebrow }}</div>{% endif %}
+        <h1 class="gp-page-header__title">{{ title }}</h1>
+        {% if subtitle %}<p class="gp-page-header__subtitle">{{ subtitle }}</p>{% endif %}
+    </div>
+    {% if body.strip %}<div class="gp-page-header__actions">{{ body }}</div>{% endif %}
+</div>

@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}Группы академии — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Группы IT-академии</h1>
+        <div class="sub">Из этих чисел строится план набора стажёров</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'training:plan' %}" class="btn btn--secondary">План-график</a>
+        <a href="{% url 'training:group_import' %}" class="btn btn--secondary">Вставить сообщение академии</a>
+        <a href="{% url 'training:group_create' %}" class="btn">+ Группа вручную</a>
+    </div>
+</div>
+
+<form method="get" class="filterbar">
+    <select name="specialization">
+        <option value="">Направление: все</option>
+        {% for spec in specializations %}
+            <option value="{{ spec.pk }}" {% if params.specialization == spec.pk|stringformat:'s' %}selected{% endif %}>{{ spec.name }}</option>
+        {% endfor %}
+    </select>
+    <select name="status">
+        <option value="">Стадия: учатся и набираются</option>
+        {% for value, label in statuses %}
+            <option value="{{ value }}" {% if params.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <select name="branch">
+        <option value="">Филиал: все</option>
+        {% for value, label in branches %}
+            <option value="{{ value }}" {% if params.branch == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+        <option value="{{ no_branch }}" {% if params.branch == no_branch %}selected{% endif %}>Филиал не указан</option>
+    </select>
+    <button type="submit" class="btn btn--sm">Применить</button>
+    {% if params.specialization or params.status or params.branch %}
+        <a href="{% url 'training:group_list' %}" class="btn btn--secondary btn--sm">Сбросить</a>
+    {% endif %}
+</form>
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Группа</th>
+                <th>Направление</th>
+                <th>Филиал</th>
+                <th>Обучение</th>
+                <th>Стадия</th>
+                <th>Студентов</th>
+                <th>Хотят на стажировку</th>
+                <th>Пришло</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for group in groups %}
+                <tr>
+                    <td>
+                        <a href="{% url 'training:group_update' group.pk %}"><strong>{{ group.number }} группа</strong></a>
+                        {% if group.teacher %}<div class="sub">{{ group.teacher }}</div>{% endif %}
+                    </td>
+                    <td>{{ group.specialization }}</td>
+                    <td>{{ group.branch|default:'—' }}</td>
+                    <td>
+                        {{ group.start_date|date:'d.m.Y'|default:'?' }} — {{ group.end_date|date:'d.m.Y'|default:'?' }}
+                    </td>
+                    <td><span class="badge {% if group.stage == 'studying' %}badge--green{% elif group.stage == 'recruiting' %}badge--yellow{% elif group.stage == 'graduated' %}badge--blue{% else %}badge--gray{% endif %}">{{ group.stage_label }}</span></td>
+                    <td>
+                        {% if group.students_count is None %}<span class="badge badge--gray">неизвестно</span>
+                        {% else %}<strong>{{ group.students_count }}</strong>{% endif %}
+                        {% if group.students_note %}<div class="sub">{{ group.students_note }}</div>{% endif %}
+                    </td>
+                    <td>{{ group.wants_internship|default:'—' }}</td>
+                    <td>
+                        {% if group.stage == 'graduated' and group.actual_interns %}
+                            {{ group.actual_interns }}{% if group.conversion is not None %} <span class="sub">({{ group.conversion }}%)</span>{% endif %}
+                        {% else %}<span class="sub">—</span>{% endif %}
+                    </td>
+                    <td style="white-space: nowrap;">
+                        <a href="{% url 'training:group_update' group.pk %}" class="btn btn--secondary btn--sm">Изменить</a>
+                        <form method="post" action="{% url 'training:group_delete' group.pk %}" style="display: inline; margin: 0;"
+                              data-confirm="Удалить группу {{ group.number|escapejs }}?" data-confirm-ok="Удалить">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn--secondary btn--sm">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="9" class="empty" style="text-align:center; padding: 24px;">
+                    Групп пока нет. Вставьте сообщение академии — группы появятся здесь и в плане-графике.
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

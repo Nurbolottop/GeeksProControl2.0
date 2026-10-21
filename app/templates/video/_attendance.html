@@ -1,0 +1,38 @@
+{% load ui %}
+{% if issues.unverified %}<div style="margin-top: var(--space-5)">{% ui_alert "Кто-то подключился без персональной ссылки (или с чужим userId). Имя в видеосервисе личность не подтверждает — посещение таким участникам не засчитано." level="warning" title="Неподтверждённые подключения" %}</div>{% endif %}
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Посещаемость" subtitle="Автоматически — только по персональной ссылке участника. Отправленная ссылка и приглашение посещением не считаются." flush=True %}
+    {% if not track_attendance %}<div style="padding: var(--space-6)">{% ui_empty "Посещаемость не учитывается" "Встреча ПМ с тимлидами — не обязательное собрание направления." icon_name="users" %}</div>
+    {% elif presence %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0"><table class="gp-table"><caption class="gp-sr-only">Посещаемость</caption>
+        <thead><tr><th scope="col">Участник</th><th scope="col">Посещение</th><th scope="col">Подключений</th><th scope="col">Время</th>{% if can_fix %}<th scope="col" class="is-actions"><span class="gp-sr-only">Действия</span></th>{% endif %}</tr></thead>
+        <tbody>{% for r in presence %}<tr>
+            <td class="is-primary" data-label="Участник"><span class="gp-table__primary">{{ r.participant.person_name }}</span>{% if r.participant.link_opened_at %}<span class="gp-table__secondary">ссылку открывал(а)</span>{% endif %}</td>
+            <td data-label="Посещение">{% ui_badge r.label tone=r.tone dot=True %}{% if r.value != r.auto %}<span class="gp-table__secondary">по видеосервису: {{ r.auto_label }}</span>{% endif %}{% if r.parallel %}<span class="gp-table__secondary">одновременно с двух подключений — проверьте</span>{% endif %}</td>
+            <td data-label="Подключений">{{ r.joins }}{% if r.devices > 1 %} · устройств: {{ r.devices }}{% endif %}</td>
+            <td data-label="Время">{% if r.minutes is not None %}{{ r.minutes }} мин{% elif r.joins %}нет данных о выходе{% else %}—{% endif %}</td>
+            {% if can_fix %}<td class="is-actions" data-label="">{% ui_button "Исправить" size="sm" variant="ghost" data_gp_open=r.ui_modal %}</td>{% endif %}
+        </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Участников нет" icon_name="users" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+
+<div style="margin-top: var(--space-5)">
+{% ui_card title="События видеосервиса" subtitle="Хранятся как пришли; ручные исправления их не меняют" flush=True %}
+    {% if events %}<ul class="gp-timeline" style="padding: 0 var(--space-5)">{% for e in events %}<li class="gp-timeline__item"><span class="gp-timeline__icon">{% ui_icon "clock" %}</span><div style="min-width:0"><p class="gp-timeline__title">{{ e.event_type }}{% if e.participant %} — {{ e.participant.person_name }}{% endif %}</p><p class="gp-timeline__meta">{{ e.get_verification_display }}{% if e.display_name and not e.participant %} · имя в видеосервисе: «{{ e.display_name }}» (не доказательство){% endif %}{% if e.disconnect_reason %} · {{ e.disconnect_reason }}{% endif %}</p></div><span class="gp-timeline__date">{{ e.occurred_at|date:"d.m H:i:s" }}</span></li>{% endfor %}</ul>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Событий от видеосервиса нет" "Без событий посещаемость автоматически не определяется." icon_name="clock" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+
+{% if can_fix %}{% for r in presence %}
+{% ui_modal id=r.ui_modal title="Исправить посещаемость" %}
+    <form method="post" action="{{ r.ui_url }}" class="gp-stack" id="{{ r.ui_form }}">{% csrf_token %}
+        <p class="gp-text" style="margin:0">{{ r.participant.person_name }} · сейчас: {{ r.label|lower }}. События видеосервиса сохранятся.</p>
+        <div class="gp-field"><label class="gp-label" for="{{ r.ui_form }}-v">Новое значение</label><select class="gp-select" id="{{ r.ui_form }}-v" name="value">{% for key, label in fix_values %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></div>
+        <div class="gp-field"><label class="gp-label" for="{{ r.ui_form }}-r">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="{{ r.ui_form }}-r" name="reason" rows="2" required></textarea></div>
+        {% if r.corrections %}<p class="gp-muted gp-small" style="margin:0">Прежние исправления: {% for c in r.corrections %}{{ c.changed_at|date:"d.m H:i" }} {{ c.changed_by.display_name }} — {{ c.get_new_value_display|lower }} ({{ c.reason }}){% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Сохранить" variant="primary" type="submit" form=r.ui_form %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endfor %}{% endif %}

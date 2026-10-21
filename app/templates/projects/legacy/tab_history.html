@@ -1,0 +1,18 @@
+{# Переходная вкладка: разметка 1.0, перенос — UI-03B #}
+    <div class="panel">
+        <h2>История изменений</h2>
+        {% if history %}
+            <ul class="feed">
+                {% for record in history %}
+                    <li>
+                        <strong>{{ record.field }}</strong>:
+                        {% if record.old_value %}{{ record.old_value }} → {% endif %}{{ record.new_value|default:'—' }}
+                        {% if record.reason %}<div class="reason">Причина: {{ record.reason }}</div>{% endif %}
+                        <div class="when">{{ record.created_at|date:'d.m.Y H:i' }}{% if record.user %} · {{ record.user.display_name }}{% endif %}</div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="empty">Изменений пока нет.</div>
+        {% endif %}
+    </div>

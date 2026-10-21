@@ -1,0 +1,104 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% comment %}
+Карточка стажёра в портале ПМ / тимлида (UI-03C) — только по своему проекту.
+Бывший участник открывается только для просмотра истории (участие, оценки,
+задачи). Заморозками и возвращениями управляет руководитель.
+{% endcomment %}
+{% block title %}{{ intern.full_name }} — GeeksPro Control<div style="margin-top: var(--space-5)">
+{% ui_card title="Предупреждения в проекте" subtitle=warnings_subtitle flush=True %}
+    {% if warnings %}
+    <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for w in warnings %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot{% if w.status == 'active' %} gp-attention__dot--danger{% endif %}" aria-hidden="true"></span><span class="gp-small">{{ w.created_at|date:"d.m.Y" }}{% if w.issued_by %} · {{ w.issued_by.display_name }}{% endif %} · {{ w.get_status_display|lower }}<span class="gp-attention__meta">{{ w.reason }}</span></span></span></li>{% endfor %}</ul>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Предупреждений нет" icon_name="check-circle" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+{% if warn_url %}
+{% ui_modal id="warn-modal" title="Выдать предупреждение" %}
+    <form method="post" action="{{ warn_url }}" class="gp-stack" id="warn-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">Активных сейчас: {{ active_warnings }}. Три активных предупреждения уходят руководителю на решение — отчислить может только он.</p>
+        <div class="gp-field"><label class="gp-label" for="warn-reason">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="warn-reason" name="reason" rows="2" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Выдать" variant="primary" type="submit" form="warn-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}<div style="margin-top: var(--space-5)">
+{% ui_card title="Предупреждения в проекте" subtitle=warnings_subtitle flush=True %}
+    {% if warnings %}
+    <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for w in warnings %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot{% if w.status == 'active' %} gp-attention__dot--danger{% endif %}" aria-hidden="true"></span><span class="gp-small">{{ w.created_at|date:"d.m.Y" }}{% if w.issued_by %} · {{ w.issued_by.display_name }}{% endif %} · {{ w.get_status_display|lower }}<span class="gp-attention__meta">{{ w.reason }}</span></span></span></li>{% endfor %}</ul>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Предупреждений нет" icon_name="check-circle" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+{% if warn_url %}
+{% ui_modal id="warn-modal" title="Выдать предупреждение" %}
+    <form method="post" action="{{ warn_url }}" class="gp-stack" id="warn-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">Активных сейчас: {{ active_warnings }}. Три активных предупреждения уходят руководителю на решение — отчислить может только он.</p>
+        <div class="gp-field"><label class="gp-label" for="warn-reason">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="warn-reason" name="reason" rows="2" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Выдать" variant="primary" type="submit" form="warn-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% endblock %}
+{% block page %}
+{% ui_page_header title=intern.full_name subtitle=project.name %}
+    {% ui_slot "eyebrow" %}
+        {% ui_badge intern.specialization|default:"Без направления" tone="primary" %}
+        {% ui_badge member.get_role_display %}
+        {% if intern.status == 'paused' %}{% ui_badge "Стажировка заморожена" tone="warning" dot=True %}{% else %}{% ui_badge intern.get_status_display tone="success" %}{% endif %}
+        {% if not in_team %}{% ui_badge "Вышел(а) из команды" dot=True %}{% endif %}
+        {% if in_reserve %}{% ui_badge "В резерве кадров" tone="info" %}{% endif %}
+        {% if average_score is not None %}{% ui_badge average_label tone=average_tone %}{% endif %}
+    {% end_ui_slot %}
+    {% if warn_url %}{% ui_button "Предупреждение" icon_name="alert-triangle" data_gp_open="warn-modal" %}{% endif %}
+    {% if to_reserve_url and not in_reserve %}{% ui_button "В резерв кадров" variant="primary" href=to_reserve_url icon_name="users" %}{% endif %}
+{% end_ui_page_header %}
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Контакты и стажировка" %}
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>Телефон</dt><dd>{% if intern.phone %}<a class="gp-link" href="tel:{{ intern.phone }}">{{ intern.phone }}</a>{% else %}—{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Email</dt><dd style="white-space: normal; overflow-wrap:anywhere">{{ intern.email|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Telegram</dt><dd>{{ intern.telegram|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Город / филиал</dt><dd>{{ intern.city|default:"—" }}{% if intern.branch %} · {{ intern.branch }}{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Начало стажировки</dt><dd>{{ intern.internship_start_date|date:"d.m.Y"|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Стажировка по счёту</dt><dd>{{ intern.internship_attempt }}-й раз</dd></div>
+            <div class="gp-metrics__row"><dt>Проектов у нас</dt><dd>{{ projects_count }}</dd></div>
+        </dl>
+    {% end_ui_card %}
+    {% ui_card title="Участие в проекте" %}
+        <ul class="gp-attention">
+            {% for item in history %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-2) 0; align-items:center"><span class="gp-attention__dot{% if item.status != 'active' %} gp-attention__dot--warning{% endif %}" aria-hidden="true"></span><span class="gp-small">{{ item.get_role_display }} · с {{ item.joined_at|date:"d.m.Y"|default:"—" }}{% if item.status != 'active' %} по {{ item.left_at|date:"d.m.Y"|default:"—" }}{% endif %}<span class="gp-attention__meta">{% if item.status == 'active' %}в команде{% else %}вышел(а){% if item.left_reason %}: {{ item.get_left_reason_display|lower }}{% endif %}{% endif %}</span></span></span></li>{% endfor %}
+        </ul>
+    {% end_ui_card %}
+</div>
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start; margin-top: var(--space-5)">
+    {% ui_card title="Активность на собраниях" flush=True %}
+        {% ui_slot "actions" %}{% ui_button "Табель" size="sm" variant="ghost" href=attendance_url icon_end="chevron-right" %}{% end_ui_slot %}
+        {% if scores %}
+        <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for item in scores %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><strong>{{ item.score }}/10</strong><span class="gp-small">{{ item.meeting.date|date:"d.m.Y" }} · {{ item.meeting.get_kind_display }}{% if item.comment %}<span class="gp-attention__meta">{{ item.comment }}</span>{% endif %}</span></span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Оценок пока нет" "Ставятся на собраниях во вкладке «Табель»." icon_name="clipboard-check" %}</div>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Задачи в проекте" flush=True %}
+        {% if tasks %}
+        <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for task in tasks %}<li><span style="display:grid; grid-template-columns:1fr auto; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-small">{{ task.title }}<span class="gp-attention__meta">{% if task.deadline %}до {{ task.deadline|date:"d.m.Y" }}{% endif %}</span></span>{% ui_badge task.get_status_display %}</span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Задач нет" icon_name="clipboard-check" %}</div>{% endif %}
+    {% end_ui_card %}
+</div>
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Предупреждения в проекте" subtitle=warnings_subtitle flush=True %}
+    {% if warnings %}
+    <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for w in warnings %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot{% if w.status == 'active' %} gp-attention__dot--danger{% endif %}" aria-hidden="true"></span><span class="gp-small">{{ w.created_at|date:"d.m.Y" }}{% if w.issued_by %} · {{ w.issued_by.display_name }}{% endif %} · {{ w.get_status_display|lower }}<span class="gp-attention__meta">{{ w.reason }}</span></span></span></li>{% endfor %}</ul>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Предупреждений нет" icon_name="check-circle" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+{% if warn_url %}
+{% ui_modal id="warn-modal" title="Выдать предупреждение" %}
+    <form method="post" action="{{ warn_url }}" class="gp-stack" id="warn-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">Активных сейчас: {{ active_warnings }}. Три активных предупреждения уходят руководителю на решение — отчислить может только он.</p>
+        <div class="gp-field"><label class="gp-label" for="warn-reason">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="warn-reason" name="reason" rows="2" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Выдать" variant="primary" type="submit" form="warn-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% endblock %}

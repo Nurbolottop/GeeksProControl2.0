@@ -1,0 +1,88 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}{{ person.full_name }} — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title=person.full_name subtitle=person.specialization|default:"Направление не указано" %}
+    {% ui_slot "eyebrow" %}
+        {% if is_lead %}{% ui_badge "Тимлид" tone="warning" %}{% endif %}
+        {% if person.staff_role == 'pm' %}{% ui_badge "ПМ-сотрудник" tone="info" %}{% elif not is_lead %}{% ui_badge "Стажёр направления PM" tone="info" %}{% endif %}
+        {% if person.staff_status %}{% ui_badge person.get_staff_status_display tone=staff_tone dot=True %}{% endif %}
+        {% if reserve %}{% ui_badge reserve_label %}{% endif %}
+    {% end_ui_slot %}
+    {% ui_button "Карточка человека" href=person.get_absolute_url icon_name="user" %}
+    {% if is_staff_lead %}{% ui_button "Назначить на проект" variant="primary" icon_name="plus" data_gp_open="assign-modal" %}{% elif not is_lead %}{% ui_button "Назначить ПМ на проект" variant="primary" icon_name="plus" data_gp_open="assign-modal" %}{% endif %}
+    {% if is_staff_lead and reserve_addable %}<form method="post" action="{% url 'reserve:reserve_lead' person.pk %}" style="margin:0">{% csrf_token %}{% ui_button "В кадровый резерв" icon_name="users" type="submit" %}</form>{% endif %}
+    {% if can_dismiss %}{% ui_button "Прекратить работу" variant="danger" icon_name="log-out" data_gp_open="dismiss-modal" %}{% endif %}
+{% end_ui_page_header %}
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Сотрудник" %}
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>Телефон</dt><dd style="white-space:normal; overflow-wrap:anywhere">{% if person.phone %}<a class="gp-link" href="tel:{{ person.phone }}">{{ person.phone }}</a>{% else %}—{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Telegram</dt><dd style="white-space:normal; overflow-wrap:anywhere">{{ person.telegram|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Город</dt><dd>{{ branch }}</dd></div>
+            <div class="gp-metrics__row"><dt>Кадровый статус</dt><dd>{{ person.get_staff_status_display|default:"не оформлен" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Сотрудник с / по</dt><dd>{{ person.staff_since|date:"d.m.Y"|default:"—" }} — {{ person.staff_until|date:"d.m.Y"|default:"сейчас" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Вход в портал</dt><dd>{% if person.user %}{% if person.user.is_active %}есть{% else %}закрыт{% endif %}{% else %}не выдан{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Кадровый резерв</dt><dd>{% if reserve %}<a class="gp-link" href="{% url 'reserve:hr_detail' reserve.pk %}">{{ reserve.get_status_display }}</a>{% else %}—{% endif %}</dd></div>
+        </dl>
+    {% end_ui_card %}
+    {% ui_card title="Текущие назначения" flush=True %}
+        {% if active %}
+        <ul class="gp-docs">
+        {% for m in active %}
+            <li class="gp-doc">
+                <span class="gp-doc__icon">{% ui_icon "folder" %}</span>
+                <div style="min-width:0"><p class="gp-doc__title"><a class="gp-link" href="{{ m.project.get_absolute_url }}?tab=team">{{ m.project.name }}</a>{% ui_badge m.get_role_display %}</p><p class="gp-doc__meta">с {{ m.joined_at|date:"d.m.Y"|default:"—" }}</p></div>
+                <div class="gp-doc__actions">
+                    {% ui_button "Заменить" size="sm" data_gp_open=m.ui_modal %}
+                    <form method="post" action="{% if m.role == 'team_lead' %}{% url 'teams:lead_remove' m.pk %}{% else %}{% url 'teams:pm_remove' m.pk %}{% endif %}" style="margin:0">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">{% ui_button "Снять" size="sm" variant="ghost" type="submit" %}</form>
+                </div>
+            </li>
+        {% endfor %}
+        </ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Активных назначений нет" icon_name="folder" %}</div>{% endif %}
+    {% end_ui_card %}
+</div>
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start; margin-top: var(--space-5)">
+    {% ui_card title="История назначений" flush=True %}
+        {% if past %}
+        <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for m in past %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot gp-attention__dot--warning" aria-hidden="true"></span><span class="gp-small">{{ m.project.name|default:"—" }} · {{ m.get_role_display }}<span class="gp-attention__meta">{{ m.joined_at|date:"d.m.Y"|default:"—" }} — {{ m.left_at|date:"d.m.Y"|default:"—" }}{% if m.left_reason %} · {{ m.get_left_reason_display|lower }}{% endif %}</span></span></span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Прошлых назначений нет" icon_name="clock" %}</div>{% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Кадровые события" flush=True %}
+        {% if history %}
+        <ul class="gp-attention" style="padding: 0 var(--space-5)">{% for e in history %}<li><span style="display:grid; grid-template-columns:auto 1fr; gap: var(--space-3); padding: var(--space-3) 0; align-items:center"><span class="gp-attention__dot" aria-hidden="true"></span><span class="gp-small">{{ e.action }}<span class="gp-attention__meta">{{ e.created_at|date:"d.m.Y H:i" }}{% if e.user %} · {{ e.user.display_name }}{% endif %}{% if e.reason %} · {{ e.reason }}{% endif %}</span></span></span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Событий нет" icon_name="clock" %}</div>{% endif %}
+    {% end_ui_card %}
+</div>
+
+{% ui_modal id="assign-modal" title="Назначить на проект" %}
+    <form method="post" action="{% if is_staff_lead %}{% url 'teams:lead_add' %}{% else %}{% url 'teams:pm_add' %}{% endif %}" class="gp-stack" id="assign-form">{% csrf_token %}
+        <input type="hidden" name="intern" value="{{ person.pk }}"><input type="hidden" name="next" value="{{ request.path }}">
+        <div class="gp-field"><label class="gp-label" for="a-project">Проект</label><select class="gp-select" id="a-project" name="project" required>{% for project in projects %}<option value="{{ project.pk }}">{{ project.name }}</option>{% endfor %}</select></div>
+        <p class="gp-muted gp-small" style="margin:0">Права появятся только в этом проекте.</p>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Назначить" variant="primary" type="submit" form="assign-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% for m in active %}
+    {% ui_modal id=m.ui_modal title="Замена на проекте" %}
+        <form method="post" action="{% url 'teams:replace' m.pk %}" class="gp-stack" id="{{ m.ui_form }}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+            <p class="gp-text" style="margin:0">«{{ m.project.name }}»: {{ person.full_name }} будет снят(а) с причиной «Заменён(а)», история сохранится.</p>
+            <div class="gp-field"><label class="gp-label" for="{{ m.ui_form }}-i">Кем заменить</label><select class="gp-select" id="{{ m.ui_form }}-i" name="intern" required>{% if m.role == 'team_lead' %}{% for p in lead_candidates %}{% if p.pk != person.pk %}<option value="{{ p.pk }}">{{ p.full_name }} · {{ p.specialization|default:"без направления" }}</option>{% endif %}{% endfor %}{% else %}{% for p in pm_candidates %}{% if p.pk != person.pk %}<option value="{{ p.pk }}">{{ p.full_name }}</option>{% endif %}{% endfor %}{% endif %}</select></div>
+        </form>
+        {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Заменить" variant="primary" type="submit" form=m.ui_form %}{% end_ui_slot %}
+    {% end_ui_modal %}
+{% endfor %}
+{% if can_dismiss %}
+{% ui_modal id="dismiss-modal" title="Прекратить работу в GeeksPro?" %}
+    <form method="post" action="{% url 'teams:dismiss' person.pk %}" class="gp-stack" id="dismiss-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">Все назначения закроются, вход в портал закроется сразу (и в открытой сессии). История назначений, собраний, оценок и задач сохранится. Проекты без тимлида появятся в уведомлениях.</p>
+        <div class="gp-field"><label class="gp-label" for="dismiss-reason">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="dismiss-reason" name="reason" rows="2" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Прекратить работу" variant="danger" type="submit" form="dismiss-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% endblock %}

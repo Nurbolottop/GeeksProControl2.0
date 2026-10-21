@@ -1,0 +1,4 @@
+{% load ui %}<div id="demo-table" class="gp-busy-region">
+    {% ui_datatable columns table_rows hx_target="#demo-table" empty_title="Проектов нет" empty_text="Создайте первый проект — он появится здесь." %}
+    {% ui_pagination page_obj hx_target="#demo-table" label="проектов" %}
+</div>

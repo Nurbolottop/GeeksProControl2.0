@@ -1,0 +1,27 @@
+{# Переходная вкладка: разметка 1.0, перенос — UI-03B #}
+    <div class="panel" style="padding: 0;">
+        <div style="display:flex; justify-content: space-between; align-items:center; padding: 16px 20px 0;">
+            <h2 style="margin:0">Задачи проекта ({{ tasks|length }})</h2>
+            <a href="{% url 'tasks:create' %}?project={{ project.pk }}" class="btn btn--sm">+ Задача</a>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Задача</th>
+                    <th>Приоритет</th>
+                    <th>Deadline</th>
+                    <th>Статус</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for task in tasks %}
+                    {% include 'tasks/partials/task_row.html' with statuses=task_statuses %}
+                {% empty %}
+                    <tr><td colspan="5" class="empty" style="text-align:center; padding: 24px;">Задач нет.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>

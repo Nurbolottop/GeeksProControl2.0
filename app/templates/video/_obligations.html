@@ -1,0 +1,17 @@
+{% load ui %}
+<div style="margin-bottom: var(--space-5)">
+{% ui_card title="Обязательные собрания недели" subtitle=obligation_week.label flush=True %}
+    {% if obligation_counts %}<div class="gp-cluster" style="--cluster-gap: var(--space-2); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--color-border)">{% for label, n, tone in obligation_counts %}{% ui_badge label|add:": "|add:n tone=tone %}{% endfor %}</div>{% endif %}
+    {% if obligations %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0"><table class="gp-table"><caption class="gp-sr-only">Обязательства</caption>
+        <thead><tr><th scope="col">Проект · направление</th><th scope="col">Тимлид</th><th scope="col">Статус</th><th scope="col">Собрания</th></tr></thead>
+        <tbody>{% for o in obligations %}<tr>
+            <td class="is-primary" data-label="Проект"><span class="gp-table__primary">{{ o.project.name }}</span><span class="gp-table__secondary">{{ o.direction_label }} · стажёров: {{ o.interns }}</span></td>
+            <td data-label="Тимлид">{% for l in o.leads %}{{ l.full_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="gp-nodata">не назначен</span>{% endfor %}</td>
+            <td data-label="Статус">{% ui_badge o.label tone=o.tone dot=True %}{% if o.held_manually %}<span class="gp-table__secondary">проведение отмечено вручную</span>{% endif %}</td>
+            <td data-label="Собрания">{% for m in o.meetings %}{{ m.starts_at|date:"d.m H:i" }} · {{ m.get_status_display|lower }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</td>
+        </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Обязательств нет" "На этой неделе не было стажёров в направлениях проектов." icon_name="calendar" %}</div>{% endif %}
+{% end_ui_card %}
+</div>

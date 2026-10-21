@@ -1,0 +1,32 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анкета в резерв кадров — GeeksPro</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="apply-body">
+<div class="apply-page">
+    <header class="apply-hero">
+        <div class="apply-hero__brand">Geeks<span>Pro</span></div>
+        <h1>{% if is_edit %}Ваша анкета в резерве кадров{% else %}Анкета в резерв кадров{% endif %}</h1>
+        <p>
+            Резерв — это база проверенных выпускников GeeksPro, которых мы рекомендуем
+            компаниям-работодателям. Заполните анкету один раз: чем подробнее, тем точнее
+            мы подберём вам вакансию.
+        </p>
+        {% if invite.recipient %}<div class="apply-hero__to">Анкета для: <strong>{{ invite.recipient }}</strong></div>{% endif %}
+        <div class="apply-hero__legend"><span class="afield__req">*</span> — обязательные поля, остальные можно пропустить</div>
+    </header>
+
+    {% if is_edit %}
+        {% include 'reserve/partials/apply_form.html' with submit_label='Сохранить изменения' %}
+    {% else %}
+        {% include 'reserve/partials/apply_form.html' %}
+    {% endif %}
+</div>
+
+</body>
+</html>

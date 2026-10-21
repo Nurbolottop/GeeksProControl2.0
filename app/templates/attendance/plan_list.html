@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}План собраний группы {{ group.code }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>План собраний · группа {{ group.code }}</h1>
+        <div class="sub">Сколько собраний в неделю проводит команда и кто их ведёт</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'attendance:group_sheet' group.pk %}" class="btn btn--secondary">← К табелю</a>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="detail-grid__main">
+        <div class="panel" style="padding: 0;">
+            <h2 style="padding: 20px 24px 0">Текущий план ({{ plans|length }})</h2>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Вид собрания</th>
+                        <th>В неделю</th>
+                        <th>Дни</th>
+                        <th>Проводит</th>
+                        <th>Статус</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for plan in plans %}
+                        <tr>
+                            <td><strong>{{ plan.get_kind_display }}</strong></td>
+                            <td>{{ plan.times_per_week }} раз</td>
+                            <td>{{ plan.weekday_labels|default:'по умолчанию' }}</td>
+                            <td>{{ plan.host.full_name|default:'—' }}</td>
+                            <td>
+                                {% if plan.is_active %}<span class="badge badge--green">Действует</span>
+                                {% else %}<span class="badge badge--gray">Отключён</span>{% endif %}
+                            </td>
+                            <td>
+                                <form method="post" action="{% url 'attendance:plan_delete' plan.pk %}" style="margin:0"
+                                      data-confirm="Удалить план «{{ plan.get_kind_display|escapejs }}»?">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn--secondary btn--sm">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="6" class="empty" style="text-align:center; padding: 24px;">
+                            Плана пока нет. Добавьте первый — например, «PM со стажёрами, 2 раза в неделю».
+                        </td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-grid__side">
+        <div class="panel">
+            <h2>Добавить в план</h2>
+            <form method="post">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="message message--error">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <div class="form-stack">
+                    <div class="form-field">
+                        <label for="{{ form.kind.id_for_label }}">Вид собрания</label>
+                        {{ form.kind }}
+                    </div>
+                    <div class="form-field">
+                        <label for="{{ form.times_per_week.id_for_label }}">Раз в неделю</label>
+                        {{ form.times_per_week }}
+                        {% if form.times_per_week.errors %}<div class="form-errors">{{ form.times_per_week.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="form-field">
+                        <label>Дни недели</label>
+                        <div class="weekday-picker">{{ form.weekday_choices }}</div>
+                        <div class="field-hint">Если не выбрать — дни распределятся автоматически</div>
+                    </div>
+                    <div class="form-field">
+                        <label for="{{ form.host.id_for_label }}">Кто проводит</label>
+                        {{ form.host }}
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

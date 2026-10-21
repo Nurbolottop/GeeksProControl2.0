@@ -1,0 +1,48 @@
+{% load ui %}
+<div style="margin-bottom: var(--space-5)">{% include "projects/card/_roadmap.html" %}</div>
+{% if lead %}{% include "projects/card/_lead_overview.html" %}{% endif %}
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    <div class="gp-stack gp-stack--lg">
+        {% ui_card title="Сводка" %}
+            <dl class="gp-metrics">
+                <div class="gp-metrics__row"><dt>Заказчик</dt><dd>{% if project.client %}{% if client_url %}<a class="gp-link" href="{{ client_url }}">{{ project.client }}</a>{% else %}{{ project.client }}{% endif %}{% else %}<span class="gp-nodata">не указан</span>{% endif %}</dd></div>
+                <div class="gp-metrics__row"><dt>Тип проекта</dt><dd>{{ project.project_type|default:"—" }}</dd></div>
+                <div class="gp-metrics__row"><dt>Дата начала</dt><dd>{{ project.start_date|date:"d.m.Y"|default:"—" }}</dd></div>
+                <div class="gp-metrics__row"><dt>Ориентир сдачи<span class="gp-metrics__note">около двух месяцев, не жёсткий дедлайн</span></dt><dd>{{ project.planned_end_date|date:"d.m.Y"|default:"—" }}</dd></div>
+                <div class="gp-metrics__row"><dt>Статус</dt><dd>{% ui_badge project.get_status_display tone=status_tone %}</dd></div>
+                <div class="gp-metrics__row"><dt>Основной этап</dt><dd>{{ stage_label }}{% if not stage_confirmed %} {% ui_badge "не подтверждён" tone="warning" %}{% endif %}</dd></div>
+                <div class="gp-metrics__row"><dt>Готовность<span class="gp-metrics__note">{{ overview.stages.done }} из {{ overview.stages.total }} этапов завершено</span></dt><dd>{{ overview.stages.progress }}%</dd></div>
+            </dl>
+        {% end_ui_card %}
+        {% include "projects/card/_closure.html" %}
+        {% ui_card title="Ссылки" %}
+            {% if edit_links %}{% ui_slot "actions" %}{% for link in edit_links %}{% ui_button link.label size="sm" variant="ghost" href=link.href icon_name="pencil" %}{% endfor %}{% end_ui_slot %}{% endif %}
+            {% if overview.links %}
+                <div class="gp-cluster">{% for label, url in overview.links %}<a class="gp-btn gp-btn--sm" href="{{ url }}" target="_blank" rel="noopener">{% ui_icon "external-link" "sm" %}<span>{{ label }}</span></a>{% endfor %}</div>
+            {% else %}<p class="gp-muted gp-small" style="margin:0">Staging, production и репозитории ещё не указаны.</p>{% endif %}
+        {% end_ui_card %}
+    </div>
+    <div class="gp-stack gp-stack--lg">
+        {% ui_card title="Ответственные" %}
+            <dl class="gp-metrics">
+                <div class="gp-metrics__row"><dt>ПМ</dt><dd>{% for m in overview.pm %}{{ m.intern.full_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="gp-nodata">не назначен</span>{% endfor %}</dd></div>
+                {% for m in overview.leads %}<div class="gp-metrics__row"><dt>Тимлид · {{ m.intern.specialization|default:"направление не указано" }}</dt><dd>{{ m.intern.full_name }}</dd></div>
+                {% empty %}<div class="gp-metrics__row"><dt>Тимлиды</dt><dd><span class="gp-nodata">не назначены</span></dd></div>{% endfor %}
+            </dl>
+        {% end_ui_card %}
+        {% ui_card title="Команда" subtitle="Уникальные люди, без повторов" %}
+            {% ui_slot "actions" %}{% ui_button "Открыть" size="sm" variant="ghost" href="?tab=team" icon_end="chevron-right" %}{% end_ui_slot %}
+            <div class="gp-grid gp-grid--3" style="--grid-gap: var(--space-3)">
+                <div><div class="gp-muted gp-small">Новые</div><div style="font-size: var(--text-2xl); font-weight: 700">{{ overview.new }}</div></div>
+                <div><div class="gp-muted gp-small">Старые</div><div style="font-size: var(--text-2xl); font-weight: 700">{{ overview.old }}</div></div>
+                <div><div class="gp-muted gp-small">Всего участников</div><div style="font-size: var(--text-2xl); font-weight: 700">{{ overview.unique }}</div></div>
+            </div>
+        {% end_ui_card %}
+        {% if show_report %}{% ui_card title="Последний отчёт" %}
+            {% if overview.last_report %}
+                <p class="gp-muted gp-small" style="margin: 0 0 var(--space-2)">{{ overview.last_report.date|date:"d.m.Y" }}{% if overview.last_report.author %} · {{ overview.last_report.author.display_name }}{% endif %}</p>
+                <p class="gp-text" style="white-space: pre-line; margin:0">{{ overview.last_report.text|truncatechars:400 }}</p>
+            {% else %}{% ui_empty "Отчётов по проекту ещё нет" icon_name="file-text" %}{% endif %}
+        {% end_ui_card %}{% endif %}
+    </div>
+</div>

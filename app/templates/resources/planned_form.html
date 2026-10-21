@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div><h1>{{ title }}</h1></div>
+</div>
+
+<form method="post" class="panel">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="message message--error">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div class="form-grid">
+        {% include 'partials/form_fields.html' %}
+    </div>
+
+    <h2 style="margin-top:20px">Предполагаемый состав команды</h2>
+    {{ formset.management_form }}
+    {% for need_form in formset %}
+        <div style="display:flex; gap:12px; align-items:flex-end; padding: 6px 0; flex-wrap:wrap;">
+            {% for hidden in need_form.hidden_fields %}{{ hidden }}{% endfor %}
+            <div class="form-field">
+                <label>Направление</label>
+                {{ need_form.specialization }}
+            </div>
+            <div class="form-field" style="max-width: 100px">
+                <label>Человек</label>
+                {{ need_form.count }}
+            </div>
+            {% if need_form.instance.pk %}
+                <label style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:4px; padding-bottom:8px">
+                    {{ need_form.DELETE }} удалить
+                </label>
+            {% endif %}
+            {% if need_form.errors %}
+                <div class="form-errors">{{ need_form.errors }}</div>
+            {% endif %}
+        </div>
+    {% endfor %}
+
+    <div class="form-actions">
+        <button type="submit" class="btn">Сохранить</button>
+        <a href="{% url 'resources:forecast' %}" class="btn btn--secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}

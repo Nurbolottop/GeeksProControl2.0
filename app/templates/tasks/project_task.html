@@ -1,0 +1,143 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}{{ task.title }} — {{ project.name }}{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title=task.title subtitle=project.name %}
+    {% ui_slot "eyebrow" %}
+        {% ui_badge task.get_status_display tone=task.ui_status_tone dot=True %}
+        {% if task.ui_direction %}{% ui_badge task.ui_direction tone="info" %}{% else %}{% ui_badge "Общая задача" %}{% endif %}
+        {% if task.ui_priority_tone != 'neutral' %}{% ui_badge task.get_priority_display tone=task.ui_priority_tone %}{% endif %}
+        {% if task.needs_reassign %}{% ui_badge "нужен исполнитель" tone="danger" dot=True %}{% endif %}
+    {% end_ui_slot %}
+    {% ui_button "К доске" href=back_url icon_name="chevron-left" %}
+    {% for status, label in task.ui_actions %}
+        <form method="post" action="{{ urls.status }}" style="margin:0">{% csrf_token %}<input type="hidden" name="status" value="{{ status }}"><input type="hidden" name="next" value="task">{% ui_button label type="submit" %}</form>
+    {% endfor %}
+    {% if can_manage %}{% ui_button "Изменить" variant="primary" icon_name="pencil" data_gp_open="task-edit" %}{% endif %}
+{% end_ui_page_header %}
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Задача" %}
+        {% if task.description %}<p class="gp-text" style="white-space: pre-line; margin: 0 0 var(--space-4); overflow-wrap: anywhere">{{ task.description }}</p>{% endif %}
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>Проект</dt><dd>{{ project.name }}</dd></div>
+            <div class="gp-metrics__row"><dt>Направление</dt><dd>{{ task.ui_direction|default:"общая" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Создал(а)</dt><dd>{{ task.author.display_name|default:"—" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Создана</dt><dd>{{ task.created_at|date:"d.m.Y H:i" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Срок</dt><dd>{{ task.deadline|date:"d.m.Y"|default:"не указан" }}</dd></div>
+            {% if task.completed_at %}<div class="gp-metrics__row"><dt>Готово</dt><dd>{{ task.completed_at|date:"d.m.Y" }}</dd></div>{% endif %}
+            {% if task.assignee and not assignments %}<div class="gp-metrics__row"><dt>Исполнитель (до 2.0)</dt><dd>{{ task.assignee.display_name }}</dd></div>{% endif %}
+        </dl>
+    {% end_ui_card %}
+    {% ui_card title="Исполнители" subtitle="У каждого свой результат. «Готово» — когда принят результат всех действующих исполнителей." flush=True %}
+        {% if assignments %}
+        <ul class="gp-docs">
+        {% for a in assignments %}
+            <li class="gp-doc">
+                <span class="gp-doc__icon">{% ui_icon "user" %}</span>
+                <div style="min-width:0">
+                    <p class="gp-doc__title">{{ a.person_name }}{% if a.is_active %}{% ui_badge a.get_status_display tone=a.ui_tone %}{% else %}{% ui_badge "назначение закрыто" %}{% endif %}</p>
+                    <p class="gp-doc__meta">назначен(а) {{ a.created_at|date:"d.m.Y" }}{% if a.assigned_by %} · {{ a.assigned_by.display_name }}{% endif %}{% if a.ui_attempts %} · попыток: {{ a.ui_attempts }}{% endif %}{% if a.approved_at %} · принято {{ a.approved_at|date:"d.m.Y" }}{% if a.approved_by %} ({{ a.approved_by.display_name }}){% endif %}{% endif %}{% if not a.is_active %} · {{ a.release_reason }} {{ a.released_at|date:"d.m.Y" }}{% endif %}</p>
+                </div>
+                {% if a.ui_unassign_url %}<div class="gp-doc__actions"><form method="post" action="{{ a.ui_unassign_url }}" style="margin:0">{% csrf_token %}{% ui_button "Снять" size="sm" variant="ghost" type="submit" %}</form></div>{% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Исполнителей нет" icon_name="user" %}</div>{% endif %}
+        {% if can_manage %}
+        <form method="post" action="{{ urls.assign }}" class="gp-cluster" style="padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border); align-items: flex-end">{% csrf_token %}
+            <div class="gp-field" style="flex: 1 1 200px; min-width: 0"><label class="gp-label" for="assign-intern">Добавить исполнителя</label>
+                <select class="gp-select" id="assign-intern" name="intern" required{% if not candidates %} disabled{% endif %}>{% for m in candidates %}<option value="{{ m.intern_id }}">{{ m.intern.full_name }} · {{ m.get_role_display }}</option>{% empty %}<option>Нет подходящих активных участников</option>{% endfor %}</select>
+            </div>
+            {% if candidates %}{% ui_button "Назначить" type="submit" icon_name="plus" %}{% endif %}
+        </form>
+        {% endif %}
+    {% end_ui_card %}
+</div>
+
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Сданные работы" subtitle="Стажёр сдаёт работу со скриншотом через Telegram-бота. Проверка — вручную, обычно на видеовстрече." flush=True %}
+    {% if submissions %}
+    <ul class="gp-docs">
+    {% for s in submissions %}
+        <li class="gp-doc">
+            <span class="gp-doc__icon">{% ui_icon "eye" %}</span>
+            <div style="min-width:0">
+                <p class="gp-doc__title">{{ s.assignment.person_name }} · попытка {{ s.attempt }}{% ui_badge s.get_outcome_display tone=s.ui_tone %}</p>
+                <p class="gp-doc__meta">{{ s.created_at|date:"d.m.Y H:i" }} · {{ s.get_source_display }} · <a class="gp-link" href="{{ s.screenshot.url }}" target="_blank" rel="noopener">скриншот</a>{% for link in s.ui_links %} · <a class="gp-link" href="{{ link }}" target="_blank" rel="noopener noreferrer nofollow">ссылка {{ forloop.counter }}</a>{% endfor %}</p>
+                {% if s.comment %}<p class="gp-doc__meta" style="white-space: pre-line">«{{ s.comment }}»</p>{% endif %}
+                {% if s.reviewed_at and s.outcome != 'withdrawn' %}<p class="gp-doc__meta">Проверил(а) {{ s.reviewed_by.display_name|default:"—" }}, {{ s.reviewed_at|date:"d.m.Y H:i" }}{% if s.review_comment %}: {{ s.review_comment }}{% endif %}</p>{% endif %}
+            </div>
+            {% if s.ui_can_review %}
+            <div class="gp-doc__actions">
+                <form method="post" action="{% url review_url_name project.pk task.pk s.pk %}" style="margin:0">{% csrf_token %}<input type="hidden" name="decision" value="approve">{% ui_button "Принять" size="sm" variant="primary" type="submit" %}</form>
+                {% ui_button "На доработку" size="sm" data_gp_open=s.ui_modal %}
+            </div>
+            {% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Работ ещё не сдавали" "Сдача появится здесь после отправки через Telegram-бота." icon_name="eye" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start; margin-top: var(--space-5)">
+    <div class="gp-stack">
+    {% ui_card title="Материалы" flush=True %}
+        {% if attachments %}
+        <ul class="gp-docs">{% for f in attachments %}<li class="gp-doc"><span class="gp-doc__icon">{% ui_icon "file-text" %}</span><div style="min-width:0"><p class="gp-doc__title"><a class="gp-link" href="{{ f.file.url }}" target="_blank" rel="noopener">{{ f }}</a></p><p class="gp-doc__meta">{{ f.created_at|date:"d.m.Y" }}{% if f.uploaded_by %} · {{ f.uploaded_by.display_name }}{% endif %}</p></div></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Материалов нет" icon_name="file-text" %}</div>{% endif %}
+        {% if can_manage %}
+        <form method="post" action="{{ urls.attach }}" enctype="multipart/form-data" class="gp-cluster" style="padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border); align-items: flex-end">{% csrf_token %}
+            <div class="gp-field" style="flex: 1 1 200px; min-width: 0"><label class="gp-label" for="attach-file">Добавить материал</label><input class="gp-input" type="file" id="attach-file" name="file" required></div>
+            {% ui_button "Загрузить" type="submit" icon_name="upload" %}
+        </form>
+        {% endif %}
+    {% end_ui_card %}
+    {% ui_card title="Комментарии" flush=True %}
+        <div id="comments">
+        {% if comments %}
+        <ul class="gp-timeline" style="padding: 0 var(--space-5)">{% for c in comments %}<li class="gp-timeline__item"><span class="gp-timeline__icon">{% ui_icon "inbox" %}</span><div style="min-width:0"><p class="gp-timeline__title">{{ c.author.display_name|default:"—" }}</p><p class="gp-timeline__meta">{{ c.text }}</p></div><span class="gp-timeline__date">{{ c.created_at|date:"d.m H:i" }}</span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Комментариев нет" icon_name="inbox" %}</div>{% endif %}
+        {% if can_comment %}
+        <form method="post" action="{{ urls.comment }}" class="gp-stack" style="padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border)">{% csrf_token %}
+            <label class="gp-sr-only" for="comment-text">Комментарий</label><textarea class="gp-textarea" id="comment-text" name="text" rows="2" required placeholder="Комментарий…"></textarea>
+            <div>{% ui_button "Отправить" type="submit" %}</div>
+        </form>
+        {% endif %}
+        </div>
+    {% end_ui_card %}
+    </div>
+    {% ui_card title="История" flush=True %}
+        {% if events %}
+        <ul class="gp-timeline" style="padding: 0 var(--space-5)">{% for e in events %}<li class="gp-timeline__item"><span class="gp-timeline__icon">{% ui_icon "clock" %}</span><div style="min-width:0"><p class="gp-timeline__title">{{ e.get_kind_display }}{% if e.old_value or e.new_value %}: {% if e.old_value %}{{ e.old_value }}{% endif %}{% if e.old_value and e.new_value %} → {% endif %}{{ e.new_value }}{% endif %}</p><p class="gp-timeline__meta">{% if e.user %}{{ e.user.display_name }}{% else %}система{% endif %}{% if e.assignment and e.kind != 'assigned' %} · {{ e.assignment.person_name }}{% endif %}{% if e.text %} · {{ e.text }}{% endif %}</p></div><span class="gp-timeline__date">{{ e.created_at|date:"d.m.Y H:i" }}</span></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Событий нет" icon_name="clock" %}</div>{% endif %}
+    {% end_ui_card %}
+</div>
+
+{% for s in submissions %}{% if s.ui_can_review %}
+{% ui_modal id=s.ui_modal title="Вернуть на доработку" %}
+    <form method="post" action="{% url review_url_name project.pk task.pk s.pk %}" class="gp-stack" id="{{ s.ui_form }}">{% csrf_token %}<input type="hidden" name="decision" value="return">
+        <p class="gp-text" style="margin:0">{{ s.assignment.person_name }}, попытка {{ s.attempt }}. Материалы этой попытки сохранятся, задача вернётся «В работу».</p>
+        <div class="gp-field"><label class="gp-label" for="{{ s.ui_form }}-c">Что доработать<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="{{ s.ui_form }}-c" name="comment" rows="3" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Вернуть" variant="danger" type="submit" form=s.ui_form %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}{% endfor %}
+{% if can_manage %}
+{% ui_modal id="task-edit" title="Задача" %}
+    <form method="post" action="{{ urls.update }}" class="gp-stack" id="task-edit-form">{% csrf_token %}<input type="hidden" name="next" value="task">
+        <div class="gp-field"><label class="gp-label" for="te-title">Что нужно сделать</label><input class="gp-input" id="te-title" name="title" maxlength="255" required value="{{ task.title }}"></div>
+        <div class="gp-field"><label class="gp-label" for="te-description">Описание</label><textarea class="gp-textarea" id="te-description" name="description" rows="4">{{ task.description }}</textarea></div>
+        <div class="gp-form-grid gp-form-grid--2">
+            {% if scope != 'lead' %}<div class="gp-field"><label class="gp-label" for="te-direction">Направление</label><select class="gp-select" id="te-direction" name="direction"><option value="">Общая задача</option>{% for key, label in directions %}<option value="{{ key }}"{% if key == task.direction %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>{% endif %}
+            <div class="gp-field"><label class="gp-label" for="te-priority">Приоритет</label><select class="gp-select" id="te-priority" name="priority">{% for key, label in priorities %}<option value="{{ key }}"{% if key == task.priority %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="te-deadline">Срок</label><input class="gp-input" type="date" id="te-deadline" name="deadline" value="{{ task.deadline|date:'Y-m-d' }}"></div>
+        </div>
+    </form>
+    {% if can_delete %}<form method="post" action="{{ urls.delete }}" id="task-delete-form">{% csrf_token %}</form>{% endif %}
+    {% ui_slot "footer" %}{% if can_delete %}<span style="margin-right:auto">{% ui_button "В архив" variant="ghost" icon_name="trash" type="submit" form="task-delete-form" %}</span>{% endif %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Сохранить" variant="primary" type="submit" form="task-edit-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% endblock %}

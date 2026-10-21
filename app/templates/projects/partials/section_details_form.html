@@ -1,0 +1,18 @@
+<div class="panel panel--editing" id="section-details">
+    <form hx-post="{% url 'projects:section' project.pk 'details' %}"
+          hx-target="#section-details" hx-swap="outerHTML">
+        {% csrf_token %}
+        <div class="panel-head">
+            <h2>Детали</h2>
+            <div class="panel-actions">
+                <button type="submit" class="btn btn--sm">Сохранить</button>
+                <button type="button" class="btn btn--secondary btn--sm"
+                        hx-get="{% url 'projects:section' project.pk 'details' %}"
+                        hx-target="#section-details" hx-swap="outerHTML">Отмена</button>
+            </div>
+        </div>
+        <div class="form-stack">
+            {% include 'partials/form_fields.html' %}
+        </div>
+    </form>
+</div>

@@ -1,0 +1,10 @@
+{% load ui %}<dialog class="gp-modal{% if size %} gp-modal--{{ size }}{% endif %}" id="{{ id }}" aria-labelledby="{{ id }}-title"{% if dismissable is not False %} data-gp-dismissable{% endif %}{% if autoopen %} data-gp-autoopen{% endif %}>
+    <div class="gp-modal__panel">
+        <header class="gp-modal__header">
+            <h2 class="gp-modal__title" id="{{ id }}-title">{{ title }}</h2>
+            {% ui_button "Закрыть" variant="ghost" size="sm" icon_name="x" label_hidden=True data_gp_close=True %}
+        </header>
+        <div class="gp-modal__body">{{ body }}</div>
+        {% if slots.footer %}<footer class="gp-modal__footer">{{ slots.footer }}</footer>{% endif %}
+    </div>
+</dialog>

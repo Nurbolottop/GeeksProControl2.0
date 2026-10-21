@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Задачи — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Задачи</h1>
+        <div class="sub">Всего: {{ page.paginator.count }}</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'tasks:kanban' %}" class="btn btn--secondary">Kanban</a>
+        <a href="{% url 'tasks:create' %}" class="btn">+ Новая задача</a>
+    </div>
+</div>
+
+<div class="tabs">
+    <a href="{% url 'tasks:list' %}" class="{% if not view %}is-active{% endif %}">Все</a>
+    <a href="?view=today" class="{% if view == 'today' %}is-active{% endif %}">Сегодня</a>
+    <a href="?view=week" class="{% if view == 'week' %}is-active{% endif %}">Неделя</a>
+    <a href="?view=overdue" class="{% if view == 'overdue' %}is-active{% endif %}">Просроченные</a>
+</div>
+
+<form method="get" class="filters">
+    {% if view %}<input type="hidden" name="view" value="{{ view }}">{% endif %}
+    <input type="text" name="q" placeholder="Поиск" value="{{ params.q|default:'' }}">
+    <select name="project">
+        <option value="">Проект: все</option>
+        {% for project in projects %}
+            <option value="{{ project.pk }}" {% if params.project == project.pk|stringformat:'s' %}selected{% endif %}>{{ project.name }}</option>
+        {% endfor %}
+    </select>
+    <select name="status">
+        <option value="">Статус: все</option>
+        {% for value, label in statuses %}
+            <option value="{{ value }}" {% if params.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <select name="priority">
+        <option value="">Приоритет: все</option>
+        {% for value, label in priorities %}
+            <option value="{{ value }}" {% if params.priority == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn--secondary btn--sm">Применить</button>
+    <a href="{% url 'tasks:list' %}" class="btn btn--secondary btn--sm">Сбросить</a>
+</form>
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Задача</th>
+                <th>Приоритет</th>
+                <th>Deadline</th>
+                <th>Статус</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for task in page.object_list %}
+                {% include 'tasks/partials/task_row.html' %}
+            {% empty %}
+                <tr><td colspan="5" class="empty" style="text-align:center; padding: 24px;">Задач не найдено.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page.paginator.num_pages > 1 %}
+    <div class="pagination">
+        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">‹</a>{% endif %}
+        <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a href="?page={{ page.next_page_number }}">›</a>{% endif %}
+    </div>
+{% endif %}
+{% endblock %}

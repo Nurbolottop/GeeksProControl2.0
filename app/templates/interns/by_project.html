@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Стажёры по проектам — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Стажёры по проектам</h1>
+        <div class="sub">Сколько людей занято на каждом проекте и кто свободен</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'interns:list' %}" class="btn btn--secondary">Все стажёры</a>
+    </div>
+</div>
+
+<div class="lead-summary">
+    <div class="lead-summary__item lead-summary__item--total">
+        <span class="lead-summary__value">{{ on_projects }}</span>
+        <span class="lead-summary__label">стажёров на проектах</span>
+    </div>
+    <div class="lead-summary__item">
+        <span class="lead-summary__value">{{ projects_count }}</span>
+        <span class="lead-summary__label">проектов с командой</span>
+    </div>
+    <div class="lead-summary__item">
+        <span class="lead-summary__value">{{ free|length }}</span>
+        <span class="lead-summary__label">свободных стажёров</span>
+    </div>
+</div>
+
+<div class="panel" style="padding: 0;">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>Проект</th>
+                <th style="text-align: center;">Стажёров</th>
+                <th>По направлениям</th>
+                <th>PM</th>
+                <th>Тимлиды</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr>
+                    <td>
+                        <a href="{{ row.project.get_absolute_url }}"><strong>{{ row.project.name }}</strong></a>
+                        <div class="sub">
+                            {% if row.project.client %}{{ row.project.client }}{% else %}Внутренний{% endif %}
+                            · {{ row.project.get_status_display }}
+                            {% if row.is_closed %}<span class="badge badge--red">проект закрыт, команда не снята</span>{% endif %}
+                        </div>
+                    </td>
+                    <td style="text-align: center;">
+                        {% if row.interns %}
+                            <strong style="font-size: 17px;">{{ row.interns|length }}</strong>
+                        {% else %}
+                            <span class="sub">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% for name, count in row.specs %}
+                            <span class="badge badge--gray">{{ name }} · {{ count }}</span>
+                        {% empty %}
+                            <span class="sub">нет стажёров на проекте</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% for pm in row.pms %}{% if not forloop.first %}, {% endif %}{{ pm }}{% empty %}<span class="sub">—</span>{% endfor %}
+                    </td>
+                    <td>
+                        {% for lead in row.leads %}{% if not forloop.first %}, {% endif %}{{ lead.full_name }}{% empty %}<span class="sub">—</span>{% endfor %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="sub" style="padding: 20px;">Активных проектов нет.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="panel">
+    <div class="panel-head">
+        <h2>Свободные стажёры</h2>
+        <span class="panel-bar__note">{{ free|length }} чел.</span>
+    </div>
+    {% if free %}
+        <div class="free-interns">
+            {% for intern in free %}
+                <a href="{{ intern.get_absolute_url }}" class="badge badge--gray">
+                    {{ intern.full_name }}{% if intern.specialization %} · {{ intern.specialization }}{% endif %}
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="sub">Все стажёры распределены по проектам.</div>
+    {% endif %}
+</div>
+{% endblock %}

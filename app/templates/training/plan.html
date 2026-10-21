@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}IT-академия — GeeksPro Control{% endblock %}
+
+{% block content %}
+<style>
+    .academy-list { max-width: 820px; }
+    .academy-dir { margin-bottom: 14px; padding: 20px 24px; }
+    .academy-dir h2 { margin: 0 0 10px; font-size: 18px; display: flex; align-items: baseline; gap: 8px; }
+    .academy-dir h2 .sub { font-size: 13px; font-weight: 500; }
+    .academy-line { font-size: 15px; line-height: 1.9; }
+    .academy-line b { font-weight: 700; }
+    .academy-line a { color: inherit; }
+    .academy-line a:hover b { color: var(--primary); }
+    .academy-line .muted { color: var(--text-muted); }
+    .branch-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .branch-tab {
+        display: flex; flex-direction: column; gap: 2px; min-width: 180px;
+        padding: 12px 18px; border-radius: 12px; text-decoration: none;
+        background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    }
+    .branch-tab strong { font-size: 16px; }
+    .branch-tab span { font-size: 12.5px; color: var(--text-muted); }
+    .branch-tab:hover { border-color: var(--border-strong); color: var(--text); }
+    .branch-tab.is-active { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    .branch-tab--warn span { color: var(--orange); }
+    .dir-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; max-width: 820px; }
+    .dir-tab {
+        display: flex; align-items: center; gap: 10px; min-width: 210px;
+        padding: 12px 16px; border-radius: 12px; text-decoration: none;
+        background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    }
+    .dir-tab:hover { border-color: var(--border-strong); color: var(--text); }
+    .dir-tab.is-active { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    .dir-tab__icon { font-size: 20px; }
+    .dir-tab__body { display: flex; flex-direction: column; gap: 2px; }
+    .dir-tab__body strong { font-size: 15px; }
+    .dir-tab__body span { font-size: 12.5px; color: var(--text-muted); }
+</style>
+
+<div class="page-head">
+    <div>
+        <h1>IT-академия</h1>
+        <div class="sub">
+            {% if specialization %}
+                Направление «{{ specialization }}» в филиале {{ current.label }} —
+                <a href="?branch={{ branch }}">к списку направлений</a>
+            {% else %}
+                Группы академии, из которых к нам приходят стажёры
+            {% endif %}
+        </div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'training:group_list' %}?branch={{ branch }}" class="btn btn--secondary">Все группы</a>
+        <a href="{% url 'training:group_import' %}?branch={% if branch != no_branch %}{{ branch }}{% endif %}" class="btn">Вставить сообщение академии</a>
+    </div>
+</div>
+
+<div class="branch-tabs">
+    {% for tab in tabs %}
+        <a href="?branch={{ tab.value }}" class="branch-tab {% if tab.value == branch %}is-active{% endif %} {% if tab.value == no_branch %}branch-tab--warn{% endif %}">
+            <strong>{{ tab.label }}</strong>
+            <span>
+                {% if tab.groups %}{{ tab.groups }} {{ tab.groups_word }} · {{ tab.students }} {{ tab.students_word }}{% if tab.unknown %} + ?{% endif %}
+                {% else %}групп нет{% endif %}
+            </span>
+        </a>
+    {% endfor %}
+</div>
+
+{% if branch == no_branch %}
+    <div class="message message--warning" style="max-width: 820px;">
+        Эти группы загружены, когда филиалов ещё не было. Вставьте то же сообщение заново, выбрав филиал, —
+        группы перейдут в него без дублей. Или откройте группу и укажите филиал вручную.
+    </div>
+{% endif %}
+
+{% if all_directions %}
+    <div class="dir-tabs">
+        {% for dir in all_directions %}
+            <a href="?branch={{ branch }}&specialization={{ dir.specialization.pk }}"
+               class="dir-tab {% if specialization and dir.specialization.pk == specialization.pk %}is-active{% endif %}">
+                <span class="dir-tab__icon">{{ dir.icon }}</span>
+                <span class="dir-tab__body">
+                    <strong>{{ dir.specialization }}</strong>
+                    <span>{{ dir.lines|length }} гр. · {{ dir.students }} студ.</span>
+                </span>
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="academy-list">
+    {% if not specialization and not request.GET.specialization %}
+        <div class="panel">
+            <div class="sub">
+                {% if all_directions %}
+                    Выберите направление — покажу его группы в филиале {{ current.label }}.
+                {% else %}
+                    В филиале {{ current.label }} групп пока нет. Нажмите «Вставить сообщение академии»,
+                    выберите {{ current.label }} и вставьте присланный список.
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+    {% for dir in directions %}
+        <div class="panel academy-dir">
+            <h2>
+                {{ dir.icon }} {{ dir.specialization }}
+                {% if dir.academy_name %}<span class="sub">в академии — {{ dir.academy_name }}</span>{% endif %}
+            </h2>
+            {% for line in dir.lines %}
+                <div class="academy-line">
+                    * <a href="{% url 'training:group_update' line.group.pk %}"><b>{{ line.group.number }} группа</b></a>
+                    <span class="muted">— старт:</span> <b>{{ line.group.start_date|date:'d.m.Y'|default:'?' }}</b>
+                    <span class="muted">· конец:</span> <b>{{ line.group.end_date|date:'d.m.Y'|default:'?' }}</b>
+                    — <b>{{ line.students }}</b>
+                </div>
+            {% endfor %}
+        </div>
+    {% empty %}
+        {% if request.GET.specialization %}
+            <div class="panel">
+                <div class="sub">В филиале {{ current.label }} нет групп этого направления сейчас. <a href="?branch={{ branch }}">К списку направлений</a>.</div>
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endblock %}

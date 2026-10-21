@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Создать собрание — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="form-page">
+    <div class="page-head">
+        <div>
+            <h1>Создать собрание</h1>
+            <div class="sub">
+                Группа <a href="{{ group.get_absolute_url }}">{{ group.code }}</a>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" class="panel" x-data="{ kind: 'pm_interns' }">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="message message--error">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="form-field">
+            <label for="{{ form.kind.id_for_label }}">Вид собрания</label>
+            <select name="kind" id="{{ form.kind.id_for_label }}" x-model="kind">
+                {% for value, label in form.fields.kind.choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <div class="field-hint" x-show="kind !== 'lead_interns'">
+                Собрание проведёт PM группы — подставится автоматически
+            </div>
+        </div>
+
+        <div class="form-field" style="margin-top: 18px" x-show="kind === 'lead_interns'" x-cloak>
+            <label for="{{ form.host.id_for_label }}">Какой тимлид проводит</label>
+            {{ form.host }}
+            <div class="field-hint">В списке — тимлиды этой группы</div>
+        </div>
+
+        <div class="form-field" style="margin-top: 18px" x-data="{ extra: [] }">
+            <label>Даты собраний</label>
+            <div class="date-list">
+                <div class="date-row">
+                    <input type="date" name="date" value="{{ today|date:'Y-m-d' }}">
+                </div>
+                <template x-for="(item, index) in extra" :key="index">
+                    <div class="date-row">
+                        <input type="date" name="date">
+                        <button type="button" class="date-row__remove"
+                                @click="extra.splice(index, 1)" title="Убрать дату">✕</button>
+                    </div>
+                </template>
+            </div>
+            <button type="button" class="btn btn--secondary btn--sm" style="margin-top: 10px"
+                    @click="extra.push(1)">+ Ещё дата</button>
+            <div class="field-hint" style="margin-top: 8px">
+                Каждая дата — отдельное собрание (отдельная колонка в табеле)
+            </div>
+            {% if date_error %}<div class="form-errors">{{ date_error }}</div>{% endif %}
+        </div>
+
+        <div class="form-row" style="margin-top: 18px">
+            <div class="form-field">
+                <label for="{{ form.topic.id_for_label }}">Тема</label>
+                {{ form.topic }}
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn">Создать</button>
+            <a href="{% url 'attendance:group_sheet' group.pk %}?year={{ year }}&month={{ month }}"
+               class="btn btn--secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

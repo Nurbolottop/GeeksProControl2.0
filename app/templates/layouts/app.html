@@ -1,0 +1,87 @@
+{% load static ui %}<!DOCTYPE html>
+<html lang="ru">
+<head>
+    {% include "layouts/_head.html" %}
+    <title>{% block title %}GeeksPro Control{% endblock %}</title>
+    <script src="{% static 'gp2/app.js' %}" defer></script>
+    <script src="{% static 'js/htmx.min.js' %}" defer></script>
+    <script src="{% static 'js/alpine.min.js' %}" defer></script>
+    {# Страницы на стилях 1.0 подключают здесь legacy.css (см. templates/base.html) #}
+    {% block legacy_assets %}{% endblock %}
+    {% block extra_head %}{% endblock %}
+</head>
+{# Порядок в DOM: меню → топбар → контент. Меню одно на все ширины. #}
+<body class="gp-body" x-data="gpShell" :class="{ 'gp-nav-open': navOpen }" @keydown.escape.window="closeNav()"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' data-gp-sprite="{% static 'gp2/icons.svg' %}">
+<a class="gp-skip-link" href="#gp-main">Перейти к содержимому</a>
+<div class="gp-shell" :data-collapsed="collapsed.toString()">
+    <aside class="gp-sidebar" id="gp-sidebar" aria-label="Навигация">
+        <div class="gp-sidebar__head">
+            {% include "components/brand.html" with href=ui_nav.home.href %}
+            {% ui_button "Закрыть меню" variant="ghost" size="sm" icon_name="x" label_hidden=True class_="gp-sidebar__close gp-only-mobile" x_on_click="closeNav()" %}
+        </div>
+        <div class="gp-sidebar__body">{% include "layouts/_nav.html" %}</div>
+        <div class="gp-sidebar__foot">
+            <button type="button" class="gp-nav__item gp-sidebar__collapse" @click="toggleCollapsed()" :aria-pressed="collapsed.toString()" title="Свернуть меню">
+                {% ui_icon "panel-left" %}<span class="gp-nav__label gp-sidebar__foot-label" x-text="collapsed ? 'Развернуть меню' : 'Свернуть меню'">Свернуть меню</span>
+            </button>
+        </div>
+    </aside>
+    <div class="gp-overlay" @click="closeNav()" aria-hidden="true"></div>
+
+    <div class="gp-main-col">
+        <header class="gp-topbar">
+            {% ui_button "Открыть меню" variant="ghost" icon_name="menu" label_hidden=True class_="gp-topbar__menu" x_on_click="toggleNav()" x_bind_aria_expanded="navOpen.toString()" aria_controls="gp-sidebar" %}
+            <div class="gp-topbar__crumbs">
+                {% block breadcrumbs %}{% ui_breadcrumbs ui_nav.crumbs %}{% endblock %}
+            </div>
+            <div class="gp-topbar__title">{% block mobile_title %}{% with crumb=ui_nav.crumbs|last %}{{ crumb.label }}{% endwith %}{% endblock %}</div>
+            <div class="gp-topbar__actions">
+                <button type="button" class="gp-btn gp-btn--ghost gp-btn--icon" @click="cycleTheme()" :aria-label="dark ? 'Включить светлую тему' : 'Включить тёмную тему'" aria-label="Переключить тему">
+                    <span x-show="dark" x-cloak>{% ui_icon "sun" %}</span><span x-show="!dark">{% ui_icon "moon" %}</span>
+                </button>
+                {% if ui_bell.href %}
+                    <a href="{{ ui_bell.href }}" class="gp-btn gp-btn--ghost gp-btn--icon gp-bell" aria-label="Уведомления{% if ui_bell.count %}: {{ ui_bell.count }} новых{% endif %}">
+                        {% ui_icon "bell" %}{% if ui_bell.count %}<span class="gp-bell__count" aria-hidden="true">{% if ui_bell.count > 99 %}99+{% else %}{{ ui_bell.count }}{% endif %}</span>{% endif %}
+                    </a>
+                {% endif %}
+                <div class="gp-dropdown" x-data="gpDropdown" @keydown.escape.stop="close(true)" @click.outside="close()">
+                    <button type="button" x-ref="button" class="gp-user-btn" @click="toggle()" :aria-expanded="open.toString()" aria-haspopup="menu" aria-label="Профиль: {{ request.user.display_name }}">
+                        {% ui_avatar request.user.display_name %}<span class="gp-user-btn__name">{{ request.user.display_name }}</span>
+                    </button>
+                    <div class="gp-dropdown__menu" x-ref="menu" role="menu" x-show="open" x-cloak x-transition.origin.top.right
+                         @keydown.arrow-down.prevent="move(1)" @keydown.arrow-up.prevent="move(-1)" @keydown.tab="close()">
+                        <div class="gp-menu__header"><strong>{{ request.user.display_name }}</strong><span>{{ ui_role_label }}</span></div>
+                        {% if ui_nav.kind == 'lead' %}{% url 'lead_portal:resume' as resume_url %}{% ui_menu_item "Моё резюме" href=resume_url icon_name="user" %}{% endif %}
+                        {% if ui_can_view_catalog %}{% url 'ui:catalog' as catalog_url %}{% ui_menu_item "Компоненты UI" href=catalog_url icon_name="palette" %}{% endif %}
+                        {% if request.user.is_staff %}{% ui_menu_item "Администрирование" href="/admin/" icon_name="layout-grid" %}{% endif %}
+                        <div class="gp-menu__divider" role="separator"></div>
+                        <div class="gp-menu__label">Тема</div>
+                        <button type="button" class="gp-menu__item" role="menuitemradio" :aria-checked="(theme === 'light').toString()" @click="setTheme('light')">{% ui_icon "sun" "sm" %}<span>Светлая</span></button>
+                        <button type="button" class="gp-menu__item" role="menuitemradio" :aria-checked="(theme === 'dark').toString()" @click="setTheme('dark')">{% ui_icon "moon" "sm" %}<span>Тёмная</span></button>
+                        <button type="button" class="gp-menu__item" role="menuitemradio" :aria-checked="(theme === 'system').toString()" @click="setTheme('system')">{% ui_icon "monitor" "sm" %}<span>Как в системе</span></button>
+                        <div class="gp-menu__divider" role="separator"></div>
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            {% ui_menu_item "Выйти" icon_name="log-out" type="submit" danger=True %}
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="gp-content" id="gp-main" tabindex="-1">
+            {# Новые страницы переопределяют page; страницы на стилях 1.0 — content, и он попадает в светлую legacy-панель #}
+            {% block page %}
+                <div class="gp-legacy">{% block before_content %}{% endblock %}{% block content %}{% endblock %}</div>
+            {% endblock %}
+        </main>
+    </div>
+</div>
+
+<div class="gp-toasts" id="gp-toasts" aria-live="polite">
+    {% for message in messages %}{% ui_toast message level=message|ui_message_level %}{% endfor %}
+</div>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

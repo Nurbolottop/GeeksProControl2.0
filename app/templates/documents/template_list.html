@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Шаблоны документов — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Документы</h1>
+        <div class="sub">Шаблонов: {{ templates|length }}</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'documents:template_create' %}" class="btn">+ Новый шаблон</a>
+    </div>
+</div>
+
+<div class="tabs">
+    <a href="{% url 'documents:list' %}">Документы проектов</a>
+    <a href="{% url 'documents:templates' %}" class="is-active">Шаблоны</a>
+</div>
+
+<p class="sub" style="margin: 0 0 16px;">
+    Заготовки без привязки к проекту — ПМ скачивает и берёт за основу,
+    когда готовит настоящий документ по проекту.
+</p>
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Тип</th>
+                <th>Название</th>
+                <th>Комментарий</th>
+                <th>Загружен</th>
+                <th>Кем</th>
+                <th>Файл</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for template in templates %}
+                <tr>
+                    <td><strong>{{ template.doc_type }}</strong></td>
+                    <td>{{ template.name|default:'—' }}</td>
+                    <td>{{ template.comment|default:'—' }}</td>
+                    <td>{{ template.created_at|date:'d.m.Y' }}</td>
+                    <td>{{ template.uploaded_by.display_name|default:'—' }}</td>
+                    <td>{% if template.file %}<a href="{{ template.file.url }}" target="_blank" rel="noopener">Скачать</a>{% else %}—{% endif %}</td>
+                    <td style="white-space: nowrap;">
+                        <a href="{% url 'documents:template_update' template.pk %}" class="btn btn--secondary btn--sm">Изменить</a>
+                        <form method="post" action="{% url 'documents:template_delete' template.pk %}"
+                              data-confirm="Удалить шаблон «{{ template }}»?"
+                              data-confirm-ok="Удалить" style="display:inline; margin: 0;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn--secondary btn--sm">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="empty" style="text-align:center; padding: 24px;">Шаблонов пока нет.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

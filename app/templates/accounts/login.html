@@ -1,0 +1,31 @@
+{% extends "layouts/auth.html" %}
+{% load ui %}
+{% block title %}Вход — GeeksPro Control{% endblock %}
+{% block card %}
+    <h1 class="gp-auth__title">Вход в систему</h1>
+    <p class="gp-auth__subtitle">Управление проектами, командами и стажёрами</p>
+    {% if form.non_field_errors %}
+        <div style="margin-bottom: var(--space-5)">{% ui_alert "Проверьте номер телефона и пароль." level="danger" title="Неверный логин или пароль." %}</div>
+    {% endif %}
+    <form method="post" class="gp-form" novalidate>
+        {% csrf_token %}
+        <div class="gp-field">
+            <label class="gp-label" for="id_username">Телефон или логин</label>
+            <input class="gp-input" type="text" name="username" id="id_username" value="{{ form.username.value|default:'' }}"
+                   autocomplete="username" autofocus required{% if form.non_field_errors %} aria-invalid="true"{% endif %}>
+        </div>
+        <div class="gp-field" x-data="{ shown: false }">
+            <label class="gp-label" for="id_password">Пароль</label>
+            <div style="position: relative">
+                <input class="gp-input" :type="shown ? 'text' : 'password'" type="password" name="password" id="id_password"
+                       autocomplete="current-password" required style="padding-right: 48px"{% if form.non_field_errors %} aria-invalid="true"{% endif %}>
+                <button type="button" class="gp-btn gp-btn--ghost gp-btn--icon gp-btn--sm" style="position:absolute; right:4px; top:50%; transform:translateY(-50%)"
+                        @click="shown = !shown" :aria-pressed="shown.toString()" aria-label="Показать пароль" x-cloak>
+                    <span x-show="!shown">{% ui_icon "eye" "sm" %}</span><span x-show="shown">{% ui_icon "eye-off" "sm" %}</span>
+                </button>
+            </div>
+        </div>
+        <input type="hidden" name="next" value="{{ next }}">
+        {% ui_button "Войти" variant="primary" type="submit" size="lg" block=True %}
+    </form>
+{% endblock %}

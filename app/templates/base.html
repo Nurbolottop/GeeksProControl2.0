@@ -1,0 +1,14 @@
+{% extends "layouts/app.html" %}
+{% load static %}
+{% comment %}
+    Мост для страниц, ещё не переведённых на дизайн-систему 2.0.
+
+    Страница получает новый каркас (меню по роли, топбар, тосты, тему), а её
+    содержимое ({% block content %}) показывается в светлой legacy-панели
+    со стилями 1.0. Когда модуль переведён, его шаблоны наследуют
+    layouts/app.html напрямую и переопределяют {% block page %}.
+{% endcomment %}
+{% block legacy_assets %}
+    <link rel="stylesheet" href="{% static 'gp2/legacy.css' %}">
+    <script src="{% static 'js/confirm-modal.js' %}" defer></script>
+{% endblock %}

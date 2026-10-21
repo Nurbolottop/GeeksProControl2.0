@@ -1,0 +1,22 @@
+{% extends "layouts/public.html" %}
+{% load ui %}
+{% block title %}Кандидатура в кадровый резерв — GeeksPro{% endblock %}
+{% block width %} gp-public__inner--narrow{% endblock %}
+{% block content %}
+<h1 class="gp-public__title">Кандидатура в кадровый резерв</h1>
+<p class="gp-public__lead">Оставьте контакты и коротко расскажите об опыте — мы рассмотрим кандидатуру. Доступ к внутренним системам GeeksPro эта заявка не даёт.</p>
+<form method="post" enctype="multipart/form-data" class="gp-form" novalidate>
+    {% csrf_token %}
+    {% if form.errors %}{% ui_alert "Проверьте выделенные поля — заявка не отправлена." level="danger" %}{% endif %}
+    <div class="gp-public__trap" aria-hidden="true"><label for="id_website">Сайт</label><input type="text" name="website" id="id_website" tabindex="-1" autocomplete="off"></div>
+    {% ui_card %}
+        <div class="gp-form-grid">
+            {% ui_field form.full_name %}{% ui_field form.phone %}{% ui_field form.telegram %}
+            {% ui_field form.specialization %}{% ui_field form.direction_other %}
+            {% ui_field form.work_experience %}{% ui_field form.resume_file %}{% ui_field form.resume_url %}
+            {% ui_field form.consent_given %}
+        </div>
+    {% end_ui_card %}
+    <div class="gp-form-actions">{% ui_button "Отправить заявку" variant="primary" type="submit" size="lg" %}</div>
+</form>
+{% endblock %}

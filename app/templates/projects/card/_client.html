@@ -1,0 +1,14 @@
+{% load ui %}
+{# Заказчик проекта (ПМ, UI-03C) #}
+{% ui_card title="Заказчик" %}
+    {% ui_slot "actions" %}{% ui_button "Изменить" size="sm" href=client_edit_url icon_name="pencil" %}{% end_ui_slot %}
+    {% if client %}
+    <dl class="gp-metrics">
+        <div class="gp-metrics__row"><dt>Организация</dt><dd>{{ client.organization }}</dd></div>
+        <div class="gp-metrics__row"><dt>Представитель</dt><dd>{{ client.contact_name|default:"—" }}</dd></div>
+        <div class="gp-metrics__row"><dt>Телефон</dt><dd>{% if client.phone %}<a class="gp-link" href="tel:{{ client.phone }}">{{ client.phone }}</a>{% else %}—{% endif %}</dd></div>
+        <div class="gp-metrics__row"><dt>Email</dt><dd style="white-space: normal; overflow-wrap:anywhere">{{ client.email|default:"—" }}</dd></div>
+        <div class="gp-metrics__row"><dt>Город</dt><dd>{{ client.city|default:"—" }}</dd></div>
+    </dl>
+    {% else %}{% ui_empty "Заказчик не указан" "Заполните данные заказчика." icon_name="briefcase" %}{% endif %}
+{% end_ui_card %}

@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}Собрания команды {{ group.code }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<nav class="crumbs">
+    <a href="{% url 'attendance:dashboard' %}">Табель</a>
+    {% if group.project %}
+        <span class="crumbs__sep">›</span>
+        <a href="{{ group.project.get_absolute_url }}">{{ group.project.name }}</a>
+    {% endif %}
+    <span class="crumbs__sep">›</span>
+    <span class="crumbs__current">Команда {{ group.code }}</span>
+</nav>
+
+<div class="page-head">
+    <div>
+        <h1>{% if group.project %}{{ group.project.name }}{% else %}Команда {{ group.code }}{% endif %}</h1>
+        <div class="sub" style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
+            <span class="badge badge--blue">Команда {{ group.code }}</span>
+            <span class="badge badge--gray">{{ people }} человек</span>
+        </div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'attendance:group_sheet' group.pk %}" class="btn btn--secondary">Посмотреть табель</a>
+        <a href="{% url 'attendance:meeting_create' group.pk %}" class="btn">+ Создать собрание</a>
+    </div>
+</div>
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Вид собрания</th>
+                <th>Проводит</th>
+                <th>Статус</th>
+                <th>Отмечено</th>
+                <th>Средний балл</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for meeting in meetings %}
+                <tr>
+                    <td>
+                        <strong>{{ meeting.date|date:'d.m.Y' }}</strong>
+                        <div style="font-size:11.5px; color: var(--text-muted)">{{ meeting.date|date:'l' }}</div>
+                    </td>
+                    <td>
+                        {{ meeting.get_kind_display }}
+                        <div style="font-size:11.5px; color: var(--text-muted)">{{ meeting.direction_label }}</div>
+                    </td>
+                    <td>{{ meeting.host.full_name|default:'—' }}</td>
+                    <td>
+                        {% if meeting.status == 'held' %}
+                            <span class="badge badge--green">✓ Проведено</span>
+                        {% elif meeting.date < today %}
+                            <span class="badge badge--red">Не отмечено</span>
+                        {% else %}
+                            <span class="badge badge--yellow">Запланировано</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if meeting.marked_count %}
+                            {{ meeting.attended_count }} из {{ meeting.marked_count }}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if meeting.avg_score is not None %}
+                            <span class="badge badge--{% if meeting.avg_score >= 8 %}green{% elif meeting.avg_score >= 5 %}yellow{% else %}red{% endif %}">
+                                {{ meeting.avg_score }}
+                            </span>
+                            <span style="font-size:11.5px; color: var(--text-muted)">({{ meeting.score_count }})</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td style="white-space: nowrap; text-align: right">
+                        <a href="{% url 'attendance:meeting_detail' meeting.pk %}" class="btn btn--sm">Отметить</a>
+                        <form method="post" action="{% url 'attendance:meeting_delete' meeting.pk %}" style="display:inline"
+                              data-confirm="Удалить собрание {{ meeting.date|date:'d.m.Y' }}?">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn--secondary btn--sm">✕</button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="empty" style="text-align:center; padding: 30px;">
+                    Собраний пока нет — нажмите «+ Создать собрание».
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

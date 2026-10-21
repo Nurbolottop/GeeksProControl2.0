@@ -1,0 +1,259 @@
+{% load static %}
+{% comment %}
+Путь проекта: кольцо прогресса и дорога этапов. Нужны roadmap и road_data.
+Кладётся внутрь <section class="gx"> — плитки с data-count рядом тоже оживут.
+{% endcomment %}
+<link rel="stylesheet" href="{% static 'css/graphics.css' %}">
+    {# ── Главная карточка: кольцо прогресса и дорога этапов ── #}
+    <div class="gx-stage">
+        <div class="gx-stage__glow gx-stage__glow--a"></div>
+        <div class="gx-stage__glow gx-stage__glow--b"></div>
+
+        <div class="gx-hero">
+            <div class="gx-hero__text">
+                <div class="gx-eyebrow">Путь проекта</div>
+                <h2 class="gx-hero__title">{{ project.name }}</h2>
+                <p class="gx-hero__lead">
+                    {% if roadmap.current %}
+                        Сейчас на этапе <b>«{{ roadmap.current.title }}»</b>.
+                    {% endif %}
+                    Позади {{ roadmap.done }} из {{ roadmap.total }} этапов, до финиша — {{ roadmap.left }}.
+                </p>
+                <div class="gx-hero__chips">
+                    {% if project.deadline_status == 'overdue' %}
+                        <span class="gx-chip gx-chip--red">Просрочен</span>
+                    {% elif project.deadline_status == 'at_risk' or project.deadline_status == 'behind' %}
+                        <span class="gx-chip gx-chip--yellow">Есть риск по сроку</span>
+                    {% else %}
+                        <span class="gx-chip gx-chip--green">Идёт по графику</span>
+                    {% endif %}
+                    {% if project.planned_end_date %}
+                        <span class="gx-chip">Финиш {{ project.planned_end_date|date:'d.m.Y' }}</span>
+                    {% endif %}
+                    {% if project.flow %}<span class="gx-chip">{{ project.flow }}</span>{% endif %}
+                </div>
+            </div>
+
+            <div class="gx-ring" style="--percent: {{ roadmap.percent }}">
+                <svg viewBox="0 0 160 160" class="gx-ring__svg" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="gx-ring-grad" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stop-color="#34d399"/>
+                            <stop offset="100%" stop-color="#22d3ee"/>
+                        </linearGradient>
+                    </defs>
+                    <circle cx="80" cy="80" r="66" class="gx-ring__track"/>
+                    <circle cx="80" cy="80" r="66" class="gx-ring__bar" data-ring="{{ roadmap.percent }}"/>
+                </svg>
+                <div class="gx-ring__center">
+                    <div class="gx-ring__value"><span data-count="{{ roadmap.percent }}">0</span>%</div>
+                    <div class="gx-ring__label">пути пройдено</div>
+                </div>
+            </div>
+        </div>
+
+        {% if roadmap.segments %}
+            <div class="gx-road-wrap">
+                <div class="gx-road" id="gx-road" aria-label="Дорога этапов проекта"></div>
+            </div>
+            <div class="gx-legend">
+                <span><i class="is-done"></i>Пройдено</span>
+                <span><i class="is-current"></i>Идёт сейчас</span>
+                <span><i class="is-next"></i>Впереди</span>
+            </div>
+        {% else %}
+            <div class="gx-empty">У проекта пока нет этапов — дорога появится, как только они будут.</div>
+        {% endif %}
+    </div>
+
+
+{{ road_data|json_script:"gx-road-data" }}
+<script>
+(function () {
+  function start() {
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var ease = function (t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+
+    function animate(duration, step, done) {
+        if (reduce) { step(1); if (done) done(); return; }
+        var start = null;
+        function frame(now) {
+            if (start === null) start = now;
+            var t = Math.min((now - start) / duration, 1);
+            step(ease(t));
+            if (t < 1) requestAnimationFrame(frame); else if (done) done();
+        }
+        requestAnimationFrame(frame);
+    }
+
+    /* числа «набегают» от нуля */
+    document.querySelectorAll('.gx [data-count]').forEach(function (el, i) {
+        var target = parseInt(el.dataset.count, 10) || 0;
+        setTimeout(function () {
+            animate(1300, function (t) { el.textContent = Math.round(target * t); });
+        }, 150 + i * 90);
+    });
+
+    /* кольцо прогресса */
+    var ring = document.querySelector('.gx [data-ring]');
+    if (ring) {
+        var circumference = 2 * Math.PI * 66;
+        ring.style.strokeDasharray = circumference;
+        ring.style.strokeDashoffset = circumference;
+        var percent = parseInt(ring.dataset.ring, 10) || 0;
+        setTimeout(function () {
+            animate(1500, function (t) {
+                ring.style.strokeDashoffset = circumference * (1 - percent / 100 * t);
+            });
+        }, 150);
+    }
+
+    /* дорога этапов */
+    var host = document.getElementById('gx-road');
+    var dataNode = document.getElementById('gx-road-data');
+    if (!host || !dataNode) return;
+    var data = JSON.parse(dataNode.textContent);
+    var stages = data.stages;
+    if (!stages.length) return;
+
+    var NS = 'http://www.w3.org/2000/svg';
+    function el(name, attrs, parent) {
+        var node = document.createElementNS(NS, name);
+        for (var key in attrs) node.setAttribute(key, attrs[key]);
+        if (parent) parent.appendChild(node);
+        return node;
+    }
+
+    function draw() {
+        host.innerHTML = '';
+        var width = Math.max(host.clientWidth, 940);
+        var height = 250;
+        var padX = 46, mid = 128, amp = 42;
+        var count = stages.length;              // этапы
+        var step = (width - padX * 2) / count;  // последняя точка — финиш
+
+        var points = [];
+        for (var i = 0; i <= count; i++) {
+            points.push({ x: padX + step * i, y: mid + (i % 2 ? amp : -amp) });
+        }
+
+        var svg = el('svg', {
+            viewBox: '0 0 ' + width + ' ' + height, width: width, height: height,
+            class: 'gx-road__svg', role: 'img',
+        }, host);
+
+        var defs = el('defs', {}, svg);
+        var grad = el('linearGradient', { id: 'gx-done', x1: '0', y1: '0', x2: '1', y2: '0' }, defs);
+        el('stop', { offset: '0%', 'stop-color': '#22c55e' }, grad);
+        el('stop', { offset: '100%', 'stop-color': '#22d3ee' }, grad);
+        var glow = el('filter', { id: 'gx-glow', x: '-50%', y: '-50%', width: '200%', height: '200%' }, defs);
+        el('feGaussianBlur', { stdDeviation: '4', result: 'b' }, glow);
+        var merge = el('feMerge', {}, glow);
+        el('feMergeNode', { in: 'b' }, merge);
+        el('feMergeNode', { in: 'SourceGraphic' }, merge);
+
+        /* плавная S-кривая через все точки */
+        var d = 'M' + points[0].x + ' ' + points[0].y;
+        var prefixes = [0];
+        for (var j = 1; j < points.length; j++) {
+            var a = points[j - 1], b = points[j], half = (b.x - a.x) / 2;
+            d += ' C' + (a.x + half) + ' ' + a.y + ' ' + (b.x - half) + ' ' + b.y + ' ' + b.x + ' ' + b.y;
+            var probe = el('path', { d: d }, svg);
+            prefixes.push(probe.getTotalLength());
+            svg.removeChild(probe);
+        }
+
+        el('path', { d: d, class: 'gx-road__edge' }, svg);
+        el('path', { d: d, class: 'gx-road__asphalt' }, svg);
+        el('path', { d: d, class: 'gx-road__lane' }, svg);
+        var trail = el('path', { d: d, class: 'gx-road__trail', stroke: 'url(#gx-done)', filter: 'url(#gx-glow)' }, svg);
+        var total = prefixes[prefixes.length - 1];
+
+        var floor = Math.min(Math.floor(data.marker), count);
+        var frac = data.marker - floor;
+        var target = floor >= count
+            ? total
+            : prefixes[floor] + (prefixes[floor + 1] - prefixes[floor]) * frac;
+
+        /* вехи этапов */
+        stages.forEach(function (stage, index) {
+            var p = points[index];
+            var g = el('g', { class: 'gx-node is-' + stage.state, transform: 'translate(' + p.x + ' ' + p.y + ')' }, svg);
+            el('title', {}, g).textContent = stage.index + '. ' + stage.title;
+            if (stage.state === 'current') el('circle', { r: 22, class: 'gx-node__halo' }, g);
+            el('circle', { r: 15, class: 'gx-node__disc' }, g);
+            if (stage.state === 'done') {
+                el('path', { d: 'M-6 0.5 L-1.6 5 L6.5 -4.5', class: 'gx-node__check' }, g);
+            } else {
+                var num = el('text', { class: 'gx-node__num', 'text-anchor': 'middle', dy: '4.5' }, g);
+                num.textContent = stage.index;
+            }
+            var above = p.y < mid;
+            var label = el('text', {
+                class: 'gx-node__label', 'text-anchor': 'middle',
+                y: above ? -30 : 38,
+            }, g);
+            label.textContent = stage.title;
+        });
+
+        /* финиш */
+        var fin = points[count];
+        var flag = el('g', { class: 'gx-finish', transform: 'translate(' + fin.x + ' ' + fin.y + ')' }, svg);
+        el('circle', { r: 15, class: 'gx-finish__disc' }, flag);
+        el('path', { d: 'M-4 8 V-8', class: 'gx-finish__pole' }, flag);
+        el('path', { d: 'M-3 -8 H7 L4.2 -4.2 L7 -0.4 H-3 Z', class: 'gx-finish__cloth' }, flag);
+        var finLabel = el('text', { class: 'gx-node__label', 'text-anchor': 'middle', y: fin.y < mid ? -30 : 38 }, flag);
+        finLabel.textContent = 'Финиш';
+
+        /* маркер «вы здесь» едет по дороге */
+        var marker = el('g', { class: 'gx-marker' }, svg);
+        el('circle', { r: 11, class: 'gx-marker__pulse' }, marker);
+        el('circle', { r: 9, class: 'gx-marker__dot' }, marker);
+        el('circle', { r: 3.2, class: 'gx-marker__core' }, marker);
+        /* ярлык — с противоположной от подписи этапа стороны, чтобы не перекрывать её */
+        var labelAbove = floor < count && points[floor].y < mid;
+        var bubble = el('g', { class: 'gx-marker__bubble' }, marker);
+        if (labelAbove) {
+            el('rect', { x: -38, y: 28, width: 76, height: 24, rx: 12 }, bubble);
+            el('path', { d: 'M-5 28.5 L0 22 L5 28.5 Z' }, bubble);
+            el('text', { 'text-anchor': 'middle', y: 44.5 }, bubble).textContent = 'Вы здесь';
+        } else {
+            el('rect', { x: -38, y: -52, width: 76, height: 24, rx: 12 }, bubble);
+            el('path', { d: 'M-5 -28.5 L0 -22 L5 -28.5 Z' }, bubble);
+            el('text', { 'text-anchor': 'middle', y: -35.5 }, bubble).textContent = 'Вы здесь';
+        }
+
+        function place(length) {
+            var pt = trail.getPointAtLength(Math.max(length, 0.01));
+            marker.setAttribute('transform', 'translate(' + pt.x + ' ' + pt.y + ')');
+            trail.style.strokeDasharray = length + ' ' + total;
+        }
+        if (arrived) {
+            place(target);
+            svg.classList.add('is-arrived');
+            return;
+        }
+        place(0.01);
+        setTimeout(function () {
+            animate(2400, function (t) { place(target * t); }, function () {
+                arrived = true;
+                svg.classList.add('is-arrived');
+            });
+        }, 350);
+    }
+
+    var arrived = false;
+    draw();
+    var resizeTimer;
+    window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(draw, 200);
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
+})();
+</script>

@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Риски — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Риски</h1>
+        <div class="sub">Всего: {{ page.paginator.count }}</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'risks:create' %}" class="btn">+ Новый риск</a>
+    </div>
+</div>
+
+<form method="get" class="filters">
+    <select name="status">
+        <option value="">Открытые</option>
+        <option value="closed" {% if params.status == 'closed' %}selected{% endif %}>Закрытые</option>
+    </select>
+    <select name="category">
+        <option value="">Категория: все</option>
+        {% for value, label in categories %}
+            <option value="{{ value }}" {% if params.category == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <select name="project">
+        <option value="">Проект: все</option>
+        {% for project in projects %}
+            <option value="{{ project.pk }}" {% if params.project == project.pk|stringformat:'s' %}selected{% endif %}>{{ project.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn--secondary btn--sm">Применить</button>
+</form>
+
+<div class="panel" style="padding: 0;">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Проект</th>
+                <th>Категория</th>
+                <th>Описание</th>
+                <th>Причина</th>
+                <th>Источник</th>
+                <th>Дата</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for risk in page.object_list %}
+                <tr>
+                    <td><a href="{{ risk.project.get_absolute_url }}">{{ risk.project.name }}</a></td>
+                    <td><span class="badge badge--orange">{{ risk.get_category_display }}</span></td>
+                    <td>{{ risk.description }}</td>
+                    <td>{{ risk.delay_reason|default:'—' }}</td>
+                    <td>{% if risk.is_auto %}<span class="badge badge--gray">Авто</span>{% else %}<span class="badge badge--blue">Ручной</span>{% endif %}</td>
+                    <td>{{ risk.created_at|date:'d.m.Y' }}</td>
+                    <td>
+                        {% if risk.status == 'open' %}
+                            <form method="post" action="{% url 'risks:close' risk.pk %}" style="margin:0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn--secondary btn--sm">Закрыть</button>
+                            </form>
+                        {% else %}
+                            <span class="badge badge--gray">Закрыт</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="empty" style="text-align:center; padding: 24px;">Рисков нет.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

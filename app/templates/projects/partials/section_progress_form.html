@@ -1,0 +1,21 @@
+<div class="panel panel--editing" id="section-progress">
+    <form hx-post="{% url 'projects:section' project.pk 'progress' %}"
+          hx-target="#section-progress" hx-swap="outerHTML">
+        {% csrf_token %}
+        <div class="panel-head">
+            <h2>Прогресс</h2>
+            <div class="panel-actions">
+                <button type="submit" class="btn btn--sm">Сохранить</button>
+                <button type="button" class="btn btn--secondary btn--sm"
+                        hx-get="{% url 'projects:section' project.pk 'progress' %}"
+                        hx-target="#section-progress" hx-swap="outerHTML">Отмена</button>
+            </div>
+        </div>
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="{{ form.current_stage.id_for_label }}">Текущий этап</label>
+                {{ form.current_stage }}
+            </div>
+        </div>
+    </form>
+</div>

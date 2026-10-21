@@ -1,0 +1,56 @@
+{% comment %}Отчёты по проекту: одно текстовое поле, дата ставится сама.{% endcomment %}
+<div class="panel">
+    <div class="panel-head">
+        <h2>Отчёты по проекту ({{ reports|length }})</h2>
+        <span class="panel-bar__note">Дата проставится сама — {{ today|date:'d.m.Y' }}</span>
+    </div>
+    <form method="post" action="{% url 'projects:report_create' project.pk %}">
+        {% csrf_token %}
+        <div class="form-field">
+            <textarea name="text" rows="10"
+                      placeholder="Пишите отчёт как в документе: текущее положение, что сделали, что предстоит, проблемы"></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn">Сохранить отчёт</button>
+        </div>
+    </form>
+</div>
+
+{% for report in reports %}
+    <div class="panel" x-data="{ edit: false }">
+        <div class="panel-head">
+            <h2>Отчёт от {{ report.date|date:'d.m.Y' }}</h2>
+            <div style="display:flex; gap:8px; align-items:center">
+                {% if report.author %}
+                    <span style="font-size:12px; color: var(--text-muted)">
+                        {{ report.author.display_name|default:report.author.username }}
+                    </span>
+                {% endif %}
+                <button type="button" class="btn btn--secondary btn--sm" @click="edit = !edit"
+                        x-text="edit ? 'Отмена' : 'Изменить'"></button>
+                <form method="post" action="{% url 'projects:report_delete' report.pk %}" style="margin:0"
+                      data-confirm="Удалить отчёт от {{ report.date|date:'d.m.Y' }}?">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--secondary btn--sm" title="Удалить">✕</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="report-part__text" x-show="!edit">{{ report.text|linebreaksbr }}</div>
+
+        <form method="post" action="{% url 'projects:report_update' report.pk %}"
+              x-show="edit" x-cloak>
+            {% csrf_token %}
+            <div class="form-field">
+                <textarea name="text" rows="10">{{ report.text }}</textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn">Сохранить</button>
+            </div>
+        </form>
+    </div>
+{% empty %}
+    <div class="panel empty" style="text-align:center; padding: 26px 20px;">
+        Отчётов пока нет — напишите первый выше.
+    </div>
+{% endfor %}

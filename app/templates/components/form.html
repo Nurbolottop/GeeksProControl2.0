@@ -1,0 +1,5 @@
+{% load ui %}{% if form.non_field_errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+<div class="gp-form-grid{% if cols == 2 %} gp-form-grid--2{% endif %}">
+    {% for field in form.visible_fields %}{% ui_field field %}{% endfor %}
+</div>
+{% for field in form.hidden_fields %}{{ field }}{% endfor %}

@@ -1,0 +1,34 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Документы — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title="Документы" subtitle="Документы проектов — действующие версии. Загрузка, замена и удаление — во вкладке «Документы» проекта." %}
+    {% url 'documents:templates' as templates_url %}{% ui_button "Шаблоны" href=templates_url icon_name="file-text" %}
+{% end_ui_page_header %}
+<form method="get" class="gp-cluster" style="margin-bottom: var(--space-4); align-items: flex-end" aria-label="Фильтр документов">
+    <div class="gp-field" style="flex: 1 1 240px"><label class="gp-label" for="d-project">Проект</label><select class="gp-select" id="d-project" name="project"><option value="">Все</option>{% for project in projects %}<option value="{{ project.pk }}"{% if params.project == project.pk|stringformat:'s' %} selected{% endif %}>{{ project.name }}</option>{% endfor %}</select></div>
+    <div class="gp-field" style="flex: 0 1 240px"><label class="gp-label" for="d-type">Тип</label><select class="gp-select" id="d-type" name="type"><option value="">Все</option>{% for doc_type in doc_types %}<option value="{{ doc_type.pk }}"{% if params.type == doc_type.pk|stringformat:'s' %} selected{% endif %}>{{ doc_type.name }}</option>{% endfor %}</select></div>
+    {% ui_button "Применить" type="submit" icon_name="filter" %}
+</form>
+{% ui_card flush=True %}
+{% if page.object_list %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Документы проектов</caption>
+        <thead><tr><th scope="col">Документ</th><th scope="col">Проект</th><th scope="col">Загружен</th><th scope="col"><span class="gp-sr-only">Файл</span></th></tr></thead>
+        <tbody>
+        {% for document in page.object_list %}
+            <tr>
+                <td class="is-primary" data-label="Документ"><span class="gp-table__primary">{{ document.doc_type }}</span>{% if document.title %}<span class="gp-table__secondary">{{ document.title }}</span>{% endif %}</td>
+                <td data-label="Проект"><a class="gp-link" href="{{ document.project.get_absolute_url }}?tab=documents">{{ document.project.name }}</a></td>
+                <td data-label="Загружен">{{ document.created_at|date:"d.m.Y" }}{% if document.uploaded_by %}<span class="gp-table__secondary">{{ document.uploaded_by.display_name }}</span>{% endif %}</td>
+                <td data-label="Файл">{% if document.file %}<a class="gp-link" href="{{ document.file.url }}" target="_blank" rel="noopener">Открыть</a>{% else %}<span class="gp-muted">без файла</span>{% endif %}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Документов нет" icon_name="file-text" %}</div>{% endif %}
+{% end_ui_card %}
+<div style="margin-top: var(--space-4)">{% ui_pagination page label="документов" %}</div>
+{% endblock %}

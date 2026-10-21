@@ -1,0 +1,38 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Заказчики — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title="Заказчики" subtitle="Заказчик → проекты. Кабинета у заказчика нет: бриф он заполняет по ссылке." %}
+    {% url 'documents:brief_requests' as briefs_url %}{% ui_button "Брифы" href=briefs_url icon_name="inbox" %}
+    {% url 'clients:create' as create_url %}{% ui_button "Новый заказчик" variant="primary" href=create_url icon_name="plus" %}
+{% end_ui_page_header %}
+
+<form method="get" class="gp-cluster" style="margin-bottom: var(--space-4); align-items: flex-end" role="search" aria-label="Поиск заказчиков">
+    <div class="gp-field" style="flex: 1 1 260px"><label class="gp-label" for="c-q">Поиск</label><input class="gp-input" id="c-q" type="search" name="q" value="{{ params.q|default:'' }}" placeholder="Организация, представитель, телефон"></div>
+    <div class="gp-field" style="flex: 0 1 200px"><label class="gp-label" for="c-city">Город</label><select class="gp-select" id="c-city" name="city"><option value="">Все</option>{% for city in cities %}<option value="{{ city }}"{% if params.city == city %} selected{% endif %}>{{ city }}</option>{% endfor %}</select></div>
+    {% ui_button "Найти" type="submit" icon_name="search" %}
+</form>
+
+{% ui_card flush=True %}
+{% if page.object_list %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Заказчики</caption>
+        <thead><tr><th scope="col">Организация</th><th scope="col">Представитель</th><th scope="col">Контакты</th><th scope="col">Город</th><th scope="col" class="is-numeric">Проектов</th></tr></thead>
+        <tbody>
+        {% for client in page.object_list %}
+            <tr>
+                <td class="is-primary" data-label="Организация"><a class="gp-link gp-table__primary" href="{% url 'clients:detail' client.pk %}">{{ client.organization }}</a></td>
+                <td data-label="Представитель">{{ client.contact_name|default:"—" }}</td>
+                <td data-label="Контакты">{{ client.phone|default:"" }}{% if client.phone and client.email %}<br>{% endif %}<span class="gp-muted gp-small">{{ client.email|default:"" }}</span>{% if not client.phone and not client.email %}—{% endif %}</td>
+                <td data-label="Город">{{ client.city|default:"—" }}</td>
+                <td class="is-numeric" data-label="Проектов">{{ client.project_count }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Заказчиков не найдено" "Измените поиск или добавьте заказчика." icon_name="briefcase" %}</div>{% endif %}
+{% end_ui_card %}
+<div style="margin-top: var(--space-4)">{% ui_pagination page label="заказчиков" %}</div>
+{% endblock %}

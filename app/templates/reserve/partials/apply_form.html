@@ -1,0 +1,159 @@
+{# Анкета резерва кадров: одна и та же по ссылке и в портале у самого человека #}
+    <form method="post" enctype="multipart/form-data" class="aform" novalidate>
+        {% csrf_token %}
+        {% if form.errors %}
+            <div class="apply-alert">
+                Проверьте выделенные поля — анкета не отправлена.
+                {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+            </div>
+        {% endif %}
+
+        <section class="acard">
+            <div class="acard__head">
+                <span class="acard__num">1</span>
+                <div>
+                    <h2>Личные данные</h2>
+                    <p>Как с вами связаться и как вас представить работодателю.</p>
+                </div>
+            </div>
+            <div class="agrid">
+                {% include 'partials/apply_field.html' with field=form.full_name %}
+                {% include 'partials/apply_field.html' with field=form.phone %}
+                {% include 'partials/apply_field.html' with field=form.email %}
+                {% include 'partials/apply_field.html' with field=form.telegram %}
+                {% include 'partials/apply_field.html' with field=form.city %}
+                {% include 'partials/apply_field.html' with field=form.birth_date %}
+                {% include 'partials/apply_field.html' with field=form.photo wide=1 %}
+            </div>
+        </section>
+
+        <section class="acard">
+            <div class="acard__head">
+                <span class="acard__num">2</span>
+                <div>
+                    <h2>Профессиональные данные</h2>
+                    <p>Направление, уровень, технологии, опыт и учёба.</p>
+                </div>
+            </div>
+            <div class="agrid">
+                {% include 'partials/apply_field.html' with field=form.specialization %}
+                {% include 'partials/apply_field.html' with field=form.direction_other %}
+                {% include 'partials/apply_field.html' with field=form.desired_position %}
+                {% include 'partials/apply_field.html' with field=form.expected_level %}
+                {% include 'partials/apply_field.html' with field=form.skills wide=1 note='Через запятую' %}
+                {% include 'partials/apply_field.html' with field=form.work_experience wide=1 %}
+                {% include 'partials/apply_field.html' with field=form.internship_experience wide=1 %}
+                {% include 'partials/apply_field.html' with field=form.education wide=1 %}
+                {% include 'partials/apply_field.html' with field=form.courses wide=1 %}
+                {% include 'partials/apply_field.html' with field=form.english_level %}
+                {% include 'partials/apply_field.html' with field=form.other_languages %}
+                {% include 'partials/apply_field.html' with field=form.about wide=1 %}
+            </div>
+            <div class="agrid" style="margin-top: 14px;">
+                {% include 'partials/apply_field.html' with field=form.training_group note='Учебная группа в GeeksPro, если вы у нас учились' %}
+                {% include 'partials/apply_field.html' with field=form.study_specialization %}
+                {% include 'partials/apply_field.html' with field=form.teacher %}
+                {% include 'partials/apply_field.html' with field=form.curator %}
+                {% include 'partials/apply_field.html' with field=form.study_start %}
+                {% include 'partials/apply_field.html' with field=form.study_end %}
+            </div>
+        </section>
+
+        <section class="acard">
+            <div class="acard__head">
+                <span class="acard__num">3</span>
+                <div>
+                    <h2>Ссылки и документы</h2>
+                    <p>Всё, что показывает вашу работу. Заполняйте то, что есть.</p>
+                </div>
+            </div>
+            <div class="agrid">
+                {% include 'partials/apply_field.html' with field=form.resume_file %}
+                {% include 'partials/apply_field.html' with field=form.resume_url %}
+                {% include 'partials/apply_field.html' with field=form.github_url dirs='dev qa' note='Для разработчиков и QA' %}
+                {% include 'partials/apply_field.html' with field=form.behance_url dirs='design' note='Для дизайнеров' %}
+                {% include 'partials/apply_field.html' with field=form.portfolio_url dirs='design pm other' note='Для дизайнеров, PM и других направлений' %}
+                {% include 'partials/apply_field.html' with field=form.linkedin_url %}
+                {% include 'partials/apply_field.html' with field=form.website_url %}
+                {% include 'partials/apply_field.html' with field=form.project_links wide=1 %}
+                <div class="aform__toggle">
+                    <button type="button" class="btn btn--secondary btn--sm" data-show-all>Показать все ссылки</button>
+                    <span>Часть вопросов скрыта — они не для вашего направления.</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="acard">
+            <div class="acard__head">
+                <span class="acard__num">4</span>
+                <div>
+                    <h2>Поиск работы</h2>
+                    <p>Что вам подходит — по этим полям мы фильтруем кандидатов под вакансии.</p>
+                </div>
+            </div>
+            <div class="agrid">
+                {% include 'partials/apply_field.html' with field=form.work_format %}
+                {% include 'partials/apply_field.html' with field=form.employment_type %}
+                {% include 'partials/apply_field.html' with field=form.available_from %}
+                {% include 'partials/apply_field.html' with field=form.desired_salary %}
+                {% include 'partials/apply_field.html' with field=form.target_positions wide=1 %}
+            </div>
+            <div class="achecks">
+                {% include 'partials/apply_check.html' with field=form.is_looking_for_job %}
+                {% include 'partials/apply_check.html' with field=form.ready_for_internship %}
+                {% include 'partials/apply_check.html' with field=form.ready_to_relocate %}
+            </div>
+        </section>
+
+        <section class="acard acard--consent">
+            {% include 'partials/apply_check.html' with field=form.consent_given %}
+        </section>
+
+        <div class="aform__actions">
+            <button type="submit" class="btn btn--lg">{{ submit_label|default:'Отправить анкету' }}</button>
+            <span>{{ actions_note|default:'Поля со звёздочкой обязательны. После отправки анкета уходит на проверку в GeeksPro.' }}</span>
+        </div>
+    </form>
+
+<script>
+    (function () {
+        var GROUPS = {{ direction_groups|safe }};
+        var EXAMPLES = {
+            dev: 'Например: Python, Django, PostgreSQL, Docker, React',
+            design: 'Например: Figma, Photoshop, прототипирование, UX-исследования',
+            qa: 'Например: Postman, Selenium, TestRail, SQL',
+            pm: 'Например: Jira, Notion, Agile, работа с заказчиком',
+            other: 'Через запятую'
+        };
+        var showAll = false;
+        var fields = document.querySelectorAll('[data-dirs]');
+        var toggle = document.querySelector('[data-show-all]');
+        var toggleBox = document.querySelector('.aform__toggle');
+        var direction = document.querySelector('#id_specialization');
+        var skillsField = document.querySelector('#id_skills');
+        var skillsNote = skillsField && skillsField.closest('.afield').querySelector('.afield__note');
+
+        function currentGroup() {
+            if (!direction || !direction.value) return null;
+            return GROUPS[direction.value] || 'other';
+        }
+
+        function refresh() {
+            var group = currentGroup();
+            var hidden = 0;
+            fields.forEach(function (field) {
+                var suits = !group || field.dataset.dirs.split(' ').indexOf(group) !== -1;
+                field.classList.toggle('is-hidden', !suits && !showAll);
+                field.classList.toggle('afield--foreign', showAll && !suits);
+                if (!suits) hidden += 1;
+            });
+            toggleBox.hidden = hidden === 0;
+            toggle.textContent = showAll ? 'Скрыть лишние ссылки' : 'Показать все ссылки';
+            if (skillsNote) skillsNote.textContent = EXAMPLES[group || 'other'];
+        }
+
+        if (direction) direction.addEventListener('change', refresh);
+        toggle.addEventListener('click', function () { showAll = !showAll; refresh(); });
+        refresh();
+    })();
+</script>

@@ -1,0 +1,56 @@
+/* Резерв: подборка кандидатов для работодателя (витрина по ссылке)
+   и отметка кандидатов в списке для неё */
+
+.reserve-bulk {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin: 0 0 10px;
+}
+
+.share-page--wide { max-width: 1080px; }
+.share-back { display: inline-block; margin: 6px 0 14px; font-size: 13.5px; font-weight: 600; }
+
+.share-grid {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.share-card {
+    display: flex; flex-direction: column; gap: 10px;
+    margin: 0; color: var(--text); text-decoration: none;
+    transition: border-color .13s ease, box-shadow .13s ease, transform .13s ease;
+}
+.share-card:hover {
+    color: var(--text); border-color: var(--primary);
+    box-shadow: var(--shadow); transform: translateY(-1px);
+}
+.share-card__top { display: flex; gap: 12px; align-items: center; }
+.share-card__photo {
+    width: 56px; height: 56px; border-radius: 14px; object-fit: cover; flex-shrink: 0;
+}
+.share-card__photo--empty {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--primary-soft); color: var(--primary);
+    font-size: 22px; font-weight: 700;
+}
+.share-card__who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.share-card__who strong { font-size: 15.5px; }
+.share-card__who span { font-size: 13px; color: var(--text-muted); }
+.share-card__rating {
+    flex-shrink: 0; padding: 6px 10px; border-radius: 10px;
+    background: var(--primary-soft); color: var(--primary);
+    font-weight: 800; font-size: 15px;
+}
+.share-card__more { margin-top: auto; font-size: 13px; font-weight: 650; color: var(--primary); }
+
+.reserve-share__modal { display: flex; flex-direction: column; gap: 10px; }
+.reserve-share__modal .cmodal__title { margin: 0; }
+.reserve-share__buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+.share-group {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 18px; margin: 28px 0 12px;
+}
+.share-group span {
+    font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    background: var(--primary-soft); color: var(--primary);
+}
+.reserve-share__modal input[type=text], .reserve-share__modal select { height: 36px; font-size: 13.5px; width: 100%; }

@@ -1,0 +1,145 @@
+{% extends 'lead_portal/base.html' %}
+
+{% block title %}Моё резюме — Портал тимлида{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'lead_portal:dashboard' %}">← Мои проекты</a></p>
+
+{% if candidate and editing %}
+    <div class="portal-hero">
+        <div class="portal-hero__eyebrow">Резерв кадров GeeksPro</div>
+        <h1>Моё резюме</h1>
+        <p>
+            Это ваша анкета в резерве кадров — по ней мы рекомендуем вас работодателям.
+            Держите её свежей: навыки, опыт, ссылки на работы, чего ищете.
+            {% if candidate.submitted_at %}Последнее обновление — {{ candidate.submitted_at|date:'d.m.Y' }}.{% endif %}
+        </p>
+        {% if candidate.intern %}
+            <p class="sub">Проекты, на которых вы работали у нас, добавляются в резюме сами — их вписывать не нужно.</p>
+        {% endif %}
+        <p><a href="{% url 'lead_portal:resume' %}">← Отменить и вернуться к просмотру</a></p>
+    </div>
+    <div class="apply-embed">
+        {% include 'reserve/partials/apply_form.html' with submit_label='Сохранить резюме' actions_note='Изменения сразу попадают в резерв кадров. Оценки и комментарии сотрудников вы здесь не видите — их нет в анкете.' %}
+    </div>
+{% elif candidate %}
+    <div class="page-head">
+        <div>
+            <h1>Моё резюме</h1>
+            <div class="sub">
+                Резерв кадров GeeksPro
+                {% if candidate.submitted_at %}· обновлено {{ candidate.submitted_at|date:'d.m.Y' }}{% endif %}
+            </div>
+        </div>
+        <div class="page-actions">
+            <a href="{% url 'lead_portal:resume' %}?edit=1" class="btn">Редактировать</a>
+        </div>
+    </div>
+
+    <div class="panel reserve-head">
+        {% if candidate.photo %}
+            <img src="{{ candidate.photo.url }}" alt="" class="reserve-head__photo">
+        {% else %}
+            <span class="reserve-head__photo reserve-head__photo--empty">{{ candidate.full_name|slice:':1' }}</span>
+        {% endif %}
+        <div class="reserve-head__body">
+            <div class="reserve-head__badges">
+                <span class="badge badge--gray">{{ candidate.direction }}</span>
+                {% if candidate.geekspro_level %}<span class="badge badge--blue">{{ candidate.get_geekspro_level_display }}</span>{% endif %}
+                {% if candidate.is_looking_for_job %}
+                    <span class="badge badge--green">Ищет работу · {{ candidate.readiness }}</span>
+                {% else %}
+                    <span class="badge badge--gray">Не ищет работу</span>
+                {% endif %}
+            </div>
+            {% if candidate.rating %}
+                <div class="reserve-head__rating">
+                    <strong>{{ candidate.rating }}</strong> / 10 <span class="sub">· оценка GeeksPro</span>
+                </div>
+            {% endif %}
+            {% if candidate.skills_list %}
+                <div class="reserve-skills">
+                    {% for skill in candidate.skills_list %}<span class="chip">{{ skill }}</span>{% endfor %}
+                </div>
+            {% endif %}
+            <div class="reserve-head__links">
+                {% if candidate.resume_file %}<a href="{{ candidate.resume_file.url }}" target="_blank" rel="noopener">Резюме (файл)</a>{% endif %}
+                {% if candidate.resume_url %}<a href="{{ candidate.resume_url }}" target="_blank" rel="noopener">Резюме</a>{% endif %}
+                {% if candidate.github_url %}<a href="{{ candidate.github_url }}" target="_blank" rel="noopener">GitHub</a>{% endif %}
+                {% if candidate.portfolio_url %}<a href="{{ candidate.portfolio_url }}" target="_blank" rel="noopener">Портфолио</a>{% endif %}
+                {% if candidate.behance_url %}<a href="{{ candidate.behance_url }}" target="_blank" rel="noopener">Behance</a>{% endif %}
+                {% if candidate.linkedin_url %}<a href="{{ candidate.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>{% endif %}
+                {% if candidate.website_url %}<a href="{{ candidate.website_url }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Что ищу</h2>
+        <dl class="def-grid">
+            <div class="def"><dt>Желаемая должность</dt><dd>{{ candidate.desired_position|default:'—' }}</dd></div>
+            <div class="def"><dt>Формат работы</dt><dd>{{ candidate.get_work_format_display|default:'—' }}</dd></div>
+            <div class="def"><dt>Занятость</dt><dd>{{ candidate.get_employment_type_display|default:'—' }}</dd></div>
+            <div class="def"><dt>Готов(а) приступить</dt><dd>{{ candidate.available_from|date:'d.m.Y'|default:'—' }}</dd></div>
+            <div class="def"><dt>Готов(а) к переезду</dt><dd>{% if candidate.ready_to_relocate %}Да{% else %}Нет{% endif %}</dd></div>
+            <div class="def"><dt>Желаемая зарплата</dt><dd>{{ candidate.desired_salary|default:'—' }}</dd></div>
+            <div class="def"><dt>Английский</dt><dd>{{ candidate.english_level|default:'—' }}</dd></div>
+        </dl>
+    </div>
+
+    {% if candidate.about %}
+        <div class="panel">
+            <h2>О себе</h2>
+            <p>{{ candidate.about|linebreaksbr }}</p>
+        </div>
+    {% endif %}
+
+    {% if candidate.project_memberships %}
+        <div class="panel">
+            <h2>Проекты в GeeksPro</h2>
+            <ul class="share-projects">
+                {% for member in candidate.project_memberships %}
+                    <li>
+                        <strong>{{ member.project.name|default:'—' }}</strong>
+                        <span>{{ member.get_role_display }} · {{ member.joined_at|date:'m.Y'|default:'—' }} — {{ member.left_at|date:'m.Y'|default:'сейчас' }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if candidate.work_experience or candidate.internship_experience %}
+        <div class="panel">
+            <h2>Опыт</h2>
+            {% if candidate.work_experience %}
+                <h3 class="share-subtitle">Опыт работы</h3>
+                <p>{{ candidate.work_experience|linebreaksbr }}</p>
+            {% endif %}
+            {% if candidate.internship_experience %}
+                <h3 class="share-subtitle">Опыт стажировки</h3>
+                <p>{{ candidate.internship_experience|linebreaksbr }}</p>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if candidate.education or candidate.courses %}
+        <div class="panel">
+            <h2>Образование</h2>
+            {% if candidate.education %}<p>{{ candidate.education|linebreaksbr }}</p>{% endif %}
+            {% if candidate.courses %}
+                <h3 class="share-subtitle">Пройденные курсы</h3>
+                <p>{{ candidate.courses|linebreaksbr }}</p>
+            {% endif %}
+        </div>
+    {% endif %}
+{% else %}
+    <div class="portal-hero">
+        <div class="portal-hero__eyebrow">Резерв кадров GeeksPro</div>
+        <h1>Моё резюме</h1>
+        <p>
+            Вас пока нет в резерве кадров. Когда руководитель добавит вас туда,
+            здесь появится ваше резюме — и вы сможете сами его обновлять.
+        </p>
+    </div>
+{% endif %}
+{% endblock %}

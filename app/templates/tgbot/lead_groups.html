@@ -1,0 +1,17 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Telegram-группы — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Telegram-группы" subtitle="Пригласите новых участников в группу проекта и отметьте факт вступления" %}
+{% end_ui_page_header %}
+{% ui_card title="Участники" subtitle="Ссылка-приглашение — не вступление. «Вступил(а)» отмечайте, когда человек действительно в группе." flush=True %}
+    {% if items %}
+    <ul class="gp-docs">{% for a in items %}<li class="gp-doc"><span class="gp-doc__icon">{% ui_icon "user" %}</span>
+        <div style="min-width:0"><p class="gp-doc__title">{{ a.member.intern.full_name }}{% if a.status == 'joined' %}{% ui_badge a.get_status_display tone="success" dot=True %}{% elif a.status == 'ended' %}{% ui_badge a.get_status_display tone="danger" dot=True %}{% else %}{% ui_badge a.get_status_display tone="warning" dot=True %}{% endif %}</p>
+        <p class="gp-doc__meta">«{{ a.member.project.name }}» · {{ a.member.get_role_display }} · {{ a.member.intern.telegram|default:"Telegram не указан" }}</p></div>
+        {% if a.ui_actions %}<div class="gp-doc__actions">{% for status, label in a.ui_actions %}<form method="post" action="{% url 'lead_portal:telegram_mark' a.pk status %}" style="margin:0">{% csrf_token %}{% ui_button label size="sm" type="submit" %}</form>{% endfor %}</div>{% endif %}
+    </li>{% endfor %}</ul>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Подключать некого" "Группа проекта не привязана или новых участников нет." icon_name="users" %}</div>{% endif %}
+{% end_ui_card %}
+{% endblock %}

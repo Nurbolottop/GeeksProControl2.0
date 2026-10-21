@@ -1,0 +1,10 @@
+{% extends "layouts/app.html" %}
+{% load ui pm_alerts %}
+{% block title %}Мои проекты — Портал ПМ{% endblock %}
+{% block page %}
+{% ui_page_header title="Мои проекты" subtitle="Только проекты, где вы назначены ПМ" %}{% end_ui_page_header %}
+<div style="margin-bottom: var(--space-4)">{% stage_alerts %}</div>
+{% ui_tabs category_tabs active=category label="Статус проектов" %}
+{% include "projects/_list_filters.html" %}
+{% include "projects/_list_body.html" %}
+{% endblock %}

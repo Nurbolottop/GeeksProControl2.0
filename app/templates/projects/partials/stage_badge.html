@@ -1,0 +1,6 @@
+{% comment %}Бейдж текущего этапа — зелёный и с галочкой, когда проект завершён, иначе синий.{% endcomment %}
+{% if stage_key == 'completed' %}
+<span class="badge badge--green">✓ {{ stage_display }}</span>
+{% else %}
+<span class="badge badge--blue">{{ stage_display }}</span>
+{% endif %}

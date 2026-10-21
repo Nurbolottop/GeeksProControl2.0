@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Pipeline — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Pipeline</h1>
+        <div class="sub">Перетащите карточку, чтобы сменить этап — изменение попадёт в историю</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'projects:list' %}" class="btn btn--secondary">Таблица</a>
+        <a href="{% url 'projects:create' %}" class="btn">+ Новый проект</a>
+    </div>
+</div>
+
+<div class="kanban">
+    {% for column in columns %}
+        <div class="kanban__col" data-stage="{{ column.key }}">
+            <div class="kanban__title">
+                <span>{{ column.label }}</span>
+                <span>{{ column.projects|length }}</span>
+            </div>
+            <div class="kanban__cards">
+                {% for project in column.projects %}
+                    <div class="kanban-card" draggable="true" data-project="{{ project.pk }}">
+                        <div class="kanban-card__title">
+                            <a href="{{ project.get_absolute_url }}">{{ project.name }}</a>
+                        </div>
+                        <div class="kanban-card__meta">
+                            <span>{{ project.display_code }}{% if project.client %} · {{ project.client }}{% endif %}</span>
+                            <span>ПМ: {{ project.pm.full_name|default:'не назначен' }}</span>
+                            {% if project.planned_end_date %}<span>Deadline: {{ project.planned_end_date|date:'d.m.Y' }}</span>{% endif %}
+                            <span>
+                                {% include 'projects/partials/deadline_badge.html' with status=project.deadline_status %}
+                            </span>
+                            <div class="progress">
+                                <div class="progress__bar"><div class="progress__fill" style="width: {{ project.progress }}%"></div></div>
+                                <span class="progress__label">{{ project.progress }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    let dragged = null;
+    document.querySelectorAll('.kanban-card').forEach(function (card) {
+        card.addEventListener('dragstart', function () { dragged = card; });
+    });
+    document.querySelectorAll('.kanban__col').forEach(function (col) {
+        col.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            col.classList.add('is-over');
+        });
+        col.addEventListener('dragleave', function () { col.classList.remove('is-over'); });
+        col.addEventListener('drop', function (e) {
+            e.preventDefault();
+            col.classList.remove('is-over');
+            if (!dragged) return;
+            const projectId = dragged.dataset.project;
+            const stage = col.dataset.stage;
+            const body = new URLSearchParams({stage: stage});
+            fetch('/projects/' + projectId + '/move-stage/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: body,
+            }).then(function (resp) {
+                if (resp.ok) { window.location.reload(); }
+            });
+            dragged = null;
+        });
+    });
+})();
+</script>
+{% endblock %}

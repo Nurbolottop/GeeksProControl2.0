@@ -1,0 +1,70 @@
+{% load ui %}
+{% comment %}
+Закрытие проекта (UI-03B). Контекст: closure (closure.Readiness), can_close,
+closure_preview (до закрытия) или closure_graduates / closure_history (после).
+{% endcomment %}
+{% if project.status == 'completed' %}
+{% ui_card title="Проект закрыт" id="closure" %}
+    {% ui_slot "actions" %}{% ui_badge "Завершён" tone="success" dot=True %}{% end_ui_slot %}
+    <dl class="gp-metrics">
+        <div class="gp-metrics__row"><dt>Дата закрытия</dt><dd>{{ project.actual_end_date|date:"d.m.Y"|default:"—" }}</dd></div>
+        <div class="gp-metrics__row"><dt>Закрыл</dt><dd>{% if project.closed_by %}{{ project.closed_by.display_name }}{% else %}<span class="gp-nodata">не записано</span>{% endif %}</dd></div>
+        <div class="gp-metrics__row"><dt>Новых выпускников</dt><dd>{{ closure_graduates|length }}</dd></div>
+    </dl>
+    {% if closure_graduates %}<p class="gp-small" style="margin: var(--space-3) 0 0"><span class="gp-muted">Выпускники:</span> {{ closure_graduates|join:", " }}</p>{% endif %}
+    <p class="gp-muted gp-small" style="margin: var(--space-3) 0 0">Набор закрыт, новые участники в проект не добавляются. Повторного открытия нет.</p>
+    {% ui_slot "footer" %}<a class="gp-link gp-small" href="?tab=history">История проекта</a>{% end_ui_slot %}
+{% end_ui_card %}
+{% else %}
+{% ui_card title="Готовность к закрытию" subtitle="Закрывает руководитель. Обязательны три подтверждения и четыре документа — больше ничего." id="closure" %}
+    {% ui_slot "actions" %}{% if closure.ready %}{% ui_badge closure_label tone="success" dot=True %}{% else %}{% ui_badge closure_label tone="warning" dot=True %}{% endif %}{% end_ui_slot %}
+    <ul class="gp-checklist">
+    {% for item in closure.items %}
+        <li class="gp-checklist__item{% if item.ok %} gp-checklist__item--ok{% endif %}">
+            <span class="gp-checklist__mark">{% if item.ok %}{% ui_icon "check" "sm" %}{% else %}{% ui_icon "alert-triangle" "sm" %}{% endif %}</span>
+            <span>{{ item.label }}<span class="gp-checklist__meta">{% if item.ok %}{{ item.at|date:"d.m.Y H:i" }}{% if item.by %} · {{ item.by.display_name }}{% endif %}{% else %}{{ item.hint }}{% endif %}</span></span>
+            {% if item.kind == 'confirm' %}
+                {% if can_close %}
+                <form method="post" action="{% url 'projects:closure_confirm' project.pk item.key %}">{% csrf_token %}
+                    {% if item.ok %}<input type="hidden" name="value" value="0">{% ui_button "Снять" size="sm" variant="ghost" type="submit" %}
+                    {% else %}<input type="hidden" name="value" value="1">{% ui_button "Подтвердить" size="sm" type="submit" icon_name="check" %}{% endif %}
+                </form>
+                {% endif %}
+            {% elif not item.ok %}<a class="gp-link gp-small gp-checklist__action" href="?tab=documents">К документам</a>{% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+    <details style="margin-top: var(--space-3)">
+        <summary class="gp-small gp-muted" style="cursor:pointer">Справочно — на закрытие не влияет</summary>
+        <dl class="gp-metrics" style="margin-top: var(--space-2)">
+            {% for item in closure.info %}<div class="gp-metrics__row"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>{% endfor %}
+        </dl>
+    </details>
+    {% if can_close %}
+    {% ui_slot "footer" %}
+        {% if closure.ready %}{% ui_button "Завершить проект" variant="primary" icon_name="flag" data_gp_open="closure-confirm" %}
+        {% else %}{% ui_button "Завершить проект" variant="primary" icon_name="flag" disabled=True %}<span class="gp-muted gp-small">Сначала выполните все условия выше.</span>{% endif %}
+    {% end_ui_slot %}
+    {% endif %}
+{% end_ui_card %}
+
+{% if can_close and closure.ready %}
+{% ui_modal id="closure-confirm" title="Завершить проект?" %}
+    <div class="gp-stack">
+        <p class="gp-text" style="margin:0">«{{ project.name }}» получит статус «Завершён» с сегодняшней датой. Действие необратимо: повторного открытия нет.</p>
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>Станут выпускниками<span class="gp-metrics__note">новые активные стажёры</span></dt><dd>{{ closure_preview.new|length }}</dd></div>
+            <div class="gp-metrics__row"><dt>Уже выпускники<span class="gp-metrics__note">статус сохраняется, заканчивается только это участие</span></dt><dd>{{ closure_preview.old|length }}</dd></div>
+            <div class="gp-metrics__row"><dt>Заморожены<span class="gp-metrics__note">не выпускаются</span></dt><dd>{{ closure_preview.frozen|length }}</dd></div>
+            <div class="gp-metrics__row"><dt>Тимлиды<span class="gp-metrics__note">получат уведомление в портал</span></dt><dd>{{ closure_preview.staff|length }}</dd></div>
+        </dl>
+        {% if closure_preview.new %}<p class="gp-small" style="margin:0"><span class="gp-muted">Выпускники:</span> {{ closure_preview.new|join:", " }}</p>{% endif %}
+        {% ui_alert "Участия в этом проекте закроются, набор закроется. Другие проекты людей не меняются. Вышедшие и отчисленные раньше в выпускники не попадают." level="warning" %}
+    </div>
+    {% ui_slot "footer" %}
+        {% ui_button "Отмена" variant="ghost" data_gp_close=True %}
+        <form method="post" action="{% url 'projects:complete' project.pk %}" style="margin:0">{% csrf_token %}{% ui_button "Завершить проект" variant="primary" type="submit" icon_name="flag" %}</form>
+    {% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% endif %}

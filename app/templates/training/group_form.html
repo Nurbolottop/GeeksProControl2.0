@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>{{ title }}</h1>
+        <div class="sub">Дата конца определяет месяц в плане-графике; стадия (набор / учится / выпущена) считается по датам сама</div>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'training:group_list' %}" class="btn btn--secondary">Отмена</a>
+    </div>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    {% if form.errors %}
+        <div class="message message--error">
+            Проверьте выделенные поля.
+            {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="panel">
+        <h2>Что присылает академия</h2>
+        <div class="agrid" style="margin-top: 14px;">
+            {% include 'partials/apply_field.html' with field=form.branch %}
+            {% include 'partials/apply_field.html' with field=form.specialization %}
+            {% include 'partials/apply_field.html' with field=form.number %}
+            {% include 'partials/apply_field.html' with field=form.start_date %}
+            {% include 'partials/apply_field.html' with field=form.end_date %}
+            {% include 'partials/apply_field.html' with field=form.students_count %}
+            {% include 'partials/apply_field.html' with field=form.students_note %}
+        </div>
+        <div class="achecks">
+            {% include 'partials/apply_check.html' with field=form.cancelled %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Дополнительно, если известно</h2>
+        <div class="sub" style="margin-top: 4px;">Можно не заполнять — план строится по датам и численности.</div>
+        <div class="agrid" style="margin-top: 14px;">
+            {% include 'partials/apply_field.html' with field=form.wants_internship %}
+            {% include 'partials/apply_field.html' with field=form.expected_interns %}
+            {% include 'partials/apply_field.html' with field=form.actual_interns %}
+            {% include 'partials/apply_field.html' with field=form.teacher wide=1 %}
+            {% include 'partials/apply_field.html' with field=form.comment wide=1 %}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn">Сохранить</button>
+        <a href="{% url 'training:group_list' %}" class="btn btn--secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}

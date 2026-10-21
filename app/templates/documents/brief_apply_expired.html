@@ -1,0 +1,12 @@
+{% extends "layouts/public.html" %}
+{% load ui %}
+{% block title %}Ссылка недействительна — GeeksPro{% endblock %}
+{% block width %} gp-public__inner--narrow{% endblock %}
+{% block content %}
+{% ui_card %}
+    <div class="gp-stack" style="text-align:center; align-items:center">
+        <span style="color: var(--color-text-subtle)">{% ui_icon "alert-circle" "lg" %}</span>
+        <p class="gp-text" style="margin:0">{% if message %}{{ message }}{% else %}Эта ссылка на бриф больше не действует. Запросите новую у менеджера проекта.{% endif %}</p>
+    </div>
+{% end_ui_card %}
+{% endblock %}

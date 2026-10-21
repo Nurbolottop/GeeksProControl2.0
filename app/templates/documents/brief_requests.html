@@ -1,0 +1,51 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}{{ title }} — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title=title subtitle="Бриф по общей ссылке сразу заводит проект и заказчика; бриф лежит в документах проекта." %}
+    {% url 'new_project_brief' as public_url %}{% ui_button "Общая ссылка на бриф" href=public_url icon_name="external-link" target="_blank" rel="noopener" %}
+{% end_ui_page_header %}
+
+{% if requests %}
+<div style="margin-bottom: var(--space-5)">
+{% ui_card title="Без проекта" subtitle="Старые заявки (до автоматического заведения проектов) — заведите проект вручную." flush=True %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0">
+        <table class="gp-table">
+            <caption class="gp-sr-only">Заявки без проекта</caption>
+            <thead><tr><th scope="col">Проект</th><th scope="col">Заказчик</th><th scope="col">Заполнен</th><th scope="col"><span class="gp-sr-only">Действия</span></th></tr></thead>
+            <tbody>
+            {% for brief in requests %}
+                <tr>
+                    <td class="is-primary" data-label="Проект"><span class="gp-table__primary">{{ brief.project_name|default:"—" }}</span><span class="gp-table__secondary">{{ brief.goal|truncatechars:120 }}</span></td>
+                    <td data-label="Заказчик">{{ brief.organization|default:"—" }}<span class="gp-table__secondary">{{ brief.contact_name }} {{ brief.phone }}</span></td>
+                    <td data-label="Заполнен">{{ brief.submitted_at|date:"d.m.Y H:i"|default:"—" }}</td>
+                    <td data-label="Действия"><form method="post" action="{% url 'documents:brief_request_accept' brief.pk %}" style="margin:0">{% csrf_token %}{% ui_button "Завести проект" size="sm" type="submit" icon_name="plus" %}</form></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% end_ui_card %}
+</div>
+{% endif %}
+
+{% ui_card title="Последние брифы" flush=True %}
+    {% if briefs %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0">
+        <table class="gp-table">
+            <caption class="gp-sr-only">Последние брифы</caption>
+            <thead><tr><th scope="col">Проект</th><th scope="col">Заказчик</th><th scope="col">Заполнен</th></tr></thead>
+            <tbody>
+            {% for brief in briefs %}
+                <tr>
+                    <td class="is-primary" data-label="Проект"><a class="gp-link gp-table__primary" href="{{ brief.project.get_absolute_url }}?tab=documents">{{ brief.project.name }}</a><span class="gp-table__secondary">{{ brief.project.get_status_display }}</span></td>
+                    <td data-label="Заказчик">{% if brief.project.client %}<a class="gp-link" href="{{ brief.project.client.get_absolute_url }}">{{ brief.project.client }}</a>{% else %}{{ brief.organization|default:"—" }}{% endif %}</td>
+                    <td data-label="Заполнен">{{ brief.submitted_at|date:"d.m.Y H:i"|default:"—" }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Брифов пока нет" "Отправьте заказчику общую ссылку или ссылку из документов проекта." icon_name="inbox" %}</div>{% endif %}
+{% end_ui_card %}
+{% endblock %}

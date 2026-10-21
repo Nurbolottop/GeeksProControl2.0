@@ -1,0 +1,33 @@
+{% load ui %}<nav class="gp-nav" aria-label="Основное меню">
+    <ul class="gp-nav__list">
+        {% for item in ui_nav.items %}
+            {% if item.type == 'section' %}
+                <li class="gp-nav__section"><span class="gp-nav__section-title">{{ item.title }}</span></li>
+            {% elif item.type == 'empty' %}
+                <li class="gp-nav__empty">{{ item.text }}</li>
+            {% elif item.type == 'group' %}
+                <li x-data="{ open: {{ item.active|yesno:'true,false' }} }">
+                    <button type="button" class="gp-nav__item{% if item.active %} is-active{% endif %}" title="{{ item.label }}"
+                            :aria-expanded="open.toString()" aria-controls="{{ item.id }}"
+                            @click="if (!expandForGroup()) open = !open; else open = true">
+                        {% ui_icon item.icon %}<span class="gp-nav__label">{{ item.label }}</span>{% ui_icon "chevron-down" "sm" extra="gp-nav__chevron" %}
+                    </button>
+                    <ul class="gp-nav__sub" id="{{ item.id }}" x-show="open"{% if not item.active %} x-cloak{% endif %}>
+                        {% for child in item.children %}
+                            <li><a href="{{ child.href }}" class="gp-nav__subitem{% if child.active %} is-active{% endif %}"{% if child.active %} aria-current="page"{% endif %}>{{ child.label }}</a></li>
+                        {% empty %}
+                            <li class="gp-nav__empty">Пока пусто</li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% else %}
+                <li>
+                    <a href="{{ item.href }}" class="gp-nav__item{% if item.active %} is-active{% endif %}" title="{{ item.label }}"{% if item.active %} aria-current="page"{% endif %}>
+                        {% ui_icon item.icon|default:"folder" %}<span class="gp-nav__label">{{ item.label }}</span>
+                        {% if item.count %}<span class="gp-nav__count" aria-label="непрочитанных: {{ item.count }}">{{ item.count }}</span>{% endif %}
+                    </a>
+                </li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+</nav>

@@ -1,0 +1,13 @@
+{% if status == 'active' %}
+    <span class="badge badge--green">Активный</span>
+{% elif status == 'paused' %}
+    <span class="badge badge--yellow">Приостановлен</span>
+{% elif status == 'completed' %}
+    <span class="badge badge--blue">Завершён</span>
+{% elif status == 'cancelled' %}
+    <span class="badge badge--gray">Отменён</span>
+{% elif status == 'refused' %}
+    <span class="badge badge--red">Клиент отказался</span>
+{% else %}
+    <span class="badge badge--gray">{{ status_display|default:status }}</span>
+{% endif %}

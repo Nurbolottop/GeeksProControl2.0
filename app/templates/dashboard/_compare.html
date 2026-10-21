@@ -1,0 +1,35 @@
+{% load ui %}{% url 'dashboard_compare' as compare_url %}
+<div class="gp-stack" id="compare-content">
+    <form class="gp-field" hx-get="{{ compare_url }}" hx-target="#compare-body" hx-trigger="change" hx-indicator="#compare-loading">
+        <label class="gp-label" for="compare-week">Сравниваемая неделя</label>
+        <select class="gp-select" id="compare-week" name="week">
+            {% for week in compare_weeks %}<option value="{{ week.key }}"{% if week.key == comparison.week.key %} selected{% endif %}>{{ week.label }}</option>{% endfor %}
+        </select>
+        <span class="gp-help">По умолчанию — две последние полностью завершённые недели. Неделя: понедельник–воскресенье, время Бишкека.</span>
+    </form>
+    {% if not comparison.week.complete %}{% ui_alert "Выбрана текущая неделя — она ещё не закончилась, значения неполные." level="warning" title="Неполная неделя" %}{% endif %}
+    {% if not comparison.has_state %}{% ui_alert "Численность на конец недели берётся только из сохранённых снимков (их делает отчёт по понедельникам). Для выбранных недель снимков нет — эти строки помечены «Нет данных»." %}{% endif %}
+
+    <div class="gp-table-wrap gp-table--stack">
+        <table class="gp-table">
+            <caption class="gp-sr-only">Сравнение недели {{ comparison.week.label }} с неделей {{ comparison.previous.label }}</caption>
+            <thead><tr>
+                <th scope="col">Показатель</th>
+                <th scope="col" class="is-numeric">{{ comparison.week.label }}</th>
+                <th scope="col" class="is-numeric">{{ comparison.previous.label }}</th>
+                <th scope="col" class="is-numeric">Изменение</th>
+            </tr></thead>
+            <tbody>
+                {% for row in comparison.rows %}
+                    <tr>
+                        <td class="is-primary" data-label="Показатель">{{ row.label }}</td>
+                        <td class="is-numeric" data-label="{{ comparison.week.label }}">{% ui_value row.current %}</td>
+                        <td class="is-numeric" data-label="{{ comparison.previous.label }}">{% ui_value row.previous %}</td>
+                        <td class="is-numeric" data-label="Изменение">{% ui_delta row.delta row.percent %}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="gp-muted gp-small" style="margin:0">Процент не показывается, если в прошлой неделе было 0 — деление на ноль не имеет смысла. «Нет данных» — значение за период восстановить нельзя.</p>
+</div>

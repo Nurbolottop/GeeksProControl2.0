@@ -1,0 +1,7 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Сравнение недель — GeeksPro Control{% endblock %}
+{% block page %}
+    {% ui_page_header title="Сравнение недель" subtitle="Показатели недели против предыдущей" %}{% url 'dashboard' as home %}{% ui_button "На главную" href=home icon_name="chevron-left" %}{% end_ui_page_header %}
+    {% ui_card %}{% ui_loading "Считаем…" htmx=True id="compare-loading" %}<div id="compare-body">{% include "dashboard/_compare.html" %}</div>{% end_ui_card %}
+{% endblock %}

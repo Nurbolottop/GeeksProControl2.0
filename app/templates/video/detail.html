@@ -1,0 +1,78 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}{{ m.topic }} — собрание{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title=m.topic subtitle=m.project.name %}
+    {% ui_slot "eyebrow" %}{% ui_badge m.get_status_display tone=tone dot=True %}{% ui_badge m.get_kind_display %}{% if m.held_source == 'manual' %}{% ui_badge "проведение отмечено вручную" tone="warning" %}{% endif %}{% end_ui_slot %}
+    {% if is_host and m.status != 'cancelled' %}{% ui_button "Войти в видеовстречу" href=join_url variant="primary" icon_name="external-link" %}{% endif %}
+    {% if can_mark %}{% ui_button "Отметить проведённым" data_gp_open="held-modal" %}{% endif %}
+    {% if can_manage and m.status == 'planned' %}{% ui_button "Перенести" data_gp_open="move-modal" %}{% ui_button "Отменить" variant="ghost" data_gp_open="cancel-modal" %}{% endif %}
+{% end_ui_page_header %}
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Собрание" %}
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>Проект</dt><dd>{{ m.project.name }}</dd></div>
+            <div class="gp-metrics__row"><dt>Направление</dt><dd>{{ direction }}</dd></div>
+            <div class="gp-metrics__row"><dt>Ведущий</dt><dd>{{ m.host.full_name }}</dd></div>
+            <div class="gp-metrics__row"><dt>Начало</dt><dd>{{ m.starts_at|date:"d.m.Y H:i" }} · {{ m.duration_minutes }} мин</dd></div>
+            <div class="gp-metrics__row"><dt>Неделя</dt><dd>с {{ m.week_start|date:"d.m.Y" }}</dd></div>
+            <div class="gp-metrics__row"><dt>Видеосервис</dt><dd style="white-space:normal; overflow-wrap:anywhere">{{ m.provider }}{% if m.provider == 'simulator' %} (симулятор — не реальная интеграция){% endif %}</dd></div>
+            {% if m.room_started_at %}<div class="gp-metrics__row"><dt>Комната (по видеосервису)</dt><dd>{{ m.room_started_at|date:"H:i" }} — {{ m.room_ended_at|date:"H:i"|default:"…" }}</dd></div>{% endif %}
+            {% if m.held_note %}<div class="gp-metrics__row"><dt>Ручная отметка</dt><dd style="white-space:normal">{{ m.held_note }}{% if m.held_by %} · {{ m.held_by.display_name }}{% endif %}</dd></div>{% endif %}
+            {% if m.cancelled_reason %}<div class="gp-metrics__row"><dt>Отменено</dt><dd style="white-space:normal">{{ m.cancelled_reason }}</dd></div>{% endif %}
+        </dl>
+    {% end_ui_card %}
+    {% block attendance %}{% if not attendance_block %}
+    {% ui_card title="Участники" flush=True %}
+        {% if participants %}
+        <ul class="gp-docs">{% for p in participants %}<li class="gp-doc"><span class="gp-doc__icon">{% ui_icon "user" %}</span><div style="min-width:0"><p class="gp-doc__title">{{ p.person_name }}</p><p class="gp-doc__meta">{% if p.invited_at %}приглашение поставлено {{ p.invited_at|date:"d.m H:i" }}{% else %}без приглашения{% endif %}{% if p.link_opened_at %} · ссылка открыта (это не посещение){% endif %}</p></div></li>{% endfor %}</ul>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Участников нет" icon_name="users" %}</div>{% endif %}
+    {% end_ui_card %}
+    {% else %}
+    {% ui_card title="Сведения видеосервиса" %}
+        <dl class="gp-metrics">
+            <div class="gp-metrics__row"><dt>Данные о встрече</dt><dd>{% if covered %}есть{% else %}нет — посещаемость не определить{% endif %}</dd></div>
+            {% if track_attendance %}<div class="gp-metrics__row"><dt>Присутствовали</dt><dd>{{ present_count }} из {{ presence|length }}</dd></div>{% endif %}
+            <div class="gp-metrics__row"><dt>Неподтверждённые подключения</dt><dd>{{ issues.unverified }}</dd></div>
+            {% if parallel_count %}<div class="gp-metrics__row"><dt>Одновременно с двух подключений</dt><dd>{{ parallel_count }} — проверьте</dd></div>{% endif %}
+        </dl>
+    {% end_ui_card %}
+    {% endif %}{% endblock %}
+</div>
+
+{% if attendance_block %}{% include "video/_attendance.html" %}{% endif %}
+
+<div style="margin-top: var(--space-5)">
+{% ui_card title="История" flush=True %}
+    {% if history %}<ul class="gp-timeline" style="padding: 0 var(--space-5)">{% for e in history %}<li class="gp-timeline__item"><span class="gp-timeline__icon">{% ui_icon "clock" %}</span><div style="min-width:0"><p class="gp-timeline__title">{{ e.action }}{% if e.new_value %}: {{ e.new_value }}{% endif %}</p><p class="gp-timeline__meta">{% if e.user %}{{ e.user.display_name }}{% endif %}{% if e.old_value %} · было {{ e.old_value }}{% endif %}{% if e.reason %} · {{ e.reason }}{% endif %}</p></div><span class="gp-timeline__date">{{ e.created_at|date:"d.m.Y H:i" }}</span></li>{% endfor %}</ul>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Событий нет" icon_name="clock" %}</div>{% endif %}
+{% end_ui_card %}
+</div>
+
+{% if can_mark %}
+{% ui_modal id="held-modal" title="Отметить проведённым вручную" %}
+    <form method="post" action="{{ urls.held }}" class="gp-stack" id="held-form">{% csrf_token %}
+        <p class="gp-text" style="margin:0">Используйте, если видеосервис не прислал события (сбой, встреча вне сервиса). В отчётах будет видно: «отмечено вручную».</p>
+        <div class="gp-field"><label class="gp-label" for="held-note">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="held-note" name="note" rows="2" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Отметить" variant="primary" type="submit" form="held-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% if can_manage and m.status == 'planned' %}
+{% ui_modal id="move-modal" title="Перенести собрание" %}
+    <form method="post" action="{{ urls.reschedule }}" class="gp-form-grid gp-form-grid--2" id="move-form">{% csrf_token %}
+        <div class="gp-field"><label class="gp-label" for="mv-date">Дата</label><input class="gp-input" type="date" id="mv-date" name="date" required value="{{ m.starts_at|date:'Y-m-d' }}"></div>
+        <div class="gp-field"><label class="gp-label" for="mv-time">Время</label><input class="gp-input" type="time" id="mv-time" name="time" required value="{{ m.starts_at|date:'H:i' }}"></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Перенести" variant="primary" type="submit" form="move-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% ui_modal id="cancel-modal" title="Отменить собрание" %}
+    <form method="post" action="{{ urls.cancel }}" class="gp-stack" id="cancel-form">{% csrf_token %}
+        <div class="gp-field"><label class="gp-label" for="cn-reason">Причина<span class="gp-required" aria-hidden="true">*</span></label><textarea class="gp-textarea" id="cn-reason" name="reason" rows="2" required></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Назад" variant="ghost" data_gp_close=True %}{% ui_button "Отменить собрание" variant="danger" type="submit" form="cancel-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
+{% endblock %}

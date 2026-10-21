@@ -1,0 +1,27 @@
+{% load ui %}
+{# Отчёты проекта (UI-03C): руководитель и ПМ #}
+<div class="gp-stack gp-stack--lg">
+{% ui_card title="Новый отчёт" subtitle="Текущее положение, что сделали, что предстоит, проблемы." %}
+    <form method="post" action="{{ report_create_url }}" class="gp-stack">
+        {% csrf_token %}
+        <label class="gp-sr-only" for="report-new">Текст отчёта</label>
+        <textarea class="gp-textarea" id="report-new" name="text" rows="6" required></textarea>
+        <div>{% ui_button "Сохранить отчёт" variant="primary" type="submit" icon_name="check" %}</div>
+    </form>
+{% end_ui_card %}
+{% for report in reports %}
+    {% ui_card title=report.ui_title %}
+        {% ui_slot "actions" %}<span class="gp-muted gp-small">{% if report.author %}{{ report.author.display_name }}{% endif %}</span>{% ui_button "Изменить" size="sm" variant="ghost" icon_name="pencil" data_gp_open=report.ui_modal %}{% end_ui_slot %}
+        <p class="gp-text" style="white-space: pre-line; margin:0; overflow-wrap:anywhere">{{ report.text }}</p>
+    {% end_ui_card %}
+{% empty %}
+    <div class="gp-card">{% ui_empty "Отчётов пока нет" "Напишите первый выше." icon_name="file-text" %}</div>
+{% endfor %}
+</div>
+{% for report in reports %}
+    {% ui_modal id=report.ui_modal title="Отчёт" size="lg" %}
+        <form method="post" action="{{ report.ui_update_url }}" id="{{ report.ui_form }}">{% csrf_token %}<label class="gp-sr-only" for="{{ report.ui_form }}-text">Текст</label><textarea class="gp-textarea" id="{{ report.ui_form }}-text" name="text" rows="10" required>{{ report.text }}</textarea></form>
+        <form method="post" action="{{ report.ui_delete_url }}" id="{{ report.ui_form }}-delete">{% csrf_token %}</form>
+        {% ui_slot "footer" %}<span style="margin-right:auto">{% ui_button "Удалить" variant="ghost" icon_name="trash" type="submit" form=report.ui_form|add:"-delete" %}</span>{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Сохранить" variant="primary" type="submit" form=report.ui_form %}{% end_ui_slot %}
+    {% end_ui_modal %}
+{% endfor %}

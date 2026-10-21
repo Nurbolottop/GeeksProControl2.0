@@ -1,0 +1,9 @@
+{% extends "layouts/auth.html" %}
+{% load ui %}
+{% block title %}Доступ запрещён — GeeksPro Control{% endblock %}
+{% block card %}
+    <p class="gp-muted gp-small" style="margin:0 0 var(--space-2); font-weight: var(--weight-semibold)">Ошибка 403</p>
+    <h1 class="gp-auth__title">Доступ запрещён</h1>
+    <p class="gp-auth__subtitle">У вашей роли нет доступа к этой странице. Если это ошибка — обратитесь к руководителю.</p>
+    {% ui_button "На главную" variant="primary" href="/" icon_name="home" block=True %}
+{% endblock %}
