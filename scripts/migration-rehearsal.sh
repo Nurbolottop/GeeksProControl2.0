@@ -54,7 +54,8 @@ manage gp2_rehearsal migrate --noinput > "$OUT/migrate.log"
 log "migrate кодом 2.0: $(( $(date +%s) - START )) с, применено $(grep -c ' OK' "$OUT/migrate.log")"
 manage gp2_rehearsal migration_report --media > "$OUT/report-after.raw" || { log "ОШИБКА отчёта после migrate"; exit 1; }
 json < "$OUT/report-after.raw" > "$OUT/report-after.json"
-if $DC run --rm --no-deps -e RUN_MIGRATIONS=0 -e POSTGRES_DB=gp2_rehearsal -v "$(cd "$OUT" && pwd):/rehearsal:ro" \
+# --user 0: отчёты лежат с правами 600 (персональные данные), каталог смонтирован только для чтения
+if $DC run --rm --no-deps -T --user 0 -e RUN_MIGRATIONS=0 -e POSTGRES_DB=gp2_rehearsal -v "$(cd "$OUT" && pwd):/rehearsal:ro" \
     web python manage.py migration_report --compare /rehearsal/report-before.json /rehearsal/report-after.json \
     > "$OUT/compare.txt" 2>&1; then
   log "Сверка до/после: без расхождений"
