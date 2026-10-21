@@ -1,0 +1,4 @@
+# /etc/cron.d/geekspro2-backup — ежедневный бэкап Control 2.0 (staging), 03:40 по времени сервера.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+40 3 * * * root /usr/local/sbin/geekspro2-backup

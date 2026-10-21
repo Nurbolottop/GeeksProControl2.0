@@ -1076,5 +1076,6 @@
   @media (pointer: coarse) {
     .gp-table__sort { display: inline-flex; align-items: center; min-height: 24px; }
     a.gp-link.gp-small { display: inline-flex; align-items: center; min-height: 24px; }
+    input[type=checkbox], input[type=radio] { width: 24px; height: 24px; flex: none; }
   }
 }

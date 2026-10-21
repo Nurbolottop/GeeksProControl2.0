@@ -112,8 +112,18 @@ GP2_SMOKE_BASE=https://gpro.zeastudio.su GP2_SMOKE_BASIC='<логин:парол
 DC="scripts/gp2-compose.sh --prod" MEDIA_DIR=/opt/geekspro2/storage/media \
   BACKUP_DIR=/opt/geekspro2/backups KEEP_DAYS=14 scripts/backup.sh --verify
 ```
-Ежедневно через cron хоста (🔐). `--verify` восстанавливает дамп в одноразовую базу
-`gp2_backup_check` и сверяет суммы (локально проверено). Копию вне сервера — отдельно.
+**Ежедневно — установлено на staging (11B):** `/etc/cron.d/geekspro2-backup` (03:40, Бишкек) →
+`/usr/local/sbin/geekspro2-backup` (копии из `deploy/cron/`). Один запуск одновременно (flock),
+контроль места (≥ 3 ГБ свободно), sha256 каждой копии ежедневно, восстановление в
+`gp2_backup_check` по воскресеньям, хранение 14 дней, права 700/600 (root). Сбой →
+`backups/last-status` = FAIL и уведомление «Бэкап staging не выполнен» в Control.
+
+```bash
+cat /opt/geekspro2/backups/last-status          # OK <каталог> <размер>
+tail -20 /opt/geekspro2/backups/backup.log
+/usr/local/sbin/geekspro2-backup                # ручной запуск
+```
+Копию вне сервера — отдельно (🔐).
 
 ## 7. Диагностика
 
