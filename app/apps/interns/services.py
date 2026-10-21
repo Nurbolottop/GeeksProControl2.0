@@ -122,14 +122,20 @@ BRANCH_UNKNOWN = 'Без филиала'
 BRANCHES = (BRANCH_BISHKEK, BRANCH_OSH, BRANCH_UNKNOWN)
 
 
+# В данных 1.0 город встречается и латиницей, и строчными («Osh», «Bishkek», «ош»).
+OSH_MARKS = ('ош', 'osh')
+BISHKEK_MARKS = ('биш', 'bish')
+
+
 def branch_from_text(*values) -> str:
     """Филиал по первому осмысленному значению: «Ошский филиал» → Ош и т.д."""
     for value in values:
-        if not value:
+        text = (value or '').lower()
+        if not text:
             continue
-        if 'Ош' in value:
+        if any(mark in text for mark in OSH_MARKS):
             return BRANCH_OSH
-        if 'Биш' in value:
+        if any(mark in text for mark in BISHKEK_MARKS):
             return BRANCH_BISHKEK
     return BRANCH_UNKNOWN
 
@@ -143,10 +149,14 @@ def branch_filter(branch: str):
     """Q-фильтр по филиалу — та же логика, что и в branch_of."""
     from django.db.models import Q
 
-    osh = Q(branch__icontains='Ош') | (Q(branch='') & Q(city__icontains='Ош'))
-    bishkek = ~osh & (
-        Q(branch__icontains='Биш') | (Q(branch='') & Q(city__icontains='Биш'))
-    )
+    def any_of(field, marks):
+        q = Q()
+        for mark in marks:
+            q |= Q(**{f'{field}__icontains': mark})
+        return q
+
+    osh = any_of('branch', OSH_MARKS) | (Q(branch='') & any_of('city', OSH_MARKS))
+    bishkek = ~osh & (any_of('branch', BISHKEK_MARKS) | (Q(branch='') & any_of('city', BISHKEK_MARKS)))
     if branch == BRANCH_OSH:
         return osh
     if branch == BRANCH_BISHKEK:
