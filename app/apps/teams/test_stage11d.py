@@ -32,8 +32,8 @@ class StaffBackfillTests(TestCase):
 
     def test_report_changes_nothing(self):
         text = self.run_cmd()
-        self.assertIn('Однозначно сотрудники: 2', text)
-        self.assertIn('Требуют решения руководителя: 2', text)
+        self.assertIn('Однозначно сотрудники: 1', text)  # только тимлид: ПМ — стажёры
+        self.assertIn('Требуют решения руководителя: 0', text)
         self.assertFalse(Intern.objects.exclude(staff_status='').exists())
 
     def test_apply_only_unambiguous_and_is_idempotent(self):
@@ -41,15 +41,14 @@ class StaffBackfillTests(TestCase):
         self.lead.refresh_from_db()
         self.pm.refresh_from_db()
         self.assertEqual((self.lead.staff_status, self.lead.staff_role), (StaffStatus.ACTIVE, StaffRole.LEAD))
-        self.assertEqual((self.pm.staff_status, self.pm.staff_role), (StaffStatus.ACTIVE, StaffRole.PM))
-        self.assertIsNone(self.pm.staff_since)  # дату начала не придумываем
-        for unclear in (self.pm_no_project, self.pm_as_intern):
+        self.assertIsNone(self.lead.staff_since)  # дату начала не придумываем
+        for unclear in (self.pm, self.pm_no_project, self.pm_as_intern):  # ПМ — стажёры
             unclear.refresh_from_db()
             self.assertEqual(unclear.staff_status, '')
-        self.assertEqual(staff_pm_ids(), {self.pm.pk})
-        self.assertEqual(AuditLog.objects.filter(action__startswith='Кадровый статус заполнен').count(), 2)
+        self.assertEqual(staff_pm_ids(), set())
+        self.assertEqual(AuditLog.objects.filter(action__startswith='Кадровый статус заполнен').count(), 1)
         self.assertIn('Заполнено: 0', self.run_cmd('--apply'))
-        self.assertEqual(AuditLog.objects.filter(action__startswith='Кадровый статус заполнен').count(), 2)
+        self.assertEqual(AuditLog.objects.filter(action__startswith='Кадровый статус заполнен').count(), 1)
 
     def test_disabled_account_is_not_backfilled(self):
         self.lead.user.is_active = False

@@ -8,10 +8,9 @@
   manage.py staff_backfill           — отчёт, ничего не меняет
   manage.py staff_backfill --apply   — заполнить только однозначные случаи
 
-Однозначно, если сходятся все признаки 1.0:
-* тимлид — position=lead, учётка с ролью team_lead, учётка активна;
-* ПМ — position=pm, учётка с ролью pm, учётка активна и есть активное
-  назначение ПМ на проект.
+Однозначно, если сходятся все признаки 1.0: тимлид — position=lead, учётка
+с ролью team_lead, учётка активна. ПМ в GeeksPro — стажёры направления PM
+(решение руководителя, 11F): им кадровый статус не заполняется.
 staff_since не заполняется: даты начала работы в 1.0 нет. Остальные
 случаи (признаки расходятся) только перечисляются — решение за руководителем.
 Каждое изменение пишется в журнал; повторный запуск ничего не делает.
@@ -41,9 +40,8 @@ class Command(BaseCommand):
             if (user.role == 'team_lead' and intern.position == Position.TEAM_LEAD and user.is_active
                     and not intern.is_archived):
                 sure.append((intern, StaffRole.LEAD))
-            elif (user.role == 'pm' and intern.position == Position.PM and user.is_active and active_pm
-                  and not intern.is_archived):
-                sure.append((intern, StaffRole.PM))
+            elif user.role == 'pm':
+                continue  # ПМ — стажёры направления PM, не сотрудники
             else:
                 why = []
                 if intern.position != {'pm': Position.PM, 'team_lead': Position.TEAM_LEAD}[user.role]:
