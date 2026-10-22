@@ -75,9 +75,18 @@ class FakeBot:
     def get_chat_member(self, chat_id, user_id):
         return SimpleNamespace(status='administrator' if self.admin else 'member', can_manage_topics=self.admin)
 
-    def create_forum_topic(self, chat_id, name):
+    def create_forum_topic(self, chat_id, name, icon_custom_emoji_id=None):
         self.topics.append((chat_id, name))
+        self.icons = getattr(self, 'icons', {})
+        self.icons[name] = icon_custom_emoji_id
         return SimpleNamespace(message_thread_id=100 + len(self.topics))
+
+    def get_forum_topic_icon_stickers(self):
+        return [{'emoji': e, 'custom_emoji_id': f'id-{e}'} for e in ('📣', '💻', '📺', '🎨', '📱', '🧪', '💼', '💬', '⚡️')]
+
+    def edit_forum_topic(self, chat_id, thread_id, name=None, icon_custom_emoji_id=None):
+        self.edited = getattr(self, 'edited', []) + [(chat_id, thread_id, icon_custom_emoji_id)]
+        return True
 
     def answer_callback_query(self, *a, **k):
         return True
@@ -343,3 +352,33 @@ class StageSevenFixTests(Base):
         with self.assertRaises(FileRejected):
             sniff(b'<?php evil')
         self.assertIsInstance(SimpleUploadedFile('a.png', PNG), SimpleUploadedFile)
+
+
+class Stage11FGroupTests(Base):
+    """Иконки тем и команды в группах только от руководителя."""
+
+    def setUp(self):
+        super().setUp()
+        from apps.tgbot import groups as g
+
+        g._icon_ids.clear()
+        self.addCleanup(g._icon_ids.clear)
+
+    def test_topics_created_with_icons_and_existing_get_icons_without_recreate(self):
+        self.member('Фронт Стажёр', role=TeamRole.FRONTEND)
+        group = self.bound()
+        bot = self.bot
+        self.assertEqual(bot.icons['Объявления'], 'id-📣')
+        self.assertEqual(bot.icons['Frontend'], 'id-📺')
+        created = len(bot.topics)
+        self.assertEqual(groups.apply_icons(group), GroupTopic.objects.filter(group=group).count())
+        self.assertEqual(len(bot.topics), created)  # темы не пересоздаются
+
+    @override_settings(TELEGRAM_GROUP_ADMIN_IDS={'777'})
+    def test_group_commands_only_from_admin(self):
+        code = groups.issue_code(self.head, project=self.project)
+        self.assertEqual(self.run_update(group_msg(GROUP, f'/bind {code.code}', user=5)), 'group:cmd_denied')
+        code.refresh_from_db()
+        self.assertIsNone(code.used_at)  # чужая команда код не тратит
+        self.assertFalse(TelegramGroup.objects.exists())
+        self.assertEqual(self.run_update(group_msg(GROUP, f'/bind@GeeksProAutoBot {code.code}', user=777)), 'bind:pending')

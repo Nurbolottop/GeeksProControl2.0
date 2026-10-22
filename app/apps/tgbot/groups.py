@@ -32,6 +32,46 @@ CODE_TTL = datetime.timedelta(minutes=30)
 ANNOUNCEMENTS = 'announcements'
 TOPIC_TITLES = {'backend': 'Backend', 'frontend': 'Frontend', 'uxui': 'Design', 'mobile': 'Mobile', 'qa': 'QA',
                 'other': 'Другие направления', 'pm': 'PM', ANNOUNCEMENTS: 'Объявления'}
+# Иконки тем — только из набора Telegram (getForumTopicIconStickers), по эмодзи.
+TOPIC_ICONS = {ANNOUNCEMENTS: '📣', 'backend': '💻', 'frontend': '📺', 'uxui': '🎨', 'mobile': '📱', 'qa': '🧪',
+               'pm': '💼', 'other': '💬'}
+_icon_ids: dict[str, str] = {}
+
+
+def icon_id(key) -> str | None:
+    """custom_emoji_id иконки темы; None — если набор недоступен (тема создастся без иконки)."""
+    emoji = TOPIC_ICONS.get(key)
+    if not emoji:
+        return None
+    if not _icon_ids:
+        try:
+            for sticker in _bot().get_forum_topic_icon_stickers():
+                data = sticker if isinstance(sticker, dict) else sticker.__dict__
+                if data.get('emoji') and data.get('custom_emoji_id'):
+                    _icon_ids.setdefault(data['emoji'].replace('\ufe0f', ''), data['custom_emoji_id'])
+        except Exception as error:  # сеть / Telegram — без иконки, не ломаем создание темы
+            logger.info('Набор иконок тем недоступен: %s', error.__class__.__name__)
+            return None
+    return _icon_ids.get(emoji.replace('\ufe0f', ''))
+
+
+def apply_icons(group) -> int:
+    """Проставить иконки уже созданным темам (тема не пересоздаётся). Возвращает число тем."""
+    from telebot.apihelper import ApiTelegramException
+
+    done = 0
+    for topic in GroupTopic.objects.filter(group=group, status=GroupTopic.Status.ACTIVE).exclude(message_thread_id=None):
+        icon = icon_id(topic.key)
+        if not icon:
+            continue
+        try:
+            _bot().edit_forum_topic(group.chat_id, topic.message_thread_id, icon_custom_emoji_id=icon)
+        except ApiTelegramException as error:
+            if 'TOPIC_NOT_MODIFIED' not in str(getattr(error, 'description', '')):
+                logger.info('Иконка темы %s не изменена: %s', topic.key, getattr(error, 'description', ''))
+                continue
+        done += 1
+    return done
 
 
 class GroupError(ValidationError):
@@ -183,7 +223,7 @@ def sync_topics(group) -> list[GroupTopic]:
         if topic.status == GroupTopic.Status.ACTIVE and topic.message_thread_id:
             continue
         try:
-            result = _bot().create_forum_topic(group.chat_id, topic.title)
+            result = _bot().create_forum_topic(group.chat_id, topic.title, icon_custom_emoji_id=icon_id(key))
         except TelegramBlocked as error:
             topic.status, topic.last_error = GroupTopic.Status.ERROR, str(error)[:255]
         except ApiTelegramException as error:
@@ -340,8 +380,18 @@ def on_bot_membership(payload) -> str:
     return 'group:bot_added'
 
 
+def command_allowed(message) -> bool:
+    """Команды в группах (/bind и др.) — только от TELEGRAM_GROUP_ADMIN_IDS, если список задан."""
+    from django.conf import settings
+
+    admins = getattr(settings, 'TELEGRAM_GROUP_ADMIN_IDS', set())
+    return not admins or str((message.get('from') or {}).get('id', '')) in admins
+
+
 def on_group_message(message) -> str:
     text = (message.get('text') or '').strip()
+    if text.startswith('/') and not command_allowed(message):
+        return 'group:cmd_denied'  # молча: посторонним бот в группе не отвечает
     if text.split('@')[0].startswith('/bind'):
         return bind(message)
     return 'group:ignored'

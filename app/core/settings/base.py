@@ -54,6 +54,10 @@ TELEGRAM_TEST_GROUP_IDS = {
     chat_id.strip() for chat_id in os.getenv('TELEGRAM_TEST_GROUP_IDS', '').split(',')
     if chat_id.strip()
 }
+# Кто может давать боту команды в группах (/bind и др.), через запятую. Пусто — любой участник.
+TELEGRAM_GROUP_ADMIN_IDS = {
+    user_id.strip() for user_id in os.getenv('TELEGRAM_GROUP_ADMIN_IDS', '').split(',') if user_id.strip()
+}
 # Username бота без «@» — для ссылок t.me/<username> (не секрет).
 TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', '').strip().lstrip('@')
 
