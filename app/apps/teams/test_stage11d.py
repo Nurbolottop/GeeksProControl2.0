@@ -95,3 +95,22 @@ class DuplicateMembershipTests(TestCase):
         error = save_membership(TeamMember(project=project, intern=intern, role=TeamRole.BACKEND, status='active'))
         self.assertIn('уже в команде', error)
         self.assertEqual(TeamMember.objects.filter(project=project, intern=intern).count(), 1)
+
+
+class AddedToProjectClosesChoiceTests(TestCase):
+    """11F: подтверждённая продажами стажировка + добавление в проект руководителем → бот не просит выбрать проект."""
+
+    def test_activate_sets_chosen_project(self):
+        from apps.interns.freeze import open_return
+        from apps.interns.models import InternshipRequest
+        from apps.teams.services import activate_intern_membership
+
+        project = Project.objects.create(name='Сразу в проект', status='active', recruitment_open=True)
+        intern = Intern.objects.create(full_name='Новый Стажёр', status='waiting')
+        InternshipRequest.objects.create(intern=intern, kind=InternshipRequest.Kind.ENROLL,
+                                         status=InternshipRequest.Status.APPROVED)
+        self.assertIsNotNone(open_return(intern))
+        member = TeamMember.objects.create(project=project, intern=intern, role=TeamRole.BACKEND, status='active')
+        activate_intern_membership(member)
+        self.assertIsNone(open_return(intern))
+        self.assertEqual(InternshipRequest.objects.get(intern=intern).chosen_project, project)

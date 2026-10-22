@@ -42,6 +42,14 @@ def activate_intern_membership(member: TeamMember, *, user=None, reason: str = '
         update_fields.append('graduate_status')
     if update_fields:
         intern.save(update_fields=[*update_fields, 'updated_at'])
+    # 11F: открытая заявка (одобренное возвращение / подтверждённая продажами стажировка)
+    # закрывается этим проектом — иначе бот предлагает «выбрать проект», хотя он уже есть.
+    from apps.interns.freeze import open_return
+
+    request = open_return(intern)
+    if request is not None and member.project_id:
+        request.chosen_project_id = member.project_id
+        request.save(update_fields=['chosen_project', 'updated_at'])
 
 
 def person_workload(*, user=None, intern=None, exclude_pk=None) -> int:
