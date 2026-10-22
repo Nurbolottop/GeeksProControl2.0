@@ -122,12 +122,20 @@ def link(*, chat_id, telegram_user_id, username, full_name, contact_phone, conta
                 req = LinkRequest.objects.create(chat_id=chat_id, telegram_user_id=telegram_user_id,
                                                  telegram_username=username or '', full_name=full_name,
                                                  phone=phone, reason=reason)
-                req.candidates.set(by_phone or matched)
+                req.candidates.set(by_phone or matched or _name_candidates(full_name))
         except IntegrityError:
             req = LinkRequest.objects.get(telegram_user_id=telegram_user_id, status=LinkRequest.Status.PENDING)
             return 'manual', req
         transaction.on_commit(lambda: _notify_link(req))
     return 'manual', req
+
+
+def _name_candidates(full_name):
+    """Кандидаты для ручной сверки, когда по телефону никого нет (в 1.0 у части людей
+    телефон не записан): непривязанные профили с тем же ФИО. Только подсказка
+    руководителю — автоматически по ФИО ничего не привязывается."""
+    return [i for i in Intern.objects.filter(telegram_chat_id__isnull=True, is_archived=False)
+            if _name_matches(i, full_name)][:10]
 
 
 def _notify_link(req):

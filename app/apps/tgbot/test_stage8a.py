@@ -236,6 +236,26 @@ class LinkAndRequestTests(Base):
         self.client.force_login(self.head)
         self.assertEqual(self.client.get('/telegram/').status_code, 200)
 
+    def test_profile_without_phone_is_offered_to_head_by_name(self):
+        # 11D: в 1.0 у 52 стажёров нет телефона — сверка должна предложить профиль по ФИО
+        no_phone = Intern.objects.create(full_name='Безтелефонов Азамат', phone='', specialization=self.backend)
+        Intern.objects.create(full_name='Безтелефонов Азамат', phone='', is_archived=True)
+        Intern.objects.create(full_name='Безтелефонов Азамат', phone='', telegram_chat_id=OTHER)
+        self.send(msg(USER, menus.ALREADY))
+        self.send(msg(USER, 'Безтелефонов Азамат'))
+        self.assertEqual(self.send(contact(USER, '0700999888')), 'link:manual')
+        no_phone.refresh_from_db()
+        self.assertIsNone(no_phone.telegram_chat_id)  # по одному ФИО — не привязываем
+        req = LinkRequest.objects.get()
+        self.assertEqual(list(req.candidates.all()), [no_phone])  # архивный и уже привязанный — не кандидаты
+        from apps.tgbot.people import decide_link
+
+        with self.captureOnCommitCallbacks(execute=True):
+            decide_link(req, self.head, no_phone)
+        no_phone.refresh_from_db()
+        self.assertEqual(no_phone.telegram_chat_id, USER)
+        self.assertEqual(Intern.objects.count(), 3)  # новый профиль не создан
+
     def test_freeze_return_leave_requests(self):
         from apps.interns import freeze
 
