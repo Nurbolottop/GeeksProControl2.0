@@ -419,7 +419,7 @@ class Stage11FServiceGroupTests(Base):
     def test_sales_group_binds_and_replies_in_topic(self):
         sales = self.bind_kind(-100703, TelegramGroup.Kind.SALES)
         self.assertEqual(sorted(GroupTopic.objects.filter(group=sales).values_list('title', flat=True)),
-                         ['Вопросы', 'Оплаты'])
+                         ['Вопросы', 'Обсуждение'])
         update = group_msg(-100703, '#оплата\nФИО: Нет Такого', user=5)
         update['message'].update(message_thread_id=77, is_topic_message=True)
         self.run_update(update)

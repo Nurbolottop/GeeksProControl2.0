@@ -34,13 +34,14 @@ TOPIC_TITLES = {'backend': 'Backend', 'frontend': 'Frontend', 'uxui': 'Design', 
                 'other': 'Другие направления', 'pm': 'PM', ANNOUNCEMENTS: 'Объявления'}
 # Иконки тем — только из набора Telegram (getForumTopicIconStickers), по эмодзи.
 TOPIC_ICONS = {ANNOUNCEMENTS: '📣', 'backend': '💻', 'frontend': '📺', 'uxui': '🎨', 'mobile': '📱', 'qa': '🧪',
-               'pm': '💼', 'other': '💬', 'reports': '📝', 'meetings': '📆', 'payments': '💰', 'questions': '❓'}
+               'pm': '💼', 'other': '💬', 'reports': '📝', 'meetings': '📆', 'payments': '💬', 'questions': '❓'}
 # Темы служебных групп (11F): структура для людей; ответы продажам — в теме, где написали.
+# Продажи: «Обсуждение» — туда отправляют стажёров (#оплата), ключ payments прежний.
 SERVICE_TOPICS = {
     TelegramGroup.Kind.LEADS: [(ANNOUNCEMENTS, 'Объявления'), ('reports', 'Отчёты'), ('meetings', 'Собрания')],
     TelegramGroup.Kind.PMS: [(ANNOUNCEMENTS, 'Объявления'), ('reports', 'Отчёты ПМ'),
                              ('meetings', 'Встречи с тимлидами')],
-    TelegramGroup.Kind.SALES: [('payments', 'Оплаты'), ('questions', 'Вопросы')],
+    TelegramGroup.Kind.SALES: [('payments', 'Обсуждение'), ('questions', 'Вопросы')],
 }
 
 
