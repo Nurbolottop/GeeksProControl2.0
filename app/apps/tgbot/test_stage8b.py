@@ -82,7 +82,7 @@ class FakeBot:
         return SimpleNamespace(message_thread_id=100 + len(self.topics))
 
     def get_forum_topic_icon_stickers(self):
-        return [{'emoji': e, 'custom_emoji_id': f'id-{e}'} for e in ('📣', '💻', '📺', '🎨', '📱', '🧪', '💼', '💬', '📝', '📆', '💰', '❓', '⚡️')]
+        return [{'emoji': e, 'custom_emoji_id': f'id-{e}'} for e in ('📣', '💻', '📺', '🎨', '📱', '🧪', '💼', '💬', '📝', '📆', '💰', '❓', '🎓', '❗️', '⚡️')]
 
     def edit_forum_topic(self, chat_id, thread_id, name=None, icon_custom_emoji_id=None):
         self.edited = getattr(self, 'edited', []) + [(chat_id, thread_id, icon_custom_emoji_id)]
@@ -419,7 +419,7 @@ class Stage11FServiceGroupTests(Base):
     def test_sales_group_binds_and_replies_in_topic(self):
         sales = self.bind_kind(-100703, TelegramGroup.Kind.SALES)
         self.assertEqual(sorted(GroupTopic.objects.filter(group=sales).values_list('title', flat=True)),
-                         ['Вопросы', 'Обсуждение'])
+                         ['Важно', 'Вопросы/обсуждение', 'Новые стажеры'])
         update = group_msg(-100703, '#оплата\nФИО: Нет Такого', user=5)
         update['message'].update(message_thread_id=77, is_topic_message=True)
         self.run_update(update)
