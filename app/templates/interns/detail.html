@@ -53,7 +53,7 @@
     {% ui_card title="Личные данные" %}
         <dl class="gp-metrics">
             <div class="gp-metrics__row"><dt>Телефон</dt><dd style="white-space:normal; overflow-wrap:anywhere">{% if intern.phone %}<a class="gp-link" href="tel:{{ intern.phone }}">{{ intern.phone }}</a>{% else %}—{% endif %}</dd></div>
-            <div class="gp-metrics__row"><dt>Telegram</dt><dd style="white-space:normal; overflow-wrap:anywhere">{{ intern.telegram|default:"—" }}{% if intern.telegram_chat_id %} · бот подключён{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Telegram</dt><dd style="white-space:normal; overflow-wrap:anywhere">{{ intern.telegram|default:"—" }}{% if intern.telegram_chat_id %} · {% if bot_started %}бот подключён{% else %}Telegram из 1.0 — бот не запущен{% endif %}{% endif %}</dd></div>
             <div class="gp-metrics__row"><dt>Email</dt><dd style="white-space:normal; overflow-wrap:anywhere">{{ intern.email|default:"—" }}</dd></div>
             <div class="gp-metrics__row"><dt>Город</dt><dd>{{ branch }}</dd></div>
             <div class="gp-metrics__row"><dt>Направление</dt><dd>{{ intern.specialization|default:"—" }}</dd></div>

@@ -49,6 +49,16 @@ def graduate_ids() -> set:
 
 # ------------------------------------------------------------------- список
 
+def bot_started_exists():
+    """Человек действительно запускал бота 2.0: писал ему в личку или получил от него сообщение.
+    Telegram ID из 1.0 (старый бот) сам по себе этого не значит — новый бот не может написать первым."""
+    from apps.tgbot.models import OutboundMessage, TelegramUpdate
+
+    chat = OuterRef('telegram_chat_id')
+    return (Exists(TelegramUpdate.objects.filter(user_id=chat, chat_id=chat))
+            | Exists(OutboundMessage.objects.filter(chat_id=chat, status=OutboundMessage.Status.SENT)))
+
+
 def list_queryset(staff=None):
     active_member = TeamMember.objects.filter(intern=OuterRef('pk'), status=TeamMember.Status.ACTIVE,
                                               project__isnull=False)
@@ -58,6 +68,7 @@ def list_queryset(staff=None):
         .annotate(
             warnings_count=Count('warnings', filter=Q(warnings__status=InternWarning.Status.ACTIVE), distinct=True),
             on_project=Exists(active_member),
+            bot_started=bot_started_exists(),
         )
     )
 
@@ -114,9 +125,11 @@ def apply_filters(qs, params, graduates: set):
             project_id=params['project'], status=TeamMember.Status.ACTIVE).values('intern_id'))
     telegram = params.get('telegram')
     if telegram == 'yes':
-        qs = qs.filter(telegram_chat_id__isnull=False)
+        qs = qs.filter(telegram_chat_id__isnull=False, bot_started=True)
+    elif telegram == 'legacy':
+        qs = qs.filter(telegram_chat_id__isnull=False, bot_started=False)
     elif telegram == 'no':
-        qs = qs.filter(telegram_chat_id__isnull=True)
+        qs = qs.filter(Q(telegram_chat_id__isnull=True) | Q(bot_started=False))
     return qs
 
 
@@ -209,6 +222,8 @@ def card(person: Intern) -> dict:
         period.ui_certificate = getattr(period, 'certificate', None)
     requests = list(person.internship_requests.select_related('decided_by', 'chosen_project').order_by('-created_at'))
     return {
+        'bot_started': bool(person.telegram_chat_id) and Intern.objects.filter(pk=person.pk).annotate(
+            started=bot_started_exists()).values_list('started', flat=True).first(),
         'person': person,
         'is_graduate': person.pk in grad.ids,
         'first_graduation': grad.first_dates.get(person.pk),

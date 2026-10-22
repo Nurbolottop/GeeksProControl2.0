@@ -226,6 +226,11 @@ class ListAndDashboardTests(TestCase):
         self.assertEqual(self.names(branch='Ош'), ['Из Оша'])
         self.assertEqual(self.names(q='555123456'), ['Из Оша'])
         self.assertEqual(self.names(specialization=self.design.pk), ['Из Оша'])
+        self.assertEqual(self.names(telegram='yes'), [])  # 11F: ID есть, но бот 2.0 не запускал
+        self.assertEqual(self.names(telegram='legacy'), ['Из Оша'])
+        from apps.tgbot.models import TelegramUpdate
+
+        TelegramUpdate.objects.create(update_id=4201, chat_id=42, user_id=42, kind='message')
         self.assertEqual(self.names(telegram='yes'), ['Из Оша'])
         self.assertEqual(self.names(project=self.project.pk), ['Из Оша'])
         self.assertEqual(self.names(kind='old'), [old.full_name])

@@ -1750,3 +1750,30 @@ class PastProjectsLabelTests(TestCase):
     def test_finished_project_marked_as_delivered(self):
         response = self.client.get(self.person.get_absolute_url())
         self.assertContains(response, "проект сдан")
+
+
+class BotStartedLabelTests(TestCase):
+    """11F: Telegram ID из 1.0 ≠ подключение к боту 2.0."""
+
+    def test_legacy_id_is_not_connected_until_bot_used(self):
+        from apps.interns import people
+        from apps.tgbot.models import OutboundMessage, TelegramUpdate
+
+        legacy = Intern.objects.create(full_name='Из Старого Бота', telegram_chat_id=7001)
+        started = Intern.objects.create(full_name='Запустил Бота', telegram_chat_id=7002)
+        sent = Intern.objects.create(full_name='Получил Сообщение', telegram_chat_id=7003)
+        none = Intern.objects.create(full_name='Без Телеграма')
+        TelegramUpdate.objects.create(update_id=1, chat_id=7002, user_id=7002, kind='message')
+        TelegramUpdate.objects.create(update_id=2, chat_id=-100, user_id=7001, kind='message')  # в группе — не считается
+        OutboundMessage.objects.create(kind='reply', chat_id=7003, text='x', status=OutboundMessage.Status.SENT)
+        OutboundMessage.objects.create(kind='reply', chat_id=7001, text='x', status=OutboundMessage.Status.BOT_BLOCKED)
+        qs = people.list_queryset(staff=set())
+
+        def ids(value):
+            return set(people.apply_filters(qs, {'telegram': value}, set()).values_list('pk', flat=True))
+
+        self.assertEqual(ids('yes'), {started.pk, sent.pk})
+        self.assertEqual(ids('legacy'), {legacy.pk})
+        self.assertEqual(ids('no'), {legacy.pk, none.pk})
+        self.assertFalse(people.card(legacy)['bot_started'])
+        self.assertTrue(people.card(started)['bot_started'])
