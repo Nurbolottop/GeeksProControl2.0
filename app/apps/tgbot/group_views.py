@@ -55,7 +55,7 @@ def issue_code(request):
         _flash(request, error)
     else:
         messages.success(request, f'Код привязки: {code.code} (30 минут). Отправьте в группе: /bind {code.code}')
-    return redirect('tgbot:reconcile')
+    return redirect(reverse('tgbot:reconcile') + '?tab=groups')
 
 
 @login_required
@@ -77,7 +77,7 @@ def group_action(request, pk, action):
             raise PermissionDenied
     except groups.GroupError as error:
         _flash(request, error)
-    return redirect('tgbot:reconcile')
+    return redirect(reverse('tgbot:reconcile') + '?tab=groups')
 
 
 def _mark(request, pk, status, back):
@@ -97,7 +97,7 @@ def _mark(request, pk, status, back):
 @require_POST
 def head_mark(request, pk, status):
     _head(request)
-    return _mark(request, pk, status, 'tgbot:reconcile')
+    return _mark(request, pk, status, reverse('tgbot:reconcile') + '?tab=members')
 
 
 @login_required

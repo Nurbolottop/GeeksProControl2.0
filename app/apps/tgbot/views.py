@@ -48,6 +48,9 @@ def _context(request):
     }
 
 
+TABS = (('review', 'Проверка людей'), ('groups', 'Группы'), ('members', 'Участники групп'), ('log', 'Журнал'))
+
+
 @login_required
 def reconcile(request):
     _head(request)
@@ -58,6 +61,18 @@ def reconcile(request):
         context.update(group_views.context(request))
     except ImportError:
         pass
+    from apps.tgbot.models import GroupMembership
+
+    tab = request.GET.get('tab') if request.GET.get('tab') in dict(TABS) else 'review'
+    counts = {
+        'review': len(context['links']) + len(context['sales']) + len(context['enrollments']),
+        'groups': sum(1 for g in context.get('tg_groups', []) if g.status == 'pending'),
+        'members': GroupMembership.objects.filter(status=GroupMembership.Status.TO_INVITE).count(),
+    }
+    base = reverse('tgbot:reconcile')
+    context['tab'] = tab
+    context['tg_tabs'] = [{'key': key, 'label': label, 'href': f'{base}?tab={key}', 'count': counts.get(key) or None}
+                          for key, label in TABS]
     return render(request, 'tgbot/reconcile.html', context)
 
 
@@ -71,11 +86,11 @@ def link_decide(request, pk):
         intern = Intern.objects.filter(pk=request.POST.get('intern') or 0).first()
         if intern is None:
             messages.error(request, 'Выберите профиль.')
-            return redirect('tgbot:reconcile')
+            return redirect(reverse('tgbot:reconcile') + '?tab=review')
     try:
         people.decide_link(req, request.user, intern)
     except (people.PeopleError, PermissionDenied) as error:
         messages.error(request, ' '.join(getattr(error, 'messages', [str(error)])))
     else:
         messages.success(request, f'{req.full_name}: ' + ('Telegram привязан.' if intern else 'сверка отклонена.'))
-    return redirect('tgbot:reconcile')
+    return redirect(reverse('tgbot:reconcile') + '?tab=review')

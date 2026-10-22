@@ -231,7 +231,7 @@ class MembershipTests(Base):
         self.client.force_login(self.lead_user)
         self.assertEqual(self.client.get('/lead/telegram/').status_code, 200)
         self.client.force_login(self.head)
-        self.assertContains(self.client.get('/telegram/'), 'Telegram-группы')
+        self.assertContains(self.client.get('/telegram/?tab=groups'), 'Telegram-группы')
 
 
 class TasksThroughBotTests(Base):
@@ -424,3 +424,18 @@ class Stage11FServiceGroupTests(Base):
         update['message'].update(message_thread_id=77, is_topic_message=True)
         self.run_update(update)
         self.assertEqual(self.bot.sent[-1][2].get('message_thread_id'), 77)
+
+
+class Stage11FTelegramPageTabsTests(Base):
+    def test_tabs_split_sections(self):
+        self.bound()
+        self.client.force_login(self.head)
+        pages = {tab: self.client.get(f'/telegram/?tab={tab}').content.decode() for tab in ('review', 'groups', 'members', 'log')}
+        self.assertIn('Сверка «Я уже стажёр»', pages['review'])
+        self.assertNotIn('Журнал исходящих', pages['review'])
+        self.assertIn('Привязать группу', pages['groups'])
+        self.assertNotIn('Сверка «Я уже стажёр»', pages['groups'])
+        self.assertIn('Подключение участников к группам', pages['members'])
+        self.assertIn('Журнал исходящих', pages['log'])
+        self.assertNotIn('Привязать группу', pages['log'])
+        self.assertIn('Сверка «Я уже стажёр»', self.client.get('/telegram/').content.decode())  # по умолчанию — проверка

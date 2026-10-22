@@ -3,12 +3,15 @@
 {% block title %}Telegram-бот — GeeksPro Control{% endblock %}
 {% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
 {% block page %}
-{% ui_page_header title="Telegram-бот" subtitle="Сверка профилей, регистрации, подтверждения продаж и журнал сообщений" %}
+{% ui_page_header title="Telegram-бот" subtitle="Проверка людей, группы, участники групп и журнал сообщений" %}
 {% end_ui_page_header %}
+{% ui_tabs tg_tabs active=tab label="Разделы Telegram-бота" %}
+<div style="margin-top: var(--space-5)"></div>
 {% if outbox_held %}<div style="margin-bottom: var(--space-4)">{% ui_alert "Исходящие запрещены режимом TELEGRAM_OUTBOUND_MODE: такие сообщения записаны в журнал, в Telegram они не ушли." title="Задержано защитой" %}</div>{% endif %}
 
 {% block groups %}{% if groups_block %}{% include "tgbot/_groups.html" %}{% endif %}{% endblock %}
 
+{% if tab == 'review' %}
 <div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
     {% ui_card title="Сверка «Я уже стажёр»" subtitle="Нет однозначного совпадения — привяжите к профилю или отклоните. Новый профиль не создаётся." flush=True %}
         {% if links %}
@@ -33,7 +36,9 @@
 {% end_ui_card %}
 </div>
 
-<div style="margin-top: var(--space-5)">
+{% endif %}
+{% if tab == 'log' %}
+<div>
 {% ui_card title="Журнал исходящих" subtitle="Последние 50. Отправка — только через защищённого бота." flush=True %}
     {% if outbox %}
     <div class="gp-table-wrap gp-table--stack" style="border:0"><table class="gp-table"><caption class="gp-sr-only">Исходящие сообщения</caption>
@@ -43,6 +48,7 @@
     {% else %}<div style="padding: var(--space-6)">{% ui_empty "Сообщений не было" icon_name="inbox" %}</div>{% endif %}
 {% end_ui_card %}
 </div>
+{% endif %}
 
 {% for l in links %}
 {% ui_modal id=l.ui_modal title="Сверка профиля" %}
