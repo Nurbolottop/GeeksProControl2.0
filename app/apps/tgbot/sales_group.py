@@ -2,7 +2,7 @@
 
 Принимается только строго структурированное сообщение (единый шаблон):
 
-    #оплата
+    #новый_стажер
     ФИО: Асанов Бакыт Маратович
     Телефон: +996 700 123 456
     Направление: Backend
@@ -20,7 +20,13 @@ from __future__ import annotations
 
 from django.conf import settings
 
-TAG = '#оплата'
+TAG = '#новый_стажер'
+# Метка первой строки (11F): «#новый_стажер» в любом написании; прежняя «#оплата» тоже принимается.
+TAGS = {'#новыйстажер', '#оплата'}
+
+
+def is_tagged(line: str) -> bool:
+    return (line or '').strip().lower().replace('ё', 'е').replace('_', '').replace(' ', '') in TAGS
 FIELDS = {'фио': 'full_name', 'телефон': 'phone', 'направление': 'direction', 'город': 'city', 'оплата': 'reference'}
 FORWARD_KEYS = ('forward_origin', 'forward_from', 'forward_from_chat', 'forward_date', 'forward_sender_name')
 
@@ -36,8 +42,8 @@ def is_sales_chat(chat_id) -> bool:
 
 def parse(text: str) -> dict:
     lines = [line.strip() for line in (text or '').strip().splitlines() if line.strip()]
-    if not lines or lines[0].lower() != TAG:
-        raise SalesFormatError('нет метки #оплата в первой строке')
+    if not lines or not is_tagged(lines[0]):
+        raise SalesFormatError(f'нет метки {TAG} в первой строке')
     data = {}
     for line in lines[1:]:
         key, sep, value = line.partition(':')
@@ -63,7 +69,7 @@ def handle(message: dict) -> str:
     chat = message.get('chat') or {}
     sender = message.get('from') or {}
     text = message.get('text') or ''
-    if not text.strip().lower().startswith(TAG):
+    if not is_tagged((text.strip().splitlines() or [''])[0]):
         return 'sales:ignored'
     thread = message.get('message_thread_id') if message.get('is_topic_message') else None  # ответ — в ту же тему
     if any(key in message for key in FORWARD_KEYS) or sender.get('is_bot') or message.get('via_bot'):

@@ -427,3 +427,14 @@ class Stage11CPollingLoopTests(TestCase):
         self.assertIn('Ошибка обработки update 10', err.getvalue())
         self.assertEqual(get_updates.call_args.args[0], self.TOKEN)
         self.assertNotIn(self.TOKEN, err.getvalue())
+
+
+class Stage11FSalesTagTests(TestCase):
+    def test_new_intern_tag_variants_and_legacy(self):
+        from apps.tgbot.sales_group import SalesFormatError, parse
+
+        body = '\nФИО: А Б\nТелефон: 0700111222\nНаправление: Backend\nГород: Бишкек\nОплата: без оплаты'
+        for tag in ('#новый_стажер', '#новыйстажер', '#Новый стажёр', '#новый_стажёр', '#оплата'):
+            self.assertEqual(parse(tag + body)['full_name'], 'А Б', tag)
+        with self.assertRaises(SalesFormatError):
+            parse('#стажер' + body)

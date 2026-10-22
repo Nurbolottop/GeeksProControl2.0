@@ -36,7 +36,7 @@ TOPIC_TITLES = {'backend': 'Backend', 'frontend': 'Frontend', 'uxui': 'Design', 
 TOPIC_ICONS = {ANNOUNCEMENTS: '📣', 'backend': '💻', 'frontend': '📺', 'uxui': '🎨', 'mobile': '📱', 'qa': '🧪',
                'pm': '💼', 'other': '💬', 'reports': '📝', 'meetings': '📆', 'payments': '🎓', 'important': '❗', 'questions': '💬'}
 # Темы служебных групп (11F): структура для людей; ответы продажам — в теме, где написали.
-# Продажи: «Новые стажеры» — туда отправляют стажёров (#оплата), ключ payments прежний.
+# Продажи: «Новые стажеры» — туда отправляют стажёров (#новый_стажер), ключ payments прежний.
 SERVICE_TOPICS = {
     TelegramGroup.Kind.LEADS: [(ANNOUNCEMENTS, 'Объявления'), ('reports', 'Отчёты'), ('meetings', 'Собрания')],
     TelegramGroup.Kind.PMS: [(ANNOUNCEMENTS, 'Объявления'), ('reports', 'Отчёты ПМ'),

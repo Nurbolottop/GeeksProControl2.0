@@ -18,7 +18,7 @@
         <ul class="gp-docs">{% for l in links %}<li class="gp-doc"><span class="gp-doc__icon">{% ui_icon "user" %}</span><div style="min-width:0"><p class="gp-doc__title">{{ l.full_name }}</p><p class="gp-doc__meta">{{ l.phone }}{% if l.telegram_username %} · @{{ l.telegram_username }}{% endif %} · {{ l.reason }} · {{ l.created_at|date:"d.m.Y H:i" }}</p></div><div class="gp-doc__actions">{% ui_button "Решить" size="sm" data_gp_open=l.ui_modal %}</div></li>{% endfor %}</ul>
         {% else %}<div style="padding: var(--space-6)">{% ui_empty "Сверок нет" icon_name="check-circle" %}</div>{% endif %}
     {% end_ui_card %}
-    {% ui_card title="Регистрации: ждут отдела продаж" subtitle="Подтверждает только сообщение «#оплата» в группе продаж" flush=True %}
+    {% ui_card title="Регистрации: ждут отдела продаж" subtitle="Подтверждает только сообщение «#новый_стажер» в группе продаж" flush=True %}
         {% if enrollments %}
         <ul class="gp-docs">{% for r in enrollments %}<li class="gp-doc"><span class="gp-doc__icon">{% ui_icon "clock" %}</span><div style="min-width:0"><p class="gp-doc__title"><a class="gp-link" href="{{ r.intern.get_absolute_url }}">{{ r.intern.full_name }}</a></p><p class="gp-doc__meta">{{ r.intern.phone }} · {{ r.intern.specialization|default:"—" }} · {{ r.intern.branch|default:"—" }} · {{ r.created_at|date:"d.m.Y H:i" }}</p></div></li>{% endfor %}</ul>
         {% else %}<div style="padding: var(--space-6)">{% ui_empty "Ожидающих регистраций нет" icon_name="clock" %}</div>{% endif %}
