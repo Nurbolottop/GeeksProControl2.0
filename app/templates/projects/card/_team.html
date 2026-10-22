@@ -20,6 +20,7 @@
             <div><div class="gp-muted gp-small">Старые</div><div style="font-size: var(--text-2xl); font-weight: 700">{{ team.old }}</div></div>
             <div><div class="gp-muted gp-small">Всего</div><div style="font-size: var(--text-2xl); font-weight: 700">{{ team.unique }}</div></div>
         </div>
+        <p class="gp-small" style="margin: var(--space-3) 0 0">Telegram-бот: <strong>подключили {{ team.bot_connected }} из {{ team.bot_total }}</strong>{% if team.bot_connected < team.bot_total %} · <a class="gp-link" href="?tab=team&amp;bot=no">кто не подключил</a>{% endif %}</p>
         <p class="gp-muted gp-small" style="margin: var(--space-3) 0 0">Новый — один проект; старый — до двух проектов и не больше 4 в направлении. Вступление — при открытом наборе.</p>
     {% end_ui_card %}
 </div>
@@ -28,6 +29,7 @@
     <input type="hidden" name="tab" value="team">
     <div class="gp-field"><label class="gp-label" for="t-direction">Направление</label><select class="gp-select" id="t-direction" name="direction" onchange="this.form.submit()"><option value="">Все</option>{% for key, label in team.directions %}<option value="{{ key }}"{% if team.filters.direction == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
     <div class="gp-field"><label class="gp-label" for="t-kind">Тип стажёра</label><select class="gp-select" id="t-kind" name="kind" onchange="this.form.submit()"><option value="">Все</option><option value="new"{% if team.filters.kind == 'new' %} selected{% endif %}>Новые</option><option value="old"{% if team.filters.kind == 'old' %} selected{% endif %}>Старые</option></select></div>
+    <div class="gp-field"><label class="gp-label" for="t-bot">Telegram-бот</label><select class="gp-select" id="t-bot" name="bot" onchange="this.form.submit()"><option value="">Все</option><option value="yes"{% if team.filters.bot == 'yes' %} selected{% endif %}>Подключил</option><option value="no"{% if team.filters.bot == 'no' %} selected{% endif %}>Не подключил</option></select></div>
     <label class="gp-check" style="padding-bottom: var(--space-2)"><input type="checkbox" name="left" value="1"{% if team.include_left %} checked{% endif %} onchange="this.form.submit()"><span class="gp-check__text">Показать вышедших ({{ team.left_count }})</span></label>
     <noscript>{% ui_button "Применить" type="submit" %}</noscript>
     {% if team_add_url %}<span style="margin-left:auto">{% ui_button "Добавить вручную" href=team_add_url icon_name="plus" %}</span>{% endif %}
@@ -41,7 +43,7 @@
         <div class="gp-table-wrap gp-table--stack" style="border:0">
             <table class="gp-table">
                 <caption class="gp-sr-only">{{ section.label }}</caption>
-                <thead><tr><th scope="col">ФИО</th><th scope="col">Город</th><th scope="col">Тип</th><th scope="col">Контакты</th><th scope="col">С</th><th scope="col">Статус</th><th scope="col" class="is-actions"><span class="gp-sr-only">Действия</span></th></tr></thead>
+                <thead><tr><th scope="col">ФИО</th><th scope="col">Город</th><th scope="col">Тип</th><th scope="col">Контакты</th><th scope="col">Бот</th><th scope="col">С</th><th scope="col">Статус</th><th scope="col" class="is-actions"><span class="gp-sr-only">Действия</span></th></tr></thead>
                 <tbody>
                 {% for m in section.members %}
                     <tr>
@@ -49,6 +51,7 @@
                         <td data-label="Город">{{ m.ui_city|default:"—" }}</td>
                         <td data-label="Тип">{% if m.ui_is_staff %}<span class="gp-muted">{{ m.ui_role }}</span>{% elif m.ui_old %}{% ui_badge "старый" tone="primary" %}{% else %}{% ui_badge "новый" tone="info" %}{% endif %}</td>
                         <td data-label="Контакты">{% if m.intern.phone %}<a class="gp-link" href="tel:{{ m.intern.phone }}">{{ m.intern.phone }}</a>{% endif %}{% if m.intern.telegram %}<span class="gp-table__secondary">{{ m.intern.telegram }}</span>{% endif %}{% if not m.intern.phone and not m.intern.telegram %}—{% endif %}</td>
+                        <td data-label="Бот">{% if m.ui_bot == 'yes' %}{% ui_badge "подключил" tone="success" %}{% elif m.ui_bot == 'legacy' %}{% ui_badge "не запустил" tone="warning" %}{% else %}{% ui_badge "нет" %}{% endif %}</td>
                         <td data-label="С">{{ m.joined_at|date:"d.m.Y"|default:"—" }}</td>
                         <td data-label="Статус">{% if m.status == 'active' %}{% if m.intern.status == 'paused' %}{% ui_badge m.intern.get_status_display tone="warning" %}{% else %}{% ui_badge "в команде" tone="success" %}{% endif %}{% else %}{% ui_badge "вышел" %}<span class="gp-table__secondary">{{ m.left_at|date:"d.m.Y" }}{% if m.left_reason %} · {{ m.get_left_reason_display }}{% endif %}</span>{% endif %}</td>
                         <td class="is-actions" data-label="">{% if m.ui_edit_url %}{% ui_button "Изменить" size="sm" variant="ghost" href=m.ui_edit_url %}{% endif %}</td>

@@ -129,6 +129,19 @@ ALWAYS_SHOWN = (TeamRole.PROJECT_MANAGER, TeamRole.TEAM_LEAD, TeamRole.UXUI, Tea
                 TeamRole.FRONTEND, TeamRole.QA)
 
 
+def _bot_started_chats(chats) -> set:
+    """Кто из этих Telegram реально запускал бота 2.0 (ID из 1.0 сам по себе — нет)."""
+    from apps.tgbot.models import OutboundMessage, TelegramUpdate
+
+    if not chats:
+        return set()
+    wrote = {u for u, c in TelegramUpdate.objects.filter(user_id__in=chats, chat_id__in=chats).values_list('user_id', 'chat_id')
+             if u == c}
+    got = set(OutboundMessage.objects.filter(chat_id__in=chats, status=OutboundMessage.Status.SENT)
+              .values_list('chat_id', flat=True))
+    return wrote | got
+
+
 def team(project, params=None, include_left=False) -> dict:
     """Команда по направлениям: новые / старые стажёры, лимиты состава."""
     from apps.dashboard.graduation import compute
@@ -143,13 +156,19 @@ def team(project, params=None, include_left=False) -> dict:
         member.ui_old = bool(member.intern_id and member.intern_id in graduates)
         member.ui_city = branch_of(member.intern) if member.intern_id else ''
         member.ui_is_staff = member.role in (TeamRole.PROJECT_MANAGER, TeamRole.TEAM_LEAD)
+    started = _bot_started_chats({m.intern.telegram_chat_id for m in members if m.intern_id and m.intern.telegram_chat_id})
+    for member in members:
+        chat = member.intern.telegram_chat_id if member.intern_id else None
+        member.ui_bot = 'yes' if chat in started else ('legacy' if chat else 'no')
 
     direction = params.get('direction', '')
     kind = params.get('kind', '')
+    bot = params.get('bot', '')
     filtered = [m for m in shown
                 if (not direction or m.role == direction)
                 and (not kind or (kind == 'old' and m.ui_old and not m.ui_is_staff)
-                     or (kind == 'new' and not m.ui_old and not m.ui_is_staff))]
+                     or (kind == 'new' and not m.ui_old and not m.ui_is_staff))
+                and (not bot or (bot == 'yes') == (m.ui_bot == 'yes'))]
 
     is_mobile = bool(project.project_type and project.project_type.is_mobile)
     always = [TeamRole.MOBILE if (is_mobile and r == TeamRole.FRONTEND) else r for r in ALWAYS_SHOWN]
@@ -171,14 +190,16 @@ def team(project, params=None, include_left=False) -> dict:
 
     interns_active = {m.intern_id for m in active if m.intern_id}
     direction_people = {m.intern_id for m in active if m.intern_id and m.role in DIRECTION_ROLES}
+    bot_people = {m.intern_id: m.ui_bot for m in active if m.intern_id}
     return {
+        'bot_connected': sum(1 for v in bot_people.values() if v == 'yes'), 'bot_total': len(bot_people),
         'sections': sections,
         'unique': len(interns_active),
         'new': len(direction_people - graduates),
         'old': len(direction_people & graduates),
         'left_count': sum(1 for m in members if m.status != TeamMember.Status.ACTIVE),
         'directions': [(r, ROLE_LABELS[r]) for r in order if any(m.role == r for m in members)],
-        'filters': {'direction': direction, 'kind': kind},
+        'filters': {'direction': direction, 'kind': kind, 'bot': bot},
         'include_left': include_left,
         'pm_members': [m for m in active if m.role == TeamRole.PROJECT_MANAGER],
         'lead_members': [m for m in active if m.role == TeamRole.TEAM_LEAD],

@@ -468,3 +468,28 @@ class PortalCardTests(TestCase):
         response = self.client.get(reverse('pm_portal:intern_detail', args=[self.project.pk, intern.pk]))
         self.assertContains(response, 'Участие в проекте')
         self.assertNotContains(response, 'gp-legacy')
+
+
+class TeamBotStatusTests(TestCase):
+    """11F: ПМ и тимлид видят в команде, кто подключил бота 2.0."""
+
+    def test_team_marks_bot_status_and_filters(self):
+        from apps.interns.models import Intern
+        from apps.projects import card
+        from apps.projects.models import Project
+        from apps.teams.models import TeamMember
+        from apps.tgbot.models import TelegramUpdate
+
+        project = Project.objects.create(name='Бот-проект', status='active')
+        on = Intern.objects.create(full_name='Подключил Бота', telegram_chat_id=8101)
+        legacy = Intern.objects.create(full_name='Из Старого', telegram_chat_id=8102)
+        off = Intern.objects.create(full_name='Без Бота')
+        for i in (on, legacy, off):
+            TeamMember.objects.create(project=project, intern=i, role='backend', status='active')
+        TelegramUpdate.objects.create(update_id=81, chat_id=8101, user_id=8101, kind='message')
+        data = card.team(project)
+        marks = {m.intern.full_name: m.ui_bot for s in data['sections'] for m in s['members']}
+        self.assertEqual(marks, {'Подключил Бота': 'yes', 'Из Старого': 'legacy', 'Без Бота': 'no'})
+        self.assertEqual((data['bot_connected'], data['bot_total']), (1, 3))
+        not_yet = {m.intern.full_name for s in card.team(project, {'bot': 'no'})['sections'] for m in s['members']}
+        self.assertEqual(not_yet, {'Из Старого', 'Без Бота'})
