@@ -91,6 +91,8 @@ def _group(kind, payload, message, chat, sender) -> str:
         return groups.on_member_update(payload)
     if kind != 'message':
         return 'ignored:group_callback'
+    if (message.get('text') or '').strip().split('@')[0].startswith('/bind'):
+        return groups.on_group_message(message)  # привязка (и проверка, кто прислал) — и в группе продаж
     if sales_group.is_sales_chat(chat.get('id')):
         return sales_group.handle(message)
     return groups.on_group_message(message)

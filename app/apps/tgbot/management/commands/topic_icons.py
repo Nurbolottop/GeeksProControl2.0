@@ -12,5 +12,5 @@ class Command(BaseCommand):
         from apps.tgbot.groups import apply_icons
         from apps.tgbot.models import TelegramGroup
 
-        for group in TelegramGroup.objects.filter(status=TelegramGroup.Status.ACTIVE, kind=TelegramGroup.Kind.PROJECT):
+        for group in TelegramGroup.objects.filter(status=TelegramGroup.Status.ACTIVE):
             self.stdout.write(f'{group.title}: иконок {apply_icons(group)}')

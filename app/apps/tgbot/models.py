@@ -135,6 +135,7 @@ class TelegramGroup(TimeStampedModel):
         PROJECT = 'project', 'Проект'
         LEADS = 'leads', 'Все тимлиды GeeksPro'
         PMS = 'pms', 'Все ПМ GeeksPro'
+        SALES = 'sales', 'Отдел продаж'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'Ждёт подтверждения руководителя'

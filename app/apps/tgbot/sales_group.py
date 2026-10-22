@@ -65,12 +65,13 @@ def handle(message: dict) -> str:
     text = message.get('text') or ''
     if not text.strip().lower().startswith(TAG):
         return 'sales:ignored'
+    thread = message.get('message_thread_id') if message.get('is_topic_message') else None  # ответ — в ту же тему
     if any(key in message for key in FORWARD_KEYS) or sender.get('is_bot') or message.get('via_bot'):
         return 'sales:forwarded_or_bot'
     try:
         data = parse(text)
     except SalesFormatError as error:
-        outbox.send('sales_reply', chat.get('id'), f'Не принято: {error}. Шаблон — в закрепе группы.')
+        outbox.send('sales_reply', chat.get('id'), f'Не принято: {error}. Шаблон — в закрепе группы.', thread_id=thread)
         return 'sales:format'
     name = ' '.join(x for x in (sender.get('first_name'), sender.get('last_name')) if x)
     result = record_sales_confirmation(SalesEvent(
@@ -78,5 +79,5 @@ def handle(message: dict) -> str:
         agent_name=name or sender.get('username', ''), **data))
     detail = f' ({result.detail})' if result.detail else ''
     outbox.send('sales_reply', chat.get('id'), f'{result.get_status_display()}{detail}: {data["full_name"]}',
-                dedup_key=f'sales-reply:{result.external_id}')
+                dedup_key=f'sales-reply:{result.external_id}', thread_id=thread)
     return f'sales:{result.status}'

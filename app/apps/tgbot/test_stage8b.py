@@ -82,7 +82,7 @@ class FakeBot:
         return SimpleNamespace(message_thread_id=100 + len(self.topics))
 
     def get_forum_topic_icon_stickers(self):
-        return [{'emoji': e, 'custom_emoji_id': f'id-{e}'} for e in ('📣', '💻', '📺', '🎨', '📱', '🧪', '💼', '💬', '⚡️')]
+        return [{'emoji': e, 'custom_emoji_id': f'id-{e}'} for e in ('📣', '💻', '📺', '🎨', '📱', '🧪', '💼', '💬', '📝', '📆', '💰', '❓', '⚡️')]
 
     def edit_forum_topic(self, chat_id, thread_id, name=None, icon_custom_emoji_id=None):
         self.edited = getattr(self, 'edited', []) + [(chat_id, thread_id, icon_custom_emoji_id)]
@@ -182,7 +182,8 @@ class BindingTests(Base):
         self.run_update(group_msg(OTHER_GROUP, f'/bind {code.code}'))
         group = TelegramGroup.objects.get(chat_id=OTHER_GROUP)
         groups.confirm(group, self.head)
-        self.assertEqual(group.topics.count(), 0)  # служебная — без тем проекта
+        # 11F: служебная — свои темы (не по направлениям проекта)
+        self.assertEqual(sorted(group.topics.values_list('key', flat=True)), ['announcements', 'meetings', 'reports'])
         with self.assertRaises(groups.GroupError):
             groups.issue_code(self.head, kind=TelegramGroup.Kind.LEADS)
         groups.unbind(group, self.head)
@@ -382,3 +383,44 @@ class Stage11FGroupTests(Base):
         self.assertIsNone(code.used_at)  # чужая команда код не тратит
         self.assertFalse(TelegramGroup.objects.exists())
         self.assertEqual(self.run_update(group_msg(GROUP, f'/bind@GeeksProAutoBot {code.code}', user=777)), 'bind:pending')
+
+
+@override_settings(TELEGRAM_TEST_GROUP_IDS={str(GROUP), str(OTHER_GROUP), '-100701', '-100702', '-100703'})
+class Stage11FServiceGroupTests(Base):
+    """Темы служебных групп и группа продаж через ту же привязку."""
+
+    def setUp(self):
+        super().setUp()
+        from apps.tgbot import groups as g
+
+        g._icon_ids.clear()
+        self.addCleanup(g._icon_ids.clear)
+
+    def bind_kind(self, chat, kind):
+        code = groups.issue_code(self.head, kind=kind)
+        self.assertEqual(self.run_update(group_msg(chat, f'/bind@GeeksProAutoBot {code.code}')), 'bind:pending')
+        group = TelegramGroup.objects.get(chat_id=chat)
+        with self.captureOnCommitCallbacks(execute=True):
+            return groups.confirm(group, self.head)
+
+    def test_leads_and_pms_groups_get_their_topics_with_icons(self):
+        leads = self.bind_kind(-100701, TelegramGroup.Kind.LEADS)
+        pms = self.bind_kind(-100702, TelegramGroup.Kind.PMS)
+        self.assertEqual(sorted(GroupTopic.objects.filter(group=leads).values_list('title', flat=True)),
+                         ['Объявления', 'Отчёты', 'Собрания'])
+        self.assertEqual(sorted(GroupTopic.objects.filter(group=pms).values_list('title', flat=True)),
+                         ['Встречи с тимлидами', 'Объявления', 'Отчёты ПМ'])
+        self.assertEqual(self.bot.icons['Собрания'], 'id-📆')
+        created = len(self.bot.topics)
+        groups.sync_topics(leads)
+        self.assertEqual(len(self.bot.topics), created)  # без дублей
+
+    @override_settings(SALES_TELEGRAM_CHAT_ID='-100703')
+    def test_sales_group_binds_and_replies_in_topic(self):
+        sales = self.bind_kind(-100703, TelegramGroup.Kind.SALES)
+        self.assertEqual(sorted(GroupTopic.objects.filter(group=sales).values_list('title', flat=True)),
+                         ['Вопросы', 'Оплаты'])
+        update = group_msg(-100703, '#оплата\nФИО: Нет Такого', user=5)
+        update['message'].update(message_thread_id=77, is_topic_message=True)
+        self.run_update(update)
+        self.assertEqual(self.bot.sent[-1][2].get('message_thread_id'), 77)

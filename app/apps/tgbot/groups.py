@@ -34,7 +34,18 @@ TOPIC_TITLES = {'backend': 'Backend', 'frontend': 'Frontend', 'uxui': 'Design', 
                 'other': 'Другие направления', 'pm': 'PM', ANNOUNCEMENTS: 'Объявления'}
 # Иконки тем — только из набора Telegram (getForumTopicIconStickers), по эмодзи.
 TOPIC_ICONS = {ANNOUNCEMENTS: '📣', 'backend': '💻', 'frontend': '📺', 'uxui': '🎨', 'mobile': '📱', 'qa': '🧪',
-               'pm': '💼', 'other': '💬'}
+               'pm': '💼', 'other': '💬', 'reports': '📝', 'meetings': '📆', 'payments': '💰', 'questions': '❓'}
+# Темы служебных групп (11F): структура для людей; ответы продажам — в теме, где написали.
+SERVICE_TOPICS = {
+    TelegramGroup.Kind.LEADS: [(ANNOUNCEMENTS, 'Объявления'), ('reports', 'Отчёты'), ('meetings', 'Собрания')],
+    TelegramGroup.Kind.PMS: [(ANNOUNCEMENTS, 'Объявления'), ('reports', 'Отчёты ПМ'),
+                             ('meetings', 'Встречи с тимлидами')],
+    TelegramGroup.Kind.SALES: [('payments', 'Оплаты'), ('questions', 'Вопросы')],
+}
+
+
+def topic_title(group, key) -> str:
+    return dict(SERVICE_TOPICS.get(group.kind, [])).get(key) or TOPIC_TITLES.get(key, key)
 _icon_ids: dict[str, str] = {}
 
 
@@ -170,8 +181,8 @@ def confirm(group: TelegramGroup, user) -> TelegramGroup:
             raise GroupError('Привязка уже подтверждена или отменена.')
         group.status, group.confirmed_by, group.confirmed_at = TelegramGroup.Status.ACTIVE, user, timezone.now()
         group.save(update_fields=['status', 'confirmed_by', 'confirmed_at', 'updated_at'])
+    sync_topics(group)
     if group.kind == TelegramGroup.Kind.PROJECT:
-        sync_topics(group)
         reconcile(project_ids=[group.project_id])
     return group
 
@@ -191,8 +202,11 @@ def unbind(group: TelegramGroup, user) -> TelegramGroup:
 # =============================================================== темы
 
 def needed_topics(group) -> list[str]:
-    """Направления проекта по составу (активные участники) + объявления."""
+    """Направления проекта по составу (активные участники) + объявления; у служебных — свой набор."""
     from apps.teams.models import TeamMember, TeamRole
+
+    if getattr(group, 'kind', TelegramGroup.Kind.PROJECT) != TelegramGroup.Kind.PROJECT:
+        return [key for key, _ in SERVICE_TOPICS.get(group.kind, [])]
 
     roles = set(TeamMember.objects.filter(project_id=group.project_id, status=TeamMember.Status.ACTIVE)
                 .exclude(role=TeamRole.TEAM_LEAD).values_list('role', flat=True))
@@ -212,14 +226,14 @@ def sync_topics(group) -> list[GroupTopic]:
     from telebot.apihelper import ApiTelegramException
 
     group.refresh_from_db()
-    if group.status != TelegramGroup.Status.ACTIVE or group.kind != TelegramGroup.Kind.PROJECT:
-        raise GroupError('Темы создаются только в привязанной группе проекта.')
+    if group.status != TelegramGroup.Status.ACTIVE:
+        raise GroupError('Темы создаются только в привязанной группе.')
     if not group.can_manage_topics:
         raise GroupError('У бота нет права «Управление темами».')
     created = []
     for key in needed_topics(group):
         topic, _ = GroupTopic.objects.get_or_create(group=group, key=key, defaults={
-            'title': TOPIC_TITLES[key], 'status': GroupTopic.Status.ERROR})
+            'title': topic_title(group, key), 'status': GroupTopic.Status.ERROR})
         if topic.status == GroupTopic.Status.ACTIVE and topic.message_thread_id:
             continue
         try:
