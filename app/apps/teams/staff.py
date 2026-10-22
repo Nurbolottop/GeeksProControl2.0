@@ -296,6 +296,10 @@ def dismiss(intern: Intern, user, reason: str, *, studio=False):
 
 # --------------------------------------------------------- без тимлида
 
+# У QA тимлидов в GeeksPro нет (решение руководителя, 11F) — «QA без тимлида» не проблема.
+NO_LEAD_DIRECTIONS = {TeamRole.QA}
+
+
 def uncovered(project_ids=None) -> list[dict]:
     """Идущие проекты, где в направлении есть стажёры, а тимлида этого направления нет."""
     from apps.projects.models import Project, ProjectStatus
@@ -317,7 +321,7 @@ def uncovered(project_ids=None) -> list[dict]:
             directions.setdefault(member.project_id, set()).add(member.role)
     result = []
     for project in projects:
-        for role in sorted(directions.get(project.pk, set()) - covered.get(project.pk, set())):
+        for role in sorted(directions.get(project.pk, set()) - covered.get(project.pk, set()) - NO_LEAD_DIRECTIONS):
             result.append({'project': project, 'role': role, 'label': labels.get(role, role)})
     return result
 

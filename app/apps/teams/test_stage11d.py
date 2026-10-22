@@ -114,3 +114,13 @@ class AddedToProjectClosesChoiceTests(TestCase):
         activate_intern_membership(member)
         self.assertIsNone(open_return(intern))
         self.assertEqual(InternshipRequest.objects.get(intern=intern).chosen_project, project)
+
+
+class QaHasNoLeadTests(TestCase):
+    def test_qa_without_lead_is_not_reported(self):
+        from apps.teams import staff
+
+        project = Project.objects.create(name='С QA', status='active')
+        for i, role in enumerate((TeamRole.QA, TeamRole.BACKEND)):
+            TeamMember.objects.create(project=project, intern=Intern.objects.create(full_name=f'С{i}'), role=role, status='active')
+        self.assertEqual([r['role'] for r in staff.uncovered([project.pk])], [TeamRole.BACKEND])
