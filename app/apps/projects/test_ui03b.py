@@ -127,7 +127,7 @@ class ClosedRecruitmentTests(TestCase):
         current = member(self.project, self.novice)
         set_recruitment(self.project, False, self.head)
         self.project.refresh_from_db()
-        self.assertEqual(check_assignment(self.novice, self.project, TeamRole.BACKEND)[0], [])
+        self.assertEqual(check_assignment(self.novice, self.project, TeamRole.BACKEND, exclude_member_pk=current.pk)[0], [])
         current.comment = 'правка'
         self.assertIsNone(save_membership(current))
         current.refresh_from_db()

@@ -81,3 +81,17 @@ class BranchFilterTests(TestCase):
             via_filter = set(Intern.objects.filter(branch_filter(name)).values_list('pk', flat=True))
             via_python = {i.pk for i in Intern.objects.all() if branch_of(i) == name}
             self.assertEqual(via_filter, via_python, name)
+
+
+class DuplicateMembershipTests(TestCase):
+    """11F: тот же человек на то же направление проекта — второй раз не добавляется."""
+
+    def test_same_person_same_role_blocked_even_with_closed_recruitment(self):
+        from apps.teams.services import save_membership
+
+        project = Project.objects.create(name='Без дублей', status='active', recruitment_open=False)
+        intern = Intern.objects.create(full_name='Один Человек')
+        TeamMember.objects.create(project=project, intern=intern, role=TeamRole.BACKEND, status='active')
+        error = save_membership(TeamMember(project=project, intern=intern, role=TeamRole.BACKEND, status='active'))
+        self.assertIn('уже в команде', error)
+        self.assertEqual(TeamMember.objects.filter(project=project, intern=intern).count(), 1)

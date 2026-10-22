@@ -81,6 +81,13 @@ def check_assignment(intern, project, role, exclude_member_pk=None, joining=True
     from apps.dashboard.graduation import compute
     from apps.teams.selectors import staff_intern_ids
 
+    if intern is not None and intern.pk and project is not None and joining:
+        # 11F: повторное добавление того же человека на то же направление давало дубль участия
+        same = TeamMember.objects.filter(project=project, intern=intern, role=role, status=TeamMember.Status.ACTIVE)
+        if exclude_member_pk:
+            same = same.exclude(pk=exclude_member_pk)
+        if same.exists():
+            return [f'{intern.full_name} уже в команде «{project.name}» на этом направлении.'], []
     if intern is None or role not in RULE_ROLES or intern.pk in staff_intern_ids() or not joining:
         return [], []
     errors, warnings = [], []
