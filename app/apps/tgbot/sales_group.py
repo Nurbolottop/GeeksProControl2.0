@@ -6,10 +6,9 @@
     ФИО: Асанов Бакыт Маратович
     Телефон: +996 700 123 456
     Направление: Backend
-    Город: Бишкек
-    Оплата: 12345
 
-Все пять полей обязательны, каждое один раз, других строк нет. Город —
+Обязательны ФИО, телефон и направление (11F); «Город:» и «Оплата:» можно
+добавить — каждое поле один раз, других строк нет. Город, если указан, —
 Бишкек или Ош. Сообщение принимается только:
 * из чата SALES_TELEGRAM_CHAT_ID;
 * от сотрудника из SALES_AGENT_TELEGRAM_IDS (проверяет record_sales_confirmation);
@@ -28,6 +27,8 @@ TAGS = {'#новыйстажер', '#оплата'}
 def is_tagged(line: str) -> bool:
     return (line or '').strip().lower().replace('ё', 'е').replace('_', '').replace(' ', '') in TAGS
 FIELDS = {'фио': 'full_name', 'телефон': 'phone', 'направление': 'direction', 'город': 'city', 'оплата': 'reference'}
+# 11F: обязательны только ФИО, телефон и направление; город и оплата — по желанию
+REQUIRED = ('фио', 'телефон', 'направление')
 FORWARD_KEYS = ('forward_origin', 'forward_from', 'forward_from_chat', 'forward_date', 'forward_sender_name')
 
 
@@ -55,7 +56,7 @@ def parse(text: str) -> dict:
         if not value.strip():
             raise SalesFormatError(f'пустое поле «{key.strip()}»')
         data[field] = value.strip()
-    missing = [k for k, f in FIELDS.items() if f not in data]
+    missing = [k for k in REQUIRED if FIELDS[k] not in data]
     if missing:
         raise SalesFormatError('нет полей: ' + ', '.join(missing))
     return data

@@ -438,3 +438,22 @@ class Stage11FSalesTagTests(TestCase):
             self.assertEqual(parse(tag + body)['full_name'], 'А Б', tag)
         with self.assertRaises(SalesFormatError):
             parse('#стажер' + body)
+
+
+
+class Stage11FShortSalesMessageTests(Base):
+    """Продажам достаточно ФИО, телефона и направления; город — по желанию, но если указан, сверяется."""
+
+    def test_short_message_confirms_and_wrong_city_still_mismatch(self):
+        self.register()
+        short = '#новый_стажер\nФИО: Асанов Бакыт\nТелефон: 0700111222\nНаправление: Backend'
+        self.assertEqual(self.sales(short), 'sales:applied')
+
+    def test_city_if_given_is_checked(self):
+        self.register()
+        self.assertEqual(self.sales('#новый_стажер\nФИО: Асанов Бакыт\nТелефон: 0700111222\nНаправление: Backend\nГород: Ош'),
+                         'sales:mismatch')
+
+    def test_direction_still_required(self):
+        self.register()
+        self.assertEqual(self.sales('#новый_стажер\nФИО: Асанов Бакыт\nТелефон: 0700111222'), 'sales:format')

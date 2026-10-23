@@ -91,9 +91,11 @@ def _profile_mismatch(intern: Intern, event: SalesEvent) -> str:
     spec = intern.specialization.name if intern.specialization_id else ''
     if not event.direction.strip() or spec.casefold() != event.direction.strip().casefold():
         return f'направление: в продажах «{event.direction or "—"}», в профиле «{spec or "—"}»'
+    if not (event.city or '').strip():
+        return ''  # 11F: город в сообщении продаж необязателен — сверяем только если указан
     city = normalize_city(event.city)
     if not city:
-        return f'город должен быть Бишкек или Ош, указано «{event.city or "—"}»'
+        return f'город должен быть Бишкек или Ош, указано «{event.city}»'
     if branch_of(intern) != city:
         return f'город: в продажах «{city}», в профиле «{branch_of(intern)}»'
     return ''
@@ -133,7 +135,7 @@ def record_sales_confirmation(event: SalesEvent) -> SalesConfirmation:
             reqs = list(InternshipRequest.objects.select_for_update()
                         .filter(intern=intern, kind__in=SALES_KINDS, status=InternshipRequest.Status.PENDING,
                                 sales_status=InternshipRequest.Sales.PENDING))
-            if len(reqs) != 1 or not event.reference.strip():
+            if len(reqs) != 1:  # 11F: «Оплата» в сообщении продаж необязательна
                 return SalesConfirmation.objects.create(status=SalesConfirmation.Status.NO_REQUEST, intern=intern,
                                                         **base)
             mismatch = _profile_mismatch(intern, event)
@@ -145,7 +147,7 @@ def record_sales_confirmation(event: SalesEvent) -> SalesConfirmation:
                                                             request=req, **base)
             req.sales_status = InternshipRequest.Sales.CONFIRMED
             req.sales_at, req.sales_by = occurred, None
-            req.sales_reference = event.reference[:100]
+            req.sales_reference = (event.reference.strip() or 'не указана')[:100]
             req.sales_comment = f'Отдел продаж: {event.agent_name or event.agent_telegram_id}'
             fields = ['sales_status', 'sales_at', 'sales_by', 'sales_reference', 'sales_comment', 'updated_at']
             if req.kind == InternshipRequest.Kind.ENROLL:

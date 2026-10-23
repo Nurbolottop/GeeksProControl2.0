@@ -289,8 +289,9 @@ class CancelAndReenrollTests(TestCase):
         self.assertEqual(req.sales_status, InternshipRequest.Sales.PENDING)
         with self.assertRaises(freeze.FreezeError):
             freeze.approve(req, self.head)  # без продаж — нельзя
-        self.assertEqual(sales_ok(intern, '').status, 'no_request')  # номер оплаты обязателен
-        self.assertEqual(sales_ok(intern, 'ОПЛ-77').status, 'applied')
+        # 11F: номер оплаты необязателен (решение руководителя) — подтверждение и без него
+        self.assertEqual(sales_ok(intern, '').status, 'applied')
+        self.assertEqual(InternshipRequest.objects.get(pk=req.pk).sales_reference, 'не указана')
         self.assertEqual(sales_ok(intern, 'ОПЛ-78').status, 'no_request')  # повторно — не применяется
         freeze.approve(InternshipRequest.objects.get(pk=req.pk), self.head)
         intern.refresh_from_db()
