@@ -100,19 +100,21 @@ def _head_menu(request) -> list:
         Link('Главная', 'dashboard', icon='home'),
         Section('Работа', [
             Link('Табель', 'attendance:dashboard', icon='clipboard-check', namespaces=('attendance', 'flows')),
-            Group('Проекты', 'folder', namespaces=('projects',), children=[
+            # 11F: главный рабочий раздел после запуска бота — наверху, а не в «Резерве»
+            Link('Telegram-бот', 'tgbot:reconcile', icon='bot', namespaces=('tgbot',)),
+            # 11F: всё про проекты и клиентов — одним пунктом
+            Group('Проекты и заказчики', 'folder', namespaces=('projects', 'clients', 'documents'), children=[
                 Link('Все проекты', 'projects:list'),
                 Link('В процессе', 'projects:list_in_progress'),
-                Link('Отклонён', 'projects:list_rejected'),
                 Link('Завершён', 'projects:list_completed'),
-                Link('Отчёты', 'projects:reports'),
+                Link('Отклонён', 'projects:list_rejected'),
+                Link('Отчёты по проектам', 'projects:reports'),
+                Link('Заказчики', 'clients:list', namespaces=('clients',)),
+                Link('Заявки с брифа', 'documents:brief_requests'),
+                Link('Документы', 'documents:list', namespaces=('documents',), exclude=('documents:brief_requests',)),
             ]),
             Link('Еженедельные отчёты', 'weekly_reports:board', icon='calendar', namespaces=('weekly_reports',)),
             Link('Видеособрания', 'video:list', icon='users', namespaces=('video',)),
-            Link('Заказчики', 'clients:list', icon='briefcase', namespaces=('clients',)),
-            Link('Заявки с брифа', 'documents:brief_requests', icon='inbox'),
-            Link('Документы', 'documents:list', icon='file-text', namespaces=('documents',),
-                 exclude=('documents:brief_requests',)),
         ]),
         Section('Люди', [
             Group('Стажёры', 'graduation-cap', namespaces=('interns', 'resources', 'teams'),
@@ -134,7 +136,6 @@ def _head_menu(request) -> list:
             Link('Кадровый резерв', 'reserve:board', icon='users', namespaces=('reserve',)),
             Link('Банк резюме', 'interns:resume_bank', icon='file-text'),
             Link('Бот-выпускник', 'graduate_bot:activity', icon='bot', namespaces=('graduate_bot',)),
-            Link('Telegram-бот', 'tgbot:reconcile', icon='bot', namespaces=('tgbot',)),
         ]),
         Section('Контроль', [
             Link('Скрипты', 'scripts:list', icon='scroll', namespaces=('scripts',)),

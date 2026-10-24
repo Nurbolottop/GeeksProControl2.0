@@ -48,24 +48,25 @@ class HeadNavigationTests(TestCase):
     def test_head_sees_all_sections(self):
         response = self.client.get(reverse('dashboard'))
         labels = nav_labels(response)
-        for expected in ('Главная', 'Работа', 'Проекты', 'Люди', 'Стажёры', 'IT-академия', 'Резерв', 'Контроль', 'Уведомления'):
+        for expected in ('Главная', 'Работа', 'Проекты и заказчики', 'Telegram-бот', 'Люди', 'Стажёры', 'IT-академия', 'Резерв', 'Контроль', 'Уведомления'):
             self.assertIn(expected, labels)
 
     def test_active_item_and_breadcrumbs_follow_view_name(self):
         response = self.client.get(reverse('projects:list'))
         nav = response.context['ui_nav']
-        projects = next(i for i in nav['items'] if i.get('label') == 'Проекты')
+        projects = next(i for i in nav['items'] if i.get('label') == 'Проекты и заказчики')
         self.assertTrue(projects['active'])
         self.assertEqual([c['label'] for c in projects['children'] if c['active']], ['Все проекты'])
         # «Все стажёры» тоже называется list, но в другом разделе — не активен
         interns = next(i for i in nav['items'] if i.get('label') == 'Стажёры')
         self.assertFalse(interns['active'])
-        self.assertEqual([c['label'] for c in nav['crumbs']], ['Главная', 'Проекты', 'Все проекты'])
+        self.assertEqual([c['label'] for c in nav['crumbs']], ['Главная', 'Проекты и заказчики', 'Все проекты'])
 
     def test_brief_requests_do_not_highlight_documents(self):
         response = self.client.get(reverse('documents:brief_requests'))
-        active = [i['label'] for i in response.context['ui_nav']['items'] if i.get('active')]
-        self.assertEqual(active, ['Заявки с брифа'])
+        group = next(i for i in response.context['ui_nav']['items'] if i.get('label') == 'Проекты и заказчики')
+        # 11F: заявки с брифа — внутри «Проекты и заказчики»; «Документы» при этом не подсвечены
+        self.assertEqual([c['label'] for c in group['children'] if c['active']], ['Заявки с брифа'])
 
     def test_shell_wraps_legacy_page(self):
         # Главная, проекты и стажёры уже на 2.0 — берём страницу, ещё живущую на стилях 1.0
