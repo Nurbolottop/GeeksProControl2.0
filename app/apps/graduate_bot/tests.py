@@ -423,16 +423,12 @@ class ActivityListViewTests(TestCase):
         response = self.client.get(reverse("graduate_bot:activity"))
         self.assertNotEqual(response.status_code, 200)
 
-    def test_shows_bot_users(self):
+    def test_redirects_to_graduates(self):
         from django.urls import reverse
 
-        Intern.objects.create(
-            full_name="Виден В Списке", telegram_chat_id=555,
-            graduate_status=GraduateStatus.PENDING,
-        )
         self.client.force_login(self.user)
         response = self.client.get(reverse("graduate_bot:activity"))
-        self.assertContains(response, "Виден В Списке")
+        self.assertRedirects(response, reverse("interns:graduates"), fetch_redirect_response=False)
 
 
 class WaitingForNextInternshipTests(TestCase):

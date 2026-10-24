@@ -124,7 +124,7 @@ def _head_menu(request) -> list:
         ]),
         # 11F: всё про людей — два пункта: стажёры (вместе с ПМ и выпускниками) и тимлиды с кадрами
         Section('Люди', [
-            Group('Стажёры', 'graduation-cap', namespaces=('interns', 'resources', 'graduate_bot'),
+            Group('Стажёры', 'graduation-cap', namespaces=('interns', 'resources'),
                   views=('teams:pm_list', 'teams:pm_add', 'teams:pm_remove'),
                   exclude=('interns:resume_bank',), children=[
                 Link('Все стажёры', 'interns:list'),
@@ -135,7 +135,6 @@ def _head_menu(request) -> list:
                 Link('Ожидают проект', 'interns:waiting'),
                 Link('Решения по стажёрам', 'interns:internship_requests'),
                 Link('Выпускники', 'interns:graduates'),
-                Link('Бот-выпускник', 'graduate_bot:activity', namespaces=('graduate_bot',)),
             ]),
             Group('Тимлиды', 'users', namespaces=('teams', 'reserve'), views=('interns:resume_bank',),
                   exclude=('teams:pm_list', 'teams:pm_add', 'teams:pm_remove'), children=[
