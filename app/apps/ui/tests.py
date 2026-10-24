@@ -48,8 +48,10 @@ class HeadNavigationTests(TestCase):
     def test_head_sees_all_sections(self):
         response = self.client.get(reverse('dashboard'))
         labels = nav_labels(response)
-        for expected in ('Главная', 'Работа', 'Проекты и заказчики', 'Telegram-бот', 'Люди', 'Стажёры', 'IT-академия', 'Резерв', 'Контроль', 'Уведомления'):
+        for expected in ('Главная', 'Работа', 'Проекты и заказчики', 'Telegram-бот', 'Люди', 'Стажёры', 'ПМ и тимлиды', 'Выпускники и резерв', 'Контроль', 'Уведомления'):
             self.assertIn(expected, labels)
+        for gone in ('IT-академия', 'Резерв'):
+            self.assertNotIn(gone, labels)
 
     def test_active_item_and_breadcrumbs_follow_view_name(self):
         response = self.client.get(reverse('projects:list'))
@@ -108,7 +110,7 @@ class PortalNavigationTests(PortalUsersMixin, TestCase):
         self.assertIn('Свой проект', labels)
         self.assertNotIn('Чужой проект', labels)
         self.assertNotIn('Сданный проект', labels)  # в меню — только текущая работа
-        for head_only in ('Заказчики', 'Стажёры', 'Уведомления', 'Резерв'):
+        for head_only in ('Заказчики', 'Стажёры', 'Уведомления', 'Выпускники и резерв'):
             self.assertNotIn(head_only, labels)
         self.assertEqual(response.context['ui_bell'], {})
         self.assertNotIn(reverse('clients:list'), response.content.decode())

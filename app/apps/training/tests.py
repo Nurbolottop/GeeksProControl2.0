@@ -1,6 +1,6 @@
 import datetime
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.urls import reverse
 
@@ -92,6 +92,7 @@ def make_specializations():
     }
 
 
+@override_settings(ACADEMY_ENABLED=True)
 class AcademyImportTests(TestCase):
     """Разбор сообщения академии."""
 
@@ -169,6 +170,7 @@ class AcademyImportTests(TestCase):
         self.assertEqual(rows[0].action, 'error')
 
 
+@override_settings(ACADEMY_ENABLED=True)
 class BishkekFormatTests(TestCase):
     """Формат сообщения Бишкека."""
 
@@ -237,6 +239,7 @@ class BishkekFormatTests(TestCase):
         self.assertNotIn('33', [l['group'].number for l in dirs['Testing/QA']['lines']])
 
 
+@override_settings(ACADEMY_ENABLED=True)
 class AcademyBranchTests(TestCase):
     """Бишкек и Ош — отдельно."""
 
@@ -348,6 +351,7 @@ class AcademyBranchTests(TestCase):
         self.assertRedirects(response, reverse('training:plan') + '?branch=Ош')
 
 
+@override_settings(ACADEMY_ENABLED=True)
 class AcademyListTests(TestCase):
     """Страница академии — в формате сообщения академии."""
 
@@ -431,6 +435,7 @@ class AcademyListTests(TestCase):
         self.assertEqual(selectors.nav_tree(today=TODAY), [])
 
 
+@override_settings(ACADEMY_ENABLED=True)
 class AcademyViewsTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='head', password='pass12345')
@@ -571,7 +576,7 @@ class AcademyViewsTests(TestCase):
         importer.apply(importer.parse(ACADEMY_MESSAGE, 'Бишкек'))
         response = self.client.get(reverse('training:plan'))
         html = response.content.decode()
-        sidebar = html[html.index('IT-академия'):html.index('Резерв')]
+        sidebar = html[html.index('IT-академия'):html.index('Контроль')]
         self.assertIn('?branch=%D0%91%D0%B8%D1%88%D0%BA%D0%B5%D0%BA', sidebar)
         self.assertNotIn('specialization=', sidebar)
         self.assertNotIn('План-график', sidebar)
@@ -580,3 +585,13 @@ class AcademyViewsTests(TestCase):
     def test_sidebar_tree_empty_when_no_groups(self):
         response = self.client.get(reverse('training:plan'))
         self.assertEqual(list(response.context['academy_nav']), [])
+
+
+class AcademyHiddenTests(TestCase):
+    """11F: раздел скрыт — нет в меню, страницы 404."""
+
+    def test_hidden_by_default(self):
+        head = User.objects.create_user(username='head-hidden', password='x', role=User.Role.HEAD)
+        self.client.force_login(head)
+        self.assertEqual(self.client.get(reverse('training:plan')).status_code, 404)
+        self.assertNotIn('IT-академия', self.client.get(reverse('dashboard')).content.decode())

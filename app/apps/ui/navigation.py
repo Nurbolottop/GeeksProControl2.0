@@ -12,6 +12,7 @@ lead_project_or_404. Меню лишь не показывает того, ку�
 from dataclasses import dataclass, field
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.urls import NoReverseMatch, reverse
 
 from apps.accounts.models import User
@@ -89,13 +90,18 @@ def nav_kind(user) -> str:
 
 # ---------------------------------------------------------------- состав меню
 
+def _academy(training) -> list:
+    """IT-академия скрыта (11F), пока не включат ACADEMY_ENABLED."""
+    if not settings.ACADEMY_ENABLED:
+        return []
+    children = [Link(b['label'], 'training:plan', query={'branch': b['value']}) for b in training.nav_tree()]
+    return [Group('IT-академия', 'book-open', namespaces=('training',), children=children,
+                  href=_safe_reverse('training:plan'))]
+
+
 def _head_menu(request) -> list:
     from apps.training import selectors as training
 
-    academy = [
-        Link(branch['label'], 'training:plan', query={'branch': branch['value']})
-        for branch in training.nav_tree()
-    ]
     return [
         Link('Главная', 'dashboard', icon='home'),
         Section('Работа', [
@@ -116,27 +122,29 @@ def _head_menu(request) -> list:
             Link('Еженедельные отчёты', 'weekly_reports:board', icon='calendar', namespaces=('weekly_reports',)),
             Link('Видеособрания', 'video:list', icon='users', namespaces=('video',)),
         ]),
+        # 11F: всё про людей — один раздел: стажёры, ПМ и тимлиды, выпускники и резерв
         Section('Люди', [
-            Group('Стажёры', 'graduation-cap', namespaces=('interns', 'resources', 'teams'),
-                  exclude=('interns:graduates', 'interns:waiting', 'interns:resume_bank'), children=[
+            Group('Стажёры', 'graduation-cap', namespaces=('interns', 'resources'),
+                  exclude=('interns:graduates', 'interns:resume_bank'), children=[
+                Link('Все стажёры', 'interns:list'),
                 Link('По направлениям', 'resources:forecast'),
                 Link('По проектам', 'interns:by_project'),
                 Link('По филиалам', 'interns:by_branch'),
-                Link('Все стажёры', 'interns:list'),
+                Link('Ожидают проект', 'interns:waiting'),
+                Link('Решения по стажёрам', 'interns:internship_requests'),
+            ]),
+            Group('ПМ и тимлиды', 'users', namespaces=('teams',), children=[
                 Link('ПМ', 'teams:pm_list'),
                 Link('Тимлиды', 'teams:lead_list'),
             ]),
-            Group('IT-академия', 'book-open', namespaces=('training',), children=academy,
-                  href=_safe_reverse('training:plan')),
-        ]),
-        Section('Резерв', [
-            Link('Выпускники', 'interns:graduates', icon='graduation-cap'),
-            Link('Ожидают проект', 'interns:waiting', icon='clock'),
-            Link('Решения по стажёрам', 'interns:internship_requests', icon='flag'),
-            Link('Кадровый резерв', 'reserve:board', icon='users', namespaces=('reserve',)),
-            Link('Банк резюме', 'interns:resume_bank', icon='file-text'),
-            Link('Бот-выпускник', 'graduate_bot:activity', icon='bot', namespaces=('graduate_bot',)),
-        ]),
+            Group('Выпускники и резерв', 'briefcase', namespaces=('reserve', 'graduate_bot'),
+                  views=('interns:graduates', 'interns:resume_bank'), children=[
+                Link('Выпускники', 'interns:graduates'),
+                Link('Кадровый резерв', 'reserve:board', namespaces=('reserve',)),
+                Link('Банк резюме', 'interns:resume_bank'),
+                Link('Бот-выпускник', 'graduate_bot:activity', namespaces=('graduate_bot',)),
+            ]),
+        ] + _academy(training)),
         Section('Контроль', [
             Link('Скрипты', 'scripts:list', icon='scroll', namespaces=('scripts',)),
             Link('Уведомления', 'notifications:list', icon='bell', namespaces=('notifications',),

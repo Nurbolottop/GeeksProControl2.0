@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
@@ -50,7 +51,7 @@ def forecast(request):
 @login_required
 def graduations(request):
     """Выпуски переехали в раздел «IT-академия» — там же план-график."""
-    return redirect('training:plan')
+    return redirect('training:plan' if settings.ACADEMY_ENABLED else 'interns:graduates')
 
 
 @login_required

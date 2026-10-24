@@ -14,7 +14,7 @@
         </div>
     </div>
     <div class="page-actions">
-        <a href="{% url 'training:plan' %}" class="btn btn--secondary">План набора из академии</a>
+        {% if academy_enabled %}<a href="{% url 'training:plan' %}" class="btn btn--secondary">План набора из академии</a>{% endif %}
     </div>
 </div>
 

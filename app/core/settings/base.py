@@ -368,6 +368,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Отдел продаж (UI-04C): Telegram id сотрудников, чьи подтверждения принимаются
 # (apps.interns.sales). Пусто — подтверждения продаж не принимаются вовсе.
 SALES_AGENT_TELEGRAM_IDS = {x.strip() for x in os.getenv('SALES_AGENT_TELEGRAM_IDS', '').split(',') if x.strip()}
+# IT-академия (11F): раздел скрыт — страницы /academy/ отвечают 404, данные не тронуты.
+ACADEMY_ENABLED = os.getenv('ACADEMY_ENABLED', '0').strip() == '1'
 # Видеособрания (этап 9). VIDEO_PROVIDER: simulator (по умолчанию — локальный
 # симулятор, без сети) или jaas (Jitsi as a Service, 8x8). Секреты — только из
 # окружения: ключ JaaS — файлом (JAAS_PRIVATE_KEY_PATH), не значением.
