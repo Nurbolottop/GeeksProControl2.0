@@ -122,27 +122,27 @@ def _head_menu(request) -> list:
             Link('Еженедельные отчёты', 'weekly_reports:board', icon='calendar', namespaces=('weekly_reports',)),
             Link('Видеособрания', 'video:list', icon='users', namespaces=('video',)),
         ]),
-        # 11F: всё про людей — один раздел: стажёры, ПМ и тимлиды, выпускники и резерв
+        # 11F: всё про людей — два пункта: стажёры (вместе с ПМ и выпускниками) и тимлиды с кадрами
         Section('Люди', [
-            Group('Стажёры', 'graduation-cap', namespaces=('interns', 'resources'),
-                  exclude=('interns:graduates', 'interns:resume_bank'), children=[
+            Group('Стажёры', 'graduation-cap', namespaces=('interns', 'resources', 'graduate_bot'),
+                  views=('teams:pm_list', 'teams:pm_add', 'teams:pm_remove'),
+                  exclude=('interns:resume_bank',), children=[
                 Link('Все стажёры', 'interns:list'),
                 Link('По направлениям', 'resources:forecast'),
                 Link('По проектам', 'interns:by_project'),
                 Link('По филиалам', 'interns:by_branch'),
+                Link('ПМ', 'teams:pm_list', views=('teams:pm_add', 'teams:pm_remove')),
                 Link('Ожидают проект', 'interns:waiting'),
                 Link('Решения по стажёрам', 'interns:internship_requests'),
-            ]),
-            Group('ПМ и тимлиды', 'users', namespaces=('teams',), children=[
-                Link('ПМ', 'teams:pm_list'),
-                Link('Тимлиды', 'teams:lead_list'),
-            ]),
-            Group('Выпускники и резерв', 'briefcase', namespaces=('reserve', 'graduate_bot'),
-                  views=('interns:graduates', 'interns:resume_bank'), children=[
                 Link('Выпускники', 'interns:graduates'),
+                Link('Бот-выпускник', 'graduate_bot:activity', namespaces=('graduate_bot',)),
+            ]),
+            Group('Тимлиды', 'users', namespaces=('teams', 'reserve'), views=('interns:resume_bank',),
+                  exclude=('teams:pm_list', 'teams:pm_add', 'teams:pm_remove'), children=[
+                Link('Все тимлиды', 'teams:lead_list',
+                     views=('teams:lead_add', 'teams:lead_remove', 'teams:staff_detail', 'teams:dismiss')),
                 Link('Кадровый резерв', 'reserve:board', namespaces=('reserve',)),
                 Link('Банк резюме', 'interns:resume_bank'),
-                Link('Бот-выпускник', 'graduate_bot:activity', namespaces=('graduate_bot',)),
             ]),
         ] + _academy(training)),
         Section('Контроль', [
