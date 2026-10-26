@@ -196,8 +196,11 @@ class BindingTests(Base):
         with override_settings(GP2_ENVIRONMENT='production', TELEGRAM_OUTBOUND_MODE='on'):
             with self.assertRaises(telegram_guard.TelegramBlocked):
                 telegram_guard.check('createForumTopic', {'chat_id': str(GROUP)})  # не привязана
+            with self.assertRaises(telegram_guard.TelegramBlocked):
+                telegram_guard.check('createChatInviteLink', {'chat_id': str(GROUP)})  # 11F: ссылки — тоже
             self.bound()
             telegram_guard.check('createForumTopic', {'chat_id': str(GROUP)})
+            telegram_guard.check('createChatInviteLink', {'chat_id': str(GROUP)})
 
 
 class MembershipTests(Base):
@@ -232,6 +235,33 @@ class MembershipTests(Base):
         self.assertEqual(self.client.get('/lead/telegram/').status_code, 200)
         self.client.force_login(self.head)
         self.assertContains(self.client.get('/telegram/?tab=groups'), 'Telegram-группы')
+
+
+class InviteLinkTests(Base):
+    """11F: бот сам присылает новому участнику личную ссылку в группу проекта."""
+
+    def test_bot_sends_personal_link(self):
+        self.bot.create_chat_invite_link = mock.Mock(return_value=SimpleNamespace(invite_link='https://t.me/+abc'))
+        self.bound()
+        intern = self.member('Со Ссылкой', chat=INTERN_CHAT)
+        access = GroupMembership.objects.get(member__intern=intern)
+        self.assertEqual(access.status, GroupMembership.Status.INVITED)
+        kwargs = self.bot.create_chat_invite_link.call_args.kwargs
+        self.assertEqual(kwargs['member_limit'], 1)
+        self.assertTrue(OutboundMessage.objects.filter(kind='group_invite', intern=intern,
+                                                       text__contains='https://t.me/+abc').exists())
+        self.assertTrue(OutboundMessage.objects.filter(kind='team_change', chat_id=LEAD_CHAT,
+                                                       text__contains='отправил ему личную ссылку').exists())
+
+    def test_without_rights_lead_invites(self):
+        self.bot.create_chat_invite_link = mock.Mock(side_effect=RuntimeError('no rights'))
+        self.bound()
+        intern = self.member('Без Права', chat=INTERN_CHAT)
+        access = GroupMembership.objects.get(member__intern=intern)
+        self.assertEqual(access.status, GroupMembership.Status.TO_INVITE)
+        self.assertFalse(OutboundMessage.objects.filter(kind='group_invite').exists())
+        self.assertTrue(OutboundMessage.objects.filter(kind='team_change', text__contains='Пригласите').exists())
+        self.assertIn('Пригласительные', TelegramGroup.objects.get(chat_id=GROUP).last_error)
 
 
 class TasksThroughBotTests(Base):

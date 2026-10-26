@@ -29,7 +29,7 @@ def registration_confirmed(intern_id):
 
 def project_assigned(intern, project, role_label=''):
     text = f'Вы в команде проекта «{project.name}»{f" ({role_label})" if role_label else ""}. ' \
-           'Тимлид пригласит вас в Telegram-группу проекта.'
+           'Ссылку в Telegram-группу проекта бот пришлёт сюда отдельным сообщением.'
     return to_intern(intern, 'project_assigned', text, dedup_key=f'project-assigned:{intern.pk}:{project.pk}')
 
 

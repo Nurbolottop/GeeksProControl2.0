@@ -29,6 +29,8 @@ from apps.tgbot.models import BindCode, GroupMembership, GroupTopic, TelegramGro
 
 logger = logging.getLogger(__name__)
 CODE_TTL = datetime.timedelta(minutes=30)
+# 11F: личная ссылка в группу проекта — на одно вступление
+INVITE_TTL = datetime.timedelta(days=7)
 ANNOUNCEMENTS = 'announcements'
 TOPIC_TITLES = {'backend': 'Backend', 'frontend': 'Frontend', 'uxui': 'Design', 'mobile': 'Mobile', 'qa': 'QA',
                 'other': 'Другие направления', 'pm': 'PM', ANNOUNCEMENTS: 'Объявления'}
@@ -287,7 +289,7 @@ def reconcile(*, project_ids=None, intern_ids=None) -> int:
         access = GroupMembership.objects.filter(member=member).first()
         if member.status == TeamMember.Status.ACTIVE and access is None:
             GroupMembership.objects.create(member=member, group=groups[member.project_id])
-            transaction.on_commit(lambda m=member: _tell_leads_new_member(m))
+            transaction.on_commit(lambda pk=member.pk: invite(pk))
             changed += 1
         elif member.status != TeamMember.Status.ACTIVE and access and access.status in (
                 GroupMembership.Status.TO_INVITE, GroupMembership.Status.INVITED, GroupMembership.Status.JOINED):
@@ -318,6 +320,43 @@ def _tell_leads(member, text, key):
 
     for lead in _leads_of(member):
         notify.to_intern(lead, 'team_change', text, dedup_key=f'{key}:{lead.pk}', with_menu=False)
+
+
+def invite(member_id) -> bool:
+    """11F: бот сам присылает новому участнику личную ссылку в группу проекта
+    (одно вступление, 7 дней) и пишет тимлидам. Не вышло (нет Telegram, у бота
+    нет права приглашать) — как раньше: тимлиду «пригласите вручную»."""
+    from apps.tgbot import notify
+
+    access = (GroupMembership.objects.select_related('member__intern', 'member__project', 'group')
+              .filter(member_id=member_id).first())
+    if access is None or access.status != GroupMembership.Status.TO_INVITE or access.member.status != 'active':
+        return False
+    member, intern, group = access.member, access.member.intern, access.group
+    if not intern.telegram_chat_id:
+        _tell_leads_new_member(member)
+        return False
+    try:
+        link = _bot().create_chat_invite_link(
+            group.chat_id, name=f'GeeksPro · {intern.full_name}'[:32], member_limit=1,
+            expire_date=int((timezone.now() + INVITE_TTL).timestamp()))
+        url = link.invite_link
+    except Exception as exc:  # нет права «приглашать по ссылке», защита, сеть — приглашает тимлид
+        logger.warning('Ссылка в группу %s не создана: %s', group.pk, type(exc).__name__)
+        TelegramGroup.objects.filter(pk=group.pk).update(
+            last_error=f'бот не смог создать ссылку-приглашение ({type(exc).__name__}) — дайте право «Пригласительные ссылки»'[:255])
+        _tell_leads_new_member(member)
+        return False
+    notify.to_intern(intern, 'group_invite',
+                     f'Вступите в Telegram-группу проекта «{member.project.name}»: {url}\n'
+                     'Ссылка личная — только для вас, на одно вступление, действует 7 дней.',
+                     dedup_key=f'group-invite:{member.pk}', with_menu=False)
+    access.status, access.invited_at = GroupMembership.Status.INVITED, timezone.now()
+    access.save(update_fields=['status', 'invited_at', 'updated_at'])
+    _tell_leads(member, f'Новый участник «{member.project.name}»: {intern.full_name} ({member.get_role_display()}, '
+                        f'{intern.telegram or "Telegram не указан"}). Бот отправил ему личную ссылку в группу — '
+                        'вступление отметится само.', f'group-new:{member.pk}')
+    return True
 
 
 def _tell_leads_new_member(member):

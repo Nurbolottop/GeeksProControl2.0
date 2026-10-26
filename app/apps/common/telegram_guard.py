@@ -49,6 +49,10 @@ TOPIC_METHODS = frozenset({
     'unhideGeneralForumTopic', 'unpinAllGeneralForumTopicMessages',
 })
 
+# 11F: личные ссылки в группу проекта — как темы, только в группах, привязанных в Control
+INVITE_METHODS = frozenset({'createChatInviteLink', 'editChatInviteLink', 'revokeChatInviteLink'})
+GROUP_METHODS = TOPIC_METHODS | INVITE_METHODS
+
 
 PERMIT_METHODS = {'answerCallbackQuery': ('callback', 'callback_query_id'), 'getFile': ('file', 'file_id')}
 _PERMITS: dict[str, OrderedDict] = {'callback': OrderedDict(), 'file': OrderedDict(), 'path': OrderedDict()}
@@ -114,7 +118,7 @@ def check(method: str, params=None) -> None:
         raise TelegramBlocked(f'{method}: TELEGRAM_OUTBOUND_MODE=off — запросы к Telegram запрещены.')
     if mode == 'on' and not production:
         raise TelegramBlocked(f'{method}: режим on вне production запрещён (массовые рассылки — только в prod).')
-    if mode == 'on' and production and method not in TOPIC_METHODS:
+    if mode == 'on' and production and method not in GROUP_METHODS:
         return
     if mode == 'on' and production:
         if not _bound_group(_chat_id(params)):
@@ -134,7 +138,7 @@ def check(method: str, params=None) -> None:
         return
     if method in WEBHOOK_METHODS and not production:
         raise TelegramBlocked(f'{method}: webhook вне production не включается.')
-    if method in TOPIC_METHODS:
+    if method in GROUP_METHODS:
         # TODO(группы проектов): в production — только подтверждённые в Control группы
         if chat not in groups:
             raise TelegramBlocked(f'{method}: группа не в TELEGRAM_TEST_GROUP_IDS — темы не создаём.')
