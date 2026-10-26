@@ -73,6 +73,8 @@ class FakeBot:
         return SimpleNamespace(id=999)
 
     def get_chat_member(self, chat_id, user_id):
+        if user_id != 999:  # не бот — человек ещё не в группе
+            return SimpleNamespace(status='left')
         return SimpleNamespace(status='administrator' if self.admin else 'member', can_manage_topics=self.admin)
 
     def create_forum_topic(self, chat_id, name, icon_custom_emoji_id=None):
@@ -256,6 +258,16 @@ class InviteLinkTests(Base):
         self.member('Фронт После Привязки', role=TeamRole.FRONTEND, chat=INTERN_CHAT + 1)
         self.assertIn(groups.topic_title(TelegramGroup.objects.get(chat_id=GROUP), 'frontend'),
                       [name for _, name in self.bot.topics])
+
+    def test_already_in_group_gets_no_link(self):
+        self.bot.create_chat_invite_link = mock.Mock(return_value=SimpleNamespace(invite_link='https://t.me/+abc'))
+        self.bound()
+        real = self.bot.get_chat_member
+        self.bot.get_chat_member = lambda chat_id, user_id: (SimpleNamespace(status='member') if user_id == INTERN_CHAT
+                                                             else real(chat_id, user_id))
+        intern = self.member('Уже Внутри', chat=INTERN_CHAT)
+        self.assertEqual(GroupMembership.objects.get(member__intern=intern).status, GroupMembership.Status.JOINED)
+        self.assertFalse(OutboundMessage.objects.filter(kind='group_invite', intern=intern).exists())
 
     def test_without_rights_lead_invites(self):
         self.bot.create_chat_invite_link = mock.Mock(side_effect=RuntimeError('no rights'))

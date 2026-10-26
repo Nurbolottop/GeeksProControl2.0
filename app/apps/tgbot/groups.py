@@ -340,6 +340,14 @@ def invite(member_id) -> bool:
     if not intern.telegram_chat_id:
         _tell_leads_new_member(member)
         return False
+    try:  # уже в группе (вступил раньше, тимлид не отметил) — отмечаем, ссылку не шлём
+        status = _bot().get_chat_member(group.chat_id, intern.telegram_chat_id).status
+    except Exception:
+        status = ''
+    if status in ('member', 'administrator', 'creator', 'restricted'):
+        access.status, access.joined_at, access.join_source = GroupMembership.Status.JOINED, timezone.now(), 'telegram'
+        access.save(update_fields=['status', 'joined_at', 'join_source', 'updated_at'])
+        return False
     try:
         link = _bot().create_chat_invite_link(
             group.chat_id, name=f'GeeksPro · {intern.full_name}'[:32], member_limit=1,
