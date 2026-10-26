@@ -462,3 +462,15 @@ class Stage11FShortSalesMessageTests(Base):
     def test_direction_still_required(self):
         self.register()
         self.assertEqual(self.sales('#новый_стажер\nФИО: Асанов Бакыт\nТелефон: 0700111222'), 'sales:format')
+
+
+class NameIsNotButtonTests(TestCase):
+    """11F: кнопка «Начать стажировку», нажатая вместо ФИО, не становится именем."""
+
+    def test_button_text_rejected(self):
+        from apps.tgbot.people import PeopleError, clean_name
+
+        for text in ('Начать стажировку', 'начать  Стажировку', 'Я уже стажёр GeeksPro'):
+            with self.assertRaises(PeopleError):
+                clean_name(text)
+        self.assertEqual(clean_name('асанов бакыт'), 'Асанов Бакыт')

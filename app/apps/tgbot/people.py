@@ -33,6 +33,12 @@ class PeopleError(ValidationError):
 
 
 def clean_name(value: str) -> str:
+    from apps.tgbot import menus
+
+    # 11F: повторное нажатие кнопки («Начать стажировку») — не ФИО
+    labels = {v.casefold() for k, v in vars(menus).items() if k.isupper() and isinstance(v, str)}
+    if ' '.join((value or '').split()).casefold() in labels:
+        raise PeopleError('Это текст кнопки, а не имя. Напишите фамилию и имя полностью (например: Асанов Бакыт).')
     words = (value or '').split()
     if len(words) < 2 or len(' '.join(words)) > 255 or not all(NAME_RE.match(w) for w in words):
         raise PeopleError('Напишите фамилию и имя полностью, буквами (например: Асанов Бакыт).')
