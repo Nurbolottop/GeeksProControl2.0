@@ -514,7 +514,7 @@ def show_available(message, sender, state, intern):
     if freeze.is_pm_direction(intern):
         _reply(chat_id, 'Для направления PM проект назначает руководитель.', intern=intern)
         return 'projects:pm'
-    if freeze.open_return(intern) is None:
+    if not freeze.can_choose(intern):
         from apps.projects.services import projects_open_for_recruitment
 
         names = [f'{p.name} — {p.recruitment_summary}' if p.recruitment_roles or p.recruitment_kind != 'all' else p.name
@@ -785,7 +785,7 @@ def _choose(chat_id, intern, project_id, *, confirm):
     from apps.interns import freeze
     from apps.projects.models import Project
 
-    if menus.AVAILABLE not in menus.allowed_labels(intern, chat_id) or freeze.open_return(intern) is None:
+    if menus.AVAILABLE not in menus.allowed_labels(intern, chat_id) or not freeze.can_choose(intern):
         _reply(chat_id, 'Выбор проекта сейчас недоступен.', intern=intern)
         return 'choose:denied'
     project = Project.objects.filter(pk=project_id).first()

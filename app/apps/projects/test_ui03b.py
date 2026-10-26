@@ -114,6 +114,24 @@ class ClosedRecruitmentTests(TestCase):
         with self.assertRaises(ValidationError):
             set_recruitment(self.project, True, self.head, kind='vip')
 
+    def test_waiting_graduate_chooses_in_bot(self):
+        """11F: выпускник «Продолжить стажировку» выбирает проект сам — по правилам старых."""
+        from apps.interns import freeze
+
+        veteran = graduate('Ждёт Проект', self.backend)
+        veteran.graduate_status = GraduateStatus.WAITING
+        veteran.save()
+        self.assertEqual(freeze.available_projects(veteran), [])  # набор закрыт
+        set_recruitment(self.project, True, self.head, kind='new')
+        self.assertEqual(freeze.available_projects(veteran), [])  # только новые
+        set_recruitment(self.project, True, self.head, kind='old')
+        self.assertEqual(freeze.available_projects(veteran), [self.project])
+        freeze.choose_project(veteran, self.project)
+        veteran.refresh_from_db()
+        self.assertEqual((veteran.status, veteran.graduate_status), (InternStatus.ACTIVE, ''))
+        self.assertTrue(TeamMember.objects.filter(project=self.project, intern=veteran, status='active').exists())
+        self.assertFalse(freeze.graduate_can_choose(veteran))  # один раз
+
     def test_recruitment_form_on_card(self):
         self.client.force_login(self.head)
         url = reverse('projects:recruitment_set', args=[self.project.pk])

@@ -278,12 +278,25 @@ def _role(intern):
     return ROLE_BY_SPECIALIZATION.get(spec.name if spec else '', TeamRole.OTHER)
 
 
+def graduate_can_choose(intern: Intern) -> bool:
+    """11F: выпускник нажал в боте «Продолжить стажировку» (ждёт проект) — выбирает
+    проект сам, как новый после продаж: стажёры попадают в проект только через бота."""
+    from apps.interns.models import GraduateStatus
+
+    return (intern is not None and intern.graduate_status == GraduateStatus.WAITING
+            and intern.status != InternStatus.PAUSED and not intern.is_archived)
+
+
+def can_choose(intern: Intern) -> bool:
+    return open_return(intern) is not None or graduate_can_choose(intern)
+
+
 def available_projects(intern: Intern) -> list:
     """Куда стажёр может вступить сейчас — по тем же правилам, что формы."""
     from apps.projects.services import projects_open_for_recruitment
     from apps.teams.rules import check_assignment
 
-    if is_pm_direction(intern) or open_return(intern) is None or intern.status == InternStatus.PAUSED:
+    if is_pm_direction(intern) or not can_choose(intern) or intern.status == InternStatus.PAUSED:
         return []
     role = _role(intern)
     return [p for p in projects_open_for_recruitment().order_by('name')
@@ -302,10 +315,11 @@ def choose_project(intern: Intern, project):
     with transaction.atomic():
         intern = Intern.objects.select_for_update().get(pk=intern.pk)
         req = open_return(intern)
-        if req is None:
+        if req is None and not graduate_can_choose(intern):
             raise FreezeError('Выбор проекта доступен после одобренного возвращения или подтверждения продаж.')
-        req = InternshipRequest.objects.select_for_update().get(pk=req.pk)
-        if req.chosen_project_id or intern.status == InternStatus.PAUSED:
+        if req is not None:
+            req = InternshipRequest.objects.select_for_update().get(pk=req.pk)
+        if (req is not None and req.chosen_project_id) or intern.status == InternStatus.PAUSED:
             raise FreezeError('Проект уже выбран.')
         closed = lock_and_recheck(project, intern, role)
         errors, _ = check_assignment(intern, project, role)
@@ -316,6 +330,11 @@ def choose_project(intern: Intern, project):
             group=getattr(project, 'group', None), joined_at=timezone.localdate(),
         )
         intern.status = InternStatus.ACTIVE
+        if req is None:  # выпускник продолжает — из «Выпускников» уходит
+            intern.graduate_status = ''
+            intern.save(update_fields=['status', 'graduate_status', 'updated_at'])
+            audit_log(intern, 'Выбрал(а) проект — выпускник продолжает стажировку', new_value=project.name)
+            return member
         intern.save(update_fields=['status', 'updated_at'])
         req.chosen_project, req.chosen_at = project, timezone.now()
         req.save(update_fields=['chosen_project', 'chosen_at', 'updated_at'])
