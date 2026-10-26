@@ -72,6 +72,14 @@ def recruitment_error(intern, project, role) -> str | None:
     if not project.recruits(role):
         return (f'Набор в проект «{project.name}» на направление {TeamRole(role).label} закрыт — '
                 f'открыт только на {", ".join(project.recruitment_roles_labels)}.')
+    if project.recruitment_kind in ('new', 'old'):
+        from apps.dashboard.graduation import compute
+
+        is_old = intern.pk in compute([intern.pk]).ids
+        if project.recruitment_kind == 'new' and is_old:
+            return f'Набор в проект «{project.name}» — только для новых стажёров, а {intern.full_name} — старый (уже выпускался).'
+        if project.recruitment_kind == 'old' and not is_old:
+            return f'Набор в проект «{project.name}» — только для старых стажёров (выпускников), а {intern.full_name} — новый.'
     return None
 
 

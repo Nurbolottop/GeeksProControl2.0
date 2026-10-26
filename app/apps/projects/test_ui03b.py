@@ -92,14 +92,38 @@ class ClosedRecruitmentTests(TestCase):
         with self.assertRaises(ValidationError):
             set_recruitment(self.project, True, self.head, roles=['pm'])
 
+    def test_recruitment_for_new_or_old(self):
+        """11F: набор только для новых / только для старых (выпускников)."""
+        veteran = graduate('Старый Выпускник', self.backend)
+        set_recruitment(self.project, True, self.head, kind='new')
+        self.project.refresh_from_db()
+        self.assertEqual(check_assignment(self.novice, self.project, TeamRole.BACKEND)[0], [])
+        errors, _ = check_assignment(veteran, self.project, TeamRole.BACKEND)
+        self.assertTrue(any('только для новых' in e for e in errors), errors)
+        set_recruitment(self.project, True, self.head, kind='old')
+        self.project.refresh_from_db()
+        self.assertEqual(check_assignment(veteran, self.project, TeamRole.BACKEND)[0], [])
+        errors, _ = check_assignment(self.novice, self.project, TeamRole.BACKEND)
+        self.assertTrue(any('только для старых' in e for e in errors), errors)
+        last = ProjectStatusHistory.objects.filter(project=self.project, field='Набор').latest('pk')
+        self.assertEqual((last.old_value, last.new_value),
+                         ('открыт (все направления) · только новые', 'открыт (все направления) · только старые'))
+        set_recruitment(self.project, False, self.head)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.recruitment_kind, 'all')  # закрыли — при следующем открытии снова «всех»
+        with self.assertRaises(ValidationError):
+            set_recruitment(self.project, True, self.head, kind='vip')
+
     def test_recruitment_form_on_card(self):
         self.client.force_login(self.head)
         url = reverse('projects:recruitment_set', args=[self.project.pk])
-        self.client.post(url, {'open': '1', 'roles': ['qa', 'mobile'], 'tab': 'team'})
+        self.client.post(url, {'open': '1', 'roles': ['qa', 'mobile'], 'kind': 'new', 'tab': 'team'})
         self.project.refresh_from_db()
-        self.assertEqual((self.project.recruitment_open, self.project.recruitment_roles), (True, ['mobile', 'qa']))
+        self.assertEqual((self.project.recruitment_open, self.project.recruitment_roles, self.project.recruitment_kind),
+                         (True, ['mobile', 'qa'], 'new'))
         page = self.client.get(reverse('projects:detail', args=[self.project.pk]), {'tab': 'team'})
-        self.assertContains(page, 'Mobile, QA')
+        self.assertContains(page, 'Mobile, QA · только новые')
+        self.assertContains(page, 'Кого берём')
         self.assertContains(page, 'Сохранить направления')
 
     def test_head_form_is_blocked(self):

@@ -199,16 +199,15 @@ def recruitment_set(request, pk):
     project = get_object_or_404(Project.objects.active(), pk=pk)
     is_open = request.POST.get('open') == '1'
     try:
-        services.set_recruitment(project, is_open, request.user, roles=request.POST.getlist('roles'))
+        services.set_recruitment(project, is_open, request.user, roles=request.POST.getlist('roles'),
+                                 kind=request.POST.get('kind') or 'all')
     except ValidationError as error:
         messages.error(request, ' '.join(error.messages))
     else:
         if not is_open:
             messages.success(request, 'Набор закрыт.')
-        elif project.recruitment_roles:
-            messages.success(request, f'Набор открыт: {", ".join(project.recruitment_roles_labels)}.')
         else:
-            messages.success(request, 'Набор открыт на все направления.')
+            messages.success(request, f'Набор открыт: {project.recruitment_summary}.')
     return redirect(f'{project.get_absolute_url()}?tab={request.POST.get("tab") or "team"}')
 
 

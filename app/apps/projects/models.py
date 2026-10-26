@@ -196,6 +196,11 @@ class Project(TimeStampedModel, ArchivableModel):
     # 11F: набор по направлениям. Пусто при открытом наборе — открыты все
     # направления; иначе вступить можно только на перечисленные (TeamRole).
     recruitment_roles = models.JSONField('Направления набора', default=list, blank=True)
+    # 11F: кого берём — всех, только новых или только старых (старый —
+    # подтверждённый выпускник, apps.dashboard.graduation).
+    recruitment_kind = models.CharField('Кого берём', max_length=8, default='all', choices=[
+        ('all', 'Всех'), ('new', 'Только новых'), ('old', 'Только старых'),
+    ])
     # Готовность к закрытию (UI-03B): три условия фиксирует руководитель —
     # ссылка на production сама по себе не доказывает ни публикацию, ни приёмку.
     dev_completed_at = models.DateTimeField('Разработка завершена', null=True, blank=True)
@@ -262,6 +267,17 @@ class Project(TimeStampedModel, ArchivableModel):
     @property
     def recruitment_roles_labels_text(self) -> str:
         return ', '.join(self.recruitment_roles_labels)
+
+    @property
+    def recruitment_kind_choices(self):
+        return self._meta.get_field('recruitment_kind').choices
+
+    @property
+    def recruitment_summary(self) -> str:
+        """«Backend, UX/UI · только новые» — для бейджа, бота и истории."""
+        who = {'new': 'только новые', 'old': 'только старые'}.get(self.recruitment_kind)
+        parts = [self.recruitment_roles_labels_text or 'все направления'] + ([who] if who else [])
+        return ' · '.join(parts)
 
     @property
     def recruitment_options(self) -> list[dict]:

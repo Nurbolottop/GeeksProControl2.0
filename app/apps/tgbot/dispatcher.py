@@ -517,7 +517,7 @@ def show_available(message, sender, state, intern):
     if freeze.open_return(intern) is None:
         from apps.projects.services import projects_open_for_recruitment
 
-        names = [f'{p.name} — {", ".join(p.recruitment_roles_labels)}' if p.recruitment_roles else p.name
+        names = [f'{p.name} — {p.recruitment_summary}' if p.recruitment_roles or p.recruitment_kind != 'all' else p.name
                  for p in projects_open_for_recruitment().order_by('name')[:15]]
         _reply(chat_id, ('Открыт набор:\n' + '\n'.join(f'• {n}' for n in names) if names else 'Сейчас набора нет.') +
                '\n\nВступление во второй проект оформляют руководитель и тимлид.', intern=intern)

@@ -5,7 +5,7 @@
         <div class="gp-cluster gp-cluster--between">
             <div>
                 {% if project.recruitment_open %}{% ui_badge "Открыт" tone="success" dot=True %}
-                    <strong class="gp-small">{% if project.recruitment_roles %}{{ project.recruitment_roles_labels|join:", " }}{% else %}все направления{% endif %}</strong>
+                    <strong class="gp-small">{{ project.recruitment_summary }}</strong>
                 {% else %}{% ui_badge "Закрыт" dot=True %}{% endif %}
                 {% if project.recruitment_changed_at %}<div class="gp-muted gp-small" style="margin-top: var(--space-1)">{{ project.recruitment_changed_by.display_name|default:"" }} · {{ project.recruitment_changed_at|date:"d.m.Y H:i" }}</div>{% endif %}
             </div>
@@ -28,6 +28,15 @@
                 </div>
             </fieldset>
             <p class="gp-muted gp-small" style="margin: var(--space-2) 0 var(--space-3)">Ничего не отмечено — набор на все направления. ПМ проекту назначает руководитель.</p>
+            <fieldset style="border: 0; margin: 0 0 var(--space-3); padding: 0">
+                <legend class="gp-label" style="margin-bottom: var(--space-2)">Кого берём</legend>
+                <div class="gp-cluster" style="gap: var(--space-2) var(--space-5)">
+                    {% for value, label in project.recruitment_kind_choices %}
+                        <label class="gp-check"><input type="radio" name="kind" value="{{ value }}"{% if project.recruitment_kind == value %} checked{% endif %}> {{ label }}</label>
+                    {% endfor %}
+                </div>
+                <p class="gp-muted gp-small" style="margin: var(--space-2) 0 0">Старый — уже выпускался с прошлого проекта, новый — первая стажировка.</p>
+            </fieldset>
             {% if project.recruitment_open %}{% ui_button "Сохранить направления" type="submit" variant="primary" %}{% else %}{% ui_button "Открыть набор" variant="primary" type="submit" %}{% endif %}
         </form>
         {% endif %}
