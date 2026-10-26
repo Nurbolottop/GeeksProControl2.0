@@ -108,7 +108,7 @@ class InternsTotalTests(TestCase):
         self.client.force_login(user)
         response = self.client.get(reverse("resources:forecast"))
         self.assertEqual(response.context["totals"]["total"], 3)
-        for label in ("Общее количество", "Активные", "Заморозка", "Выпускники", "Свободные"):
+        for label in ("Общее количество", "На проектах", "Заморозка", "Выпускники", "Свободные"):
             self.assertContains(response, label)
         self.assertContains(response, "Без направления")
         self.assertContains(response, "Итого")

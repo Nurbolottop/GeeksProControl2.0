@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.forms import inlineformset_factory
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from apps.projects.models import Project
 from apps.resources import services
@@ -34,10 +35,22 @@ NeedFormSet = inlineformset_factory(
 
 @login_required
 def forecast(request):
-    """Прогноз потребности (ТЗ §14)."""
+    """Стажёры по направлениям (ТЗ §14); дизайн 2.0 (11F)."""
+    def shares(row):
+        # полоса направления: на проектах / свободные / остальные (заморозка, выпускники, ожидают)
+        total = row['total'] or 1
+        rest = max(row['total'] - row['busy'] - row['free'], 0)
+        row.update(rest=rest, busy_pct=round(row['busy'] * 100 / total, 1),
+                   free_pct=round(row['free'] * 100 / total, 1), rest_pct=round(rest * 100 / total, 1))
+        return row
+
+    rows = [shares(row) for row in services.interns_summary()]
     return render(request, 'resources/forecast.html', {
-        'rows': services.interns_summary(),
-        'totals': services.interns_total(),
+        'rows': [row for row in rows if row['total']],
+        'empty_specs': [row['specialization'] for row in rows if not row['total'] and row['specialization']],
+        'totals': shares(services.interns_total()),
+        'crumbs': [{'label': 'Главная', 'href': reverse('dashboard')}, {'label': 'Стажёры', 'href': reverse('interns:list')},
+                   {'label': 'По направлениям', 'href': ''}],
         'planned': (
             PlannedProject.objects
             .exclude(status__in=[

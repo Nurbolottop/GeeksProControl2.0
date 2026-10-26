@@ -1,107 +1,99 @@
-{% extends 'base.html' %}
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Стажёры по направлениям — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Стажёры по направлениям" subtitle="Кто на проектах, кого можно поставить прямо сейчас и кто на заморозке. Тимлиды сюда не входят — они сотрудники." %}
+    {% url 'interns:list' as list_url %}{% ui_button "Все стажёры" href=list_url icon_name="users" %}
+    {% url 'interns:graduates' as graduates_url %}{% ui_button "Выпускники" href=graduates_url icon_name="graduation-cap" %}
+    {% if academy_enabled %}{% url 'training:plan' as plan_url %}{% ui_button "План набора из академии" href=plan_url icon_name="book-open" %}{% endif %}
+{% end_ui_page_header %}
 
-{% block title %}Прогноз потребности — GeeksPro Control{% endblock %}
+{% url 'interns:list' as list_url %}
+<section aria-label="Итоги" class="gp-grid" style="--grid-min: 170px; margin-bottom: var(--space-6)">
+    <a class="gp-stat gp-stat--accent" href="{{ list_url }}">
+        <span class="gp-stat__label">Общее количество</span>
+        <span class="gp-stat__value">{{ totals.total }}</span>
+        <span class="gp-stat__caption">стажёров и ПМ{% if totals.without_spec %} · {{ totals.without_spec }} без направления{% endif %}</span>
+    </a>
+    <a class="gp-stat" href="{{ list_url }}?availability=busy">
+        <span class="gp-stat__label">На проектах</span>
+        <span class="gp-stat__value">{{ totals.busy }}</span>
+        <span class="gp-stat__caption">{{ totals.busy_pct|floatformat:0 }}% от всех · активных {{ totals.active }}</span>
+    </a>
+    <a class="gp-stat" href="{{ list_url }}?availability=free">
+        <span class="gp-stat__label">Свободные</span>
+        <span class="gp-stat__value" style="color: var(--color-success)">{{ totals.free }}</span>
+        <span class="gp-stat__caption">можно поставить на проект</span>
+    </a>
+    <a class="gp-stat" href="{{ list_url }}?availability=paused">
+        <span class="gp-stat__label">Заморозка</span>
+        <span class="gp-stat__value" style="color: var(--color-warning)">{{ totals.paused }}</span>
+        <span class="gp-stat__caption">стажировка приостановлена</span>
+    </a>
+    <a class="gp-stat" href="{{ graduates_url }}">
+        <span class="gp-stat__label">Выпускники</span>
+        <span class="gp-stat__value">{{ totals.graduates }}</span>
+        <span class="gp-stat__caption">{% if totals.waiting %}ожидают старта: {{ totals.waiting }}{% else %}проект завершён, ждут решения{% endif %}</span>
+    </a>
+</section>
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Стажёры по направлениям</h1>
-        <div class="sub">
-            Сколько стажёров в каждом направлении: активные, на заморозке, ожидающие
-            старта, выпускники и свободные. «Свободные» — кого можно поставить на проект
-            прямо сейчас: без проекта, в рабочем статусе и не из «Выпускников». Тимлиды и ПМ сюда не входят —
-            они сотрудники.
-        </div>
-    </div>
-    <div class="page-actions">
-        {% if academy_enabled %}<a href="{% url 'training:plan' %}" class="btn btn--secondary">План набора из академии</a>{% endif %}
-    </div>
+{% ui_card flush=True %}
+<div class="gp-cluster" style="padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--color-border); gap: var(--space-4)">
+    <span class="gp-small"><span class="gp-swatch gp-tone-2"></span> на проектах</span>
+    <span class="gp-small"><span class="gp-swatch gp-tone-4"></span> свободные</span>
+    <span class="gp-small"><span class="gp-swatch gp-tone-5"></span> остальные — заморозка, выпускники, ожидают старта</span>
 </div>
-
-<div class="kpi-grid">
-    <div class="kpi-card kpi-card--info">
-        <div class="kpi-card__value">{{ totals.total }}</div>
-        <div class="kpi-card__label">Общее количество</div>
-    </div>
-    <div class="kpi-card kpi-card--green">
-        <div class="kpi-card__value">{{ totals.active }}</div>
-        <div class="kpi-card__label">Активные</div>
-    </div>
-    <div class="kpi-card kpi-card--yellow">
-        <div class="kpi-card__value">{{ totals.paused }}</div>
-        <div class="kpi-card__label">Заморозка</div>
-    </div>
-    <div class="kpi-card kpi-card--info">
-        <div class="kpi-card__value">{{ totals.graduates }}</div>
-        <div class="kpi-card__label">Выпускники</div>
-    </div>
-    <div class="kpi-card kpi-card--green">
-        <div class="kpi-card__value">{{ totals.free }}</div>
-        <div class="kpi-card__label">Свободные</div>
-    </div>
-</div>
-
-<div class="panel" style="padding: 0;">
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
+{% if rows %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Стажёры по направлениям</caption>
+        <thead><tr>
+            <th scope="col">Направление</th>
+            <th scope="col" class="is-numeric">Всего</th>
+            <th scope="col" class="is-numeric">На проектах</th>
+            <th scope="col" class="is-numeric">Свободные</th>
+            <th scope="col" class="is-numeric">Заморозка</th>
+            <th scope="col" class="is-numeric">Ожидают старта</th>
+            <th scope="col" class="is-numeric">Выпускники</th>
+        </tr></thead>
+        <tbody>
+        {% for row in rows %}
+            {% with spec=row.specialization.pk|default:'' %}
             <tr>
-                <th>Направление</th>
-                <th>Всего</th>
-                <th>Активные</th>
-                <th>Заморозка</th>
-                <th>Ожидают старта</th>
-                <th>Выпускники</th>
-                <th>На проектах</th>
-                <th>Свободные</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for row in rows %}
-                <tr>
-                    <td><strong>{{ row.specialization|default:'Без направления' }}</strong></td>
-                    <td><strong style="font-size:15px">{{ row.total }}</strong></td>
-                    <td>{{ row.active }}</td>
-                    <td>{% if row.paused %}<span class="badge badge--yellow">{{ row.paused }}</span>{% else %}—{% endif %}</td>
-                    <td>{% if row.waiting %}<span class="badge badge--gray">{{ row.waiting }}</span>{% else %}—{% endif %}</td>
-                    <td>
-                        {% if row.graduates %}
-                            <a href="{% url 'interns:graduates' %}{% if row.specialization %}?specialization={{ row.specialization.pk }}{% endif %}">{{ row.graduates }}</a>
-                        {% else %}—{% endif %}
-                    </td>
-                    <td>{{ row.busy }}</td>
-                    <td>
-                        {% if row.free %}
-                            <span class="badge badge--green">{{ row.free }}</span>
-                        {% else %}
-                            <span class="badge badge--gray">0</span>
-                        {% endif %}
-                    </td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="8" class="empty" style="text-align:center; padding: 24px;">Нет направлений.</td></tr>
-            {% endfor %}
-            </tbody>
-            <tfoot>
-            <tr class="data__total">
-                <td><strong>Итого</strong></td>
-                <td><strong style="font-size:15px">{{ totals.total }}</strong></td>
-                <td><strong>{{ totals.active }}</strong></td>
-                <td><strong>{{ totals.paused }}</strong></td>
-                <td><strong>{{ totals.waiting }}</strong></td>
-                <td><strong>{{ totals.graduates }}</strong></td>
-                <td><strong>{{ totals.busy }}</strong></td>
-                <td>
-                    {% if totals.free %}
-                        <span class="badge badge--green">{{ totals.free }}</span>
-                    {% else %}
-                        <span class="badge badge--gray">0</span>
-                    {% endif %}
+                <td class="is-primary" data-label="Направление" style="min-width: 200px">
+                    <span class="gp-table__primary">{{ row.specialization|default:'Без направления' }}</span>
+                    <div class="gp-segments" style="margin-top: var(--space-2); max-width: 260px" role="img"
+                         aria-label="на проектах {{ row.busy }}, свободные {{ row.free }}, остальные {{ row.rest }}">
+                        {% if row.busy %}<span class="gp-tone-2" style="width: {{ row.busy_pct|stringformat:'s' }}%"></span>{% endif %}
+                        {% if row.free %}<span class="gp-tone-4" style="width: {{ row.free_pct|stringformat:'s' }}%"></span>{% endif %}
+                        {% if row.rest %}<span class="gp-tone-5" style="width: {{ row.rest_pct|stringformat:'s' }}%"></span>{% endif %}
+                    </div>
                 </td>
+                <td class="is-numeric" data-label="Всего"><a class="gp-link" style="font-weight: var(--weight-semibold)" href="{{ list_url }}{% if spec %}?specialization={{ spec }}{% endif %}">{{ row.total }}</a></td>
+                <td class="is-numeric" data-label="На проектах">{% if row.busy %}<a class="gp-link" href="{{ list_url }}?availability=busy{% if spec %}&specialization={{ spec }}{% endif %}">{{ row.busy }}</a>{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td class="is-numeric" data-label="Свободные">{% if row.free %}<a href="{{ list_url }}?availability=free{% if spec %}&specialization={{ spec }}{% endif %}">{% ui_badge row.free tone="success" %}</a>{% else %}<span class="gp-muted">0</span>{% endif %}</td>
+                <td class="is-numeric" data-label="Заморозка">{% if row.paused %}<a href="{{ list_url }}?availability=paused{% if spec %}&specialization={{ spec }}{% endif %}">{% ui_badge row.paused tone="warning" %}</a>{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td class="is-numeric" data-label="Ожидают старта">{% if row.waiting %}<a class="gp-link" href="{{ list_url }}?availability=waiting{% if spec %}&specialization={{ spec }}{% endif %}">{{ row.waiting }}</a>{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td class="is-numeric" data-label="Выпускники">{% if row.graduates %}<a class="gp-link" href="{{ graduates_url }}{% if spec %}?specialization={{ spec }}{% endif %}">{{ row.graduates }}</a>{% else %}<span class="gp-muted">—</span>{% endif %}</td>
             </tr>
-            </tfoot>
-        </table>
-    </div>
+            {% endwith %}
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="background: var(--color-surface-sunken); font-weight: var(--weight-semibold)">
+                <td data-label="Направление">Итого</td>
+                <td class="is-numeric" data-label="Всего">{{ totals.total }}</td>
+                <td class="is-numeric" data-label="На проектах">{{ totals.busy }}</td>
+                <td class="is-numeric" data-label="Свободные">{{ totals.free }}</td>
+                <td class="is-numeric" data-label="Заморозка">{{ totals.paused }}</td>
+                <td class="is-numeric" data-label="Ожидают старта">{{ totals.waiting }}</td>
+                <td class="is-numeric" data-label="Выпускники">{{ totals.graduates }}</td>
+            </tr>
+        </tfoot>
+    </table>
 </div>
-
+{% if empty_specs %}<p class="gp-muted gp-small" style="padding: var(--space-3) var(--space-5); margin: 0; border-top: 1px solid var(--color-border)">Без стажёров: {% for spec in empty_specs %}{{ spec }}{% if not forloop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Стажёров пока нет" "Добавьте стажёров — здесь появится разбивка по направлениям." icon_name="users" %}</div>{% endif %}
+{% end_ui_card %}
 {% endblock %}
