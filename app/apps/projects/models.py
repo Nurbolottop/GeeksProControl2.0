@@ -198,6 +198,8 @@ class Project(TimeStampedModel, ArchivableModel):
     recruitment_roles = models.JSONField('Направления набора', default=list, blank=True)
     # 11F: кого берём — всех, только новых или только старых (старый —
     # подтверждённый выпускник, apps.dashboard.graduation).
+    # 11F: что видит стажёр в боте при выборе проекта (во внутреннем описании — контакты заказчика)
+    intern_brief = models.TextField('Описание для стажёров', max_length=600, blank=True)
     recruitment_kind = models.CharField('Кого берём', max_length=8, default='all', choices=[
         ('all', 'Всех'), ('new', 'Только новых'), ('old', 'Только старых'),
     ])

@@ -215,6 +215,25 @@ def recruitment_set(request, pk):
 
 
 @login_required
+@require_POST
+def intern_brief_set(request, pk):
+    """«Описание для стажёров» (11F) — его показывает бот при выборе проекта. Только руководитель."""
+    from apps.accounts.access import has_full_access
+
+    if not has_full_access(request.user):
+        raise PermissionDenied
+    project = get_object_or_404(Project.objects.active(), pk=pk)
+    text = (request.POST.get('intern_brief') or '').strip()[:600]
+    if text != project.intern_brief:
+        ProjectStatusHistory.objects.create(project=project, field='Описание для стажёров',
+                                            old_value=project.intern_brief[:255], new_value=text[:255], user=request.user)
+        project.intern_brief = text
+        project.save(update_fields=['intern_brief', 'updated_at'])
+        messages.success(request, f'«{project.name}»: описание для стажёров сохранено.')
+    return redirect(f'{reverse("projects:recruitment_board")}#project-{project.pk}')
+
+
+@login_required
 def recruitment_board(request):
     """«Наборы» (11F): все идущие проекты и их набор на одной странице — только руководитель."""
     from apps.accounts.access import has_full_access

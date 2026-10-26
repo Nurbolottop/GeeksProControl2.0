@@ -527,7 +527,13 @@ def show_available(message, sender, state, intern):
         _reply(chat_id, 'Сейчас нет проектов с местом для вашего направления. Напишем, когда появятся.',
                intern=intern)
         return 'projects:none'
-    _reply(chat_id, 'Выберите проект (один раз):',
+    lines = ['Проекты, куда можно вступить:']
+    for p in projects[:20]:
+        lines.append(f'\n• {p.name}' + (f' — {p.intern_brief}' if p.intern_brief else ''))
+        if p.recruitment_roles or p.recruitment_kind != 'all':
+            lines.append(f'  Набор: {p.recruitment_summary}')
+    lines.append('\nВыберите проект (один раз):')
+    _reply(chat_id, '\n'.join(lines)[:4000],
            menus.inline([[(p.name[:60], f'choose:{p.pk}')] for p in projects[:20]]))
     return 'projects:list'
 
@@ -787,7 +793,8 @@ def _choose(chat_id, intern, project_id, *, confirm):
         _reply(chat_id, 'В этом проекте нет места для вашего направления.', intern=intern)
         return 'choose:unavailable'
     if not confirm:
-        _reply(chat_id, f'Вступить в проект «{project.name}»? Выбор делается один раз.',
+        about = f'\n{project.intern_brief}\n' if project.intern_brief else ''
+        _reply(chat_id, f'Вступить в проект «{project.name}»?{about}\nВыбор делается один раз.',
                menus.inline([[('Да, вступить', f'choose_ok:{project.pk}'), ('Отмена', 'cancel')]]))
         return 'choose:confirm'
     try:

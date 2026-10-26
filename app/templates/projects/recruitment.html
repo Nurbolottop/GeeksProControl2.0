@@ -34,6 +34,13 @@
                     <dd style="white-space: normal; text-align: left; font-weight: var(--weight-regular)">{% for role in row.old_roles %}{{ role.label }}: {{ role.count }}{% if not forloop.last %}&nbsp;&nbsp; {% endif %}{% empty %}<span class="gp-muted">—</span>{% endfor %}</dd></div>
             </dl>
             {% else %}<p class="gp-muted gp-small" style="margin: 0 0 var(--space-4)">В команде пока нет стажёров.</p>{% endif %}
+            <form method="post" action="{% url 'projects:intern_brief_set' project.pk %}" style="margin: 0 0 var(--space-4)">
+                {% csrf_token %}
+                <label class="gp-label" for="brief-{{ project.pk }}">Описание для стажёров <span class="gp-muted" style="font-weight: 400">— его покажет бот при выборе проекта</span></label>
+                <textarea class="gp-input" id="brief-{{ project.pk }}" name="intern_brief" rows="2" maxlength="600" style="margin-top: var(--space-1)" placeholder="Например: сайт для Центра поддержки предпринимательства Оша, 3 языка, срок ~2 месяца">{{ project.intern_brief }}</textarea>
+                {% if project.description and not project.intern_brief %}<p class="gp-muted gp-small" style="margin: var(--space-1) 0 0">Внутреннее описание (стажёрам не показывается): {{ project.description|truncatechars:160 }}</p>{% endif %}
+                <div style="margin-top: var(--space-2)">{% ui_button "Сохранить описание" type="submit" size="sm" %}</div>
+            </form>
             {% include "projects/card/_recruitment_form.html" with back="board" %}
         </div>
     </section>

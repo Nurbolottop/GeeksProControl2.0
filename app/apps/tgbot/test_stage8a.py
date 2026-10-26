@@ -185,8 +185,13 @@ class RegistrationAndSalesTests(Base):
         self.assertEqual((req.status, req.sales_status, req.sales_reference), ('approved', 'confirmed', 'ОПЛ-77'))
         self.assertTrue(OutboundMessage.objects.filter(kind='registration_confirmed', intern=intern).exists())
         self.assertIn(menus.AVAILABLE, menus.allowed_labels(intern, USER))
-        project = create_project(Project(name='Первый проект', recruitment_open=True))
+        project = create_project(Project(name='Первый проект', recruitment_open=True,
+                                         intern_brief='Сайт для центра поддержки, 3 языка'))
+        self.assertEqual(self.send(msg(USER, menus.AVAILABLE)), 'projects:list')
+        listing = OutboundMessage.objects.filter(chat_id=USER).order_by('-pk').first()
+        self.assertIn('Первый проект — Сайт для центра поддержки, 3 языка', listing.text)  # 11F: описание видно
         self.assertEqual(self.send(cb(USER, f'choose:{project.pk}')), 'choose:confirm')
+        self.assertIn('Сайт для центра поддержки', OutboundMessage.objects.filter(chat_id=USER).order_by('-pk').first().text)
         self.assertEqual(self.send(cb(USER, f'choose_ok:{project.pk}')), 'choose:done')
         self.assertTrue(TeamMember.objects.filter(intern=intern, project=project, status='active').exists())
         self.assertEqual(self.send(cb(USER, f'choose_ok:{project.pk}')), 'choose:denied')  # один раз

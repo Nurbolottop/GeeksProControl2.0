@@ -15,6 +15,7 @@ urlpatterns = [
          {'category': 'completed'}, name='list_completed'),
     path('kanban/', views.project_kanban, name='kanban'),
     path('recruitment/', views.recruitment_board, name='recruitment_board'),
+    path('<int:pk>/intern-brief/', views.intern_brief_set, name='intern_brief_set'),
     path('create/', views.project_create, name='create'),
     path('<int:pk>/', views.project_detail, name='detail'),
     path('<int:pk>/edit/', views.project_update, name='update'),
