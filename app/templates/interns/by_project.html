@@ -6,7 +6,7 @@
 <div class="page-head">
     <div>
         <h1>Стажёры по проектам</h1>
-        <div class="sub">Сколько людей занято на каждом проекте и кто свободен</div>
+        <div class="sub">Стажёры направлений по проектам: новые и старые (выпускники). ПМ и тимлиды — отдельно, в счёт не идут</div>
     </div>
     <div class="page-actions">
         <a href="{% url 'interns:list' %}" class="btn btn--secondary">Все стажёры</a>
@@ -17,6 +17,18 @@
     <div class="lead-summary__item lead-summary__item--total">
         <span class="lead-summary__value">{{ on_projects }}</span>
         <span class="lead-summary__label">стажёров на проектах</span>
+    </div>
+    <div class="lead-summary__item">
+        <span class="lead-summary__value">{{ on_projects_new }}</span>
+        <span class="lead-summary__label">новых</span>
+    </div>
+    <div class="lead-summary__item">
+        <span class="lead-summary__value">{{ on_projects_old }}</span>
+        <span class="lead-summary__label">старых (выпускники)</span>
+    </div>
+    <div class="lead-summary__item">
+        <span class="lead-summary__value">{{ pm_count }}</span>
+        <span class="lead-summary__label">ПМ</span>
     </div>
     <div class="lead-summary__item">
         <span class="lead-summary__value">{{ projects_count }}</span>
@@ -34,6 +46,8 @@
             <tr>
                 <th>Проект</th>
                 <th style="text-align: center;">Стажёров</th>
+                <th style="text-align: center;">Новых</th>
+                <th style="text-align: center;">Старых</th>
                 <th>По направлениям</th>
                 <th>PM</th>
                 <th>Тимлиды</th>
@@ -57,9 +71,11 @@
                             <span class="sub">—</span>
                         {% endif %}
                     </td>
+                    <td style="text-align: center;">{% if row.interns %}{{ row.new }}{% else %}<span class="sub">—</span>{% endif %}</td>
+                    <td style="text-align: center;">{% if row.interns %}{{ row.old }}{% else %}<span class="sub">—</span>{% endif %}</td>
                     <td>
-                        {% for name, count in row.specs %}
-                            <span class="badge badge--gray">{{ name }} · {{ count }}</span>
+                        {% for spec in row.specs %}
+                            <span class="badge badge--gray" title="новых {{ spec.new }}, старых {{ spec.old }}">{{ spec.name }} · {{ spec.total }}{% if spec.old %} ({{ spec.new }} нов. / {{ spec.old }} стар.){% endif %}</span>
                         {% empty %}
                             <span class="sub">нет стажёров на проекте</span>
                         {% endfor %}
@@ -72,7 +88,7 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="5" class="sub" style="padding: 20px;">Активных проектов нет.</td></tr>
+                <tr><td colspan="7" class="sub" style="padding: 20px;">Активных проектов нет.</td></tr>
             {% endfor %}
         </tbody>
     </table>

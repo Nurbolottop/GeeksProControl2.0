@@ -1,10 +1,11 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.scripts.models import Script
 
 
+@override_settings(SCRIPTS_ENABLED=True)
 class ScriptTests(TestCase):
     """Скрипты: сохранить текст и потом его скопировать."""
 
@@ -86,3 +87,15 @@ class ScriptTests(TestCase):
         response = self.client.get(self.url)
         self.assertContains(response, 'Скрипты')
         self.assertContains(response, reverse('scripts:list'))
+
+
+class ScriptsHiddenTests(TestCase):
+    """11F: раздел скрыт — нет в меню, страницы 404."""
+
+    def test_hidden_by_default(self):
+        from apps.accounts.models import User
+
+        head = User.objects.create_user(username='head-scripts', password='x', role=User.Role.HEAD)
+        self.client.force_login(head)
+        self.assertEqual(self.client.get(reverse('scripts:list')).status_code, 404)
+        self.assertNotContains(self.client.get(reverse('dashboard')), reverse('scripts:list'))

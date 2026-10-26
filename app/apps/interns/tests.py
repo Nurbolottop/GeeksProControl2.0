@@ -1489,7 +1489,38 @@ class InternsByProjectTests(TestCase):
         response = self.client.get(self.url)
         row = self._row(response, self.alpha)
         self.assertEqual(len(row["interns"]), 2)
-        self.assertEqual(dict(row["specs"]), {"Backend": 1, "UX/UI": 1})
+        self.assertEqual({s["name"]: s["total"] for s in row["specs"]}, {"Backend": 1, "UX/UI": 1})
+
+    def test_new_and_old_split_by_team_role(self):
+        from apps.interns.models import GraduateStatus
+        from apps.teams.models import TeamMember, TeamRole
+
+        old = Intern.objects.create(
+            full_name="Выпускник Пять", specialization=self.design,
+            graduate_status=GraduateStatus.PENDING,
+        )
+        # специальность в профиле — UX/UI, но в команде он Backend
+        TeamMember.objects.create(project=self.alpha, intern=old, role=TeamRole.BACKEND)
+        response = self.client.get(self.url)
+        row = self._row(response, self.alpha)
+        self.assertEqual((row["new"], row["old"]), (2, 1))
+        backend = next(s for s in row["specs"] if s["name"] == "Backend")
+        self.assertEqual((backend["total"], backend["new"], backend["old"]), (2, 1, 1))
+        self.assertEqual(response.context["on_projects_old"], 1)
+        self.assertContains(response, "1 нов. / 1 стар.")
+
+    def test_pm_is_not_counted_as_intern_and_lead_is_not_repeated(self):
+        from apps.teams.models import TeamMember, TeamRole
+
+        pm = Intern.objects.create(full_name="Пиэм Шесть")
+        TeamMember.objects.create(project=self.alpha, intern=pm, role=TeamRole.PROJECT_MANAGER)
+        TeamMember.objects.create(project=self.alpha, intern=self.lead, role=TeamRole.TEAM_LEAD)
+        response = self.client.get(self.url)
+        row = self._row(response, self.alpha)
+        self.assertNotIn(pm, row["interns"])
+        self.assertEqual(row["pms"], [pm])
+        self.assertEqual(row["leads"], [self.lead])
+        self.assertEqual(response.context["pm_count"], 1)
 
     def test_team_lead_counted_separately_not_as_intern(self):
         response = self.client.get(self.url)

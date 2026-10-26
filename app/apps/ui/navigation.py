@@ -145,7 +145,8 @@ def _head_menu(request) -> list:
             ]),
         ] + _academy(training)),
         Section('Контроль', [
-            Link('Скрипты', 'scripts:list', icon='scroll', namespaces=('scripts',)),
+            # 11F: «Скрипты» скрыты, пока не включат SCRIPTS_ENABLED
+            *([Link('Скрипты', 'scripts:list', icon='scroll', namespaces=('scripts',))] if settings.SCRIPTS_ENABLED else []),
             Link('Уведомления', 'notifications:list', icon='bell', namespaces=('notifications',),
                  count=unread_notifications(request)),
         ]),

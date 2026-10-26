@@ -119,39 +119,59 @@ def profile_link_disable(request):
 
 @login_required
 def by_project(request):
-    """Стажёры по проектам: где сколько людей и кого не хватает.
+    """Стажёры по проектам: где сколько людей, новых и старых.
 
-    Считаем действующие членства: один человек может быть сразу на двух
-    проектах, поэтому сумма по проектам больше, чем людей на проектах.
-    Тимлиды — сотрудники на зарплате, в счёт стажёров не идут, но
-    показываем их отдельной строкой, чтобы было видно, кто ведёт команду.
+    Направление — роль в команде проекта (как во вкладке «Команда»), а не
+    специальность в профиле. ПМ и тимлиды — отдельными колонками, в счёт
+    стажёров направлений не идут. Старый — подтверждённый выпускник
+    (apps.dashboard.graduation), новый — все остальные. Один человек может
+    быть на двух проектах, поэтому сумма по проектам больше, чем людей.
     """
+    from apps.dashboard.graduation import compute
+    from apps.projects.card import ROLE_LABELS
     from apps.projects.models import Project, ProjectStatus
     from apps.teams.models import TeamRole
+    from apps.teams.rules import DIRECTION_ROLES
 
     leads = lead_ids()
-    memberships = (
+    memberships = list(
         TeamMember.objects
         .filter(status=TeamMember.Status.ACTIVE, project__isnull=False)
-        .select_related('intern__specialization', 'project', 'user')
+        .select_related('intern', 'project', 'user')
     )
+    graduates = compute([m.intern_id for m in memberships if m.intern_id]).ids
+
+    def empty(project):
+        return {'project': project, 'interns': [], 'specs': {}, 'pms': [], 'leads': [],
+                'new': 0, 'old': 0}
+
     rows = {}
     for member in memberships:
-        row = rows.setdefault(member.project_id, {
-            'project': member.project, 'interns': [], 'specs': {},
-            'pms': [], 'leads': [],
-        })
+        row = rows.setdefault(member.project_id, empty(member.project))
         if member.role == TeamRole.PROJECT_MANAGER:
-            row['pms'].append(member.intern or member.user)
+            person = member.intern or member.user
+            if person not in row['pms']:
+                row['pms'].append(person)
+            continue
         if member.intern_id is None:
             continue
         if member.intern_id in leads or member.role == TeamRole.TEAM_LEAD:
-            row['leads'].append(member.intern)
+            if member.intern not in row['leads']:
+                row['leads'].append(member.intern)
+            continue
+        if member.role not in DIRECTION_ROLES or member.intern in row['interns']:
             continue
         row['interns'].append(member.intern)
-        spec = member.intern.specialization
-        name = spec.name if spec else 'Без направления'
-        row['specs'][name] = row['specs'].get(name, 0) + 1
+        is_old = member.intern_id in graduates
+        row['old' if is_old else 'new'] += 1
+        spec = row['specs'].setdefault(member.role, {'name': ROLE_LABELS.get(member.role, member.role),
+                                                     'total': 0, 'new': 0, 'old': 0})
+        spec['total'] += 1
+        spec['old' if is_old else 'new'] += 1
+
+    def finish(row):
+        row['specs'] = sorted(row['specs'].values(), key=lambda item: (-item['total'], item['name']))
+        return row
 
     projects = (
         Project.objects.active()
@@ -160,26 +180,15 @@ def by_project(request):
         ])
         .select_related('client')
     )
-    table = []
-    for project in projects:
-        row = rows.pop(project.pk, None) or {
-            'project': project, 'interns': [], 'specs': {}, 'pms': [], 'leads': [],
-        }
-        row['specs'] = sorted(row['specs'].items(), key=lambda item: (-item[1], item[0]))
-        table.append(row)
+    table = [finish(rows.pop(project.pk, None) or empty(project)) for project in projects]
     # Команды на уже закрытых проектах, если кого-то забыли снять
     for row in rows.values():
-        row['specs'] = sorted(row['specs'].items(), key=lambda item: (-item[1], item[0]))
         row['is_closed'] = True
-        table.append(row)
+        table.append(finish(row))
     table.sort(key=lambda row: (-len(row['interns']), row['project'].name))
 
-    busy_ids = set(
-        TeamMember.objects.filter(
-            status=TeamMember.Status.ACTIVE, intern__isnull=False,
-            project__isnull=False,
-        ).values_list('intern_id', flat=True),
-    )
+    on_projects = {i.pk for row in table for i in row['interns']}
+    busy_ids = {m.intern_id for m in memberships if m.intern_id}
     free = (
         Intern.objects.active()
         .exclude(pk__in=leads)
@@ -190,7 +199,10 @@ def by_project(request):
     return render(request, 'interns/by_project.html', {
         'rows': table,
         'projects_count': sum(1 for row in table if row['interns']),
-        'on_projects': len(busy_ids - leads),
+        'on_projects': len(on_projects),
+        'on_projects_old': len(on_projects & graduates),
+        'on_projects_new': len(on_projects - graduates),
+        'pm_count': len({p.pk for row in table for p in row['pms'] if isinstance(p, Intern)}),
         'free': free,
     })
 
