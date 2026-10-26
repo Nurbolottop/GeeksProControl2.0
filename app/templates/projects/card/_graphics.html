@@ -1,0 +1,37 @@
+{% load ui %}
+{% comment %}
+Графика проекта (вкладка руководителя). Контекст: apps.projects.graphics.graphics_context —
+roadmap, pulse, timeline, road_data. Тёмная «витрина» пути (graphics_stage + css/graphics.css)
+одинакова в обеих темах; плитки и хронология — компоненты 2.0. Обёртка .gx нужна скрипту:
+он оживляет числа [data-count] внутри неё.
+{% endcomment %}
+<section class="gx gp-stack gp-stack--lg">
+    {% include 'projects/partials/graphics_stage.html' %}
+
+    <div class="gp-grid" style="--grid-min: 190px">
+        {% for tile in pulse %}
+        <div class="gp-stat" style="border-inline-start: 3px solid {% if tile.tone == 'green' %}var(--color-success){% elif tile.tone == 'yellow' %}var(--color-warning){% elif tile.tone == 'red' %}var(--color-danger){% elif tile.tone == 'teal' %}var(--color-info){% else %}var(--color-primary){% endif %}">
+            <span class="gp-stat__label">{{ tile.label }}</span>
+            <span class="gp-stat__value">{% if tile.text %}{{ tile.text }}{% else %}<span data-count="{{ tile.value }}">{{ tile.value }}</span> <small class="gp-muted" style="font-size: var(--text-sm); font-weight: var(--weight-medium)">{{ tile.unit }}</small>{% endif %}</span>
+            <span class="gp-stat__caption">{{ tile.hint }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if timeline %}
+    {% ui_card title="Хронология этапов" %}
+        <ol class="gp-timeline">
+            {% for row in timeline %}
+            <li class="gp-timeline__item{% if row.segment.state == 'done' %} gp-timeline__item--success{% elif row.overdue %} gp-timeline__item--danger{% elif row.segment.state == 'current' %} gp-timeline__item--primary{% endif %}">
+                <span class="gp-timeline__icon" aria-hidden="true">{% if row.segment.state == 'done' %}{% ui_icon "check" "sm" %}{% elif row.overdue %}{% ui_icon "alert-triangle" "sm" %}{% elif row.segment.state == 'current' %}{% ui_icon "clock" "sm" %}{% else %}{% ui_icon "chevron-right" "sm" %}{% endif %}</span>
+                <div>
+                    <p class="gp-timeline__title">{{ row.segment.title }}</p>
+                    <p class="gp-timeline__meta">{% if row.start %}начат {{ row.start|date:'d.m.Y' }}{% endif %}{% if row.end %}{% if row.start %} · {% endif %}закрыт {{ row.end|date:'d.m.Y' }}{% elif row.deadline %}{% if row.start %} · {% endif %}срок {{ row.deadline|date:'d.m.Y' }}{% endif %}</p>
+                </div>
+                <span>{% if row.segment.state == 'done' %}{% ui_badge "Готово" tone="success" %}{% elif row.overdue %}{% ui_badge "Просрочен" tone="danger" %}{% elif row.segment.state == 'current' %}{% ui_badge "В работе" tone="primary" %}{% else %}{% ui_badge "Впереди" %}{% endif %}</span>
+            </li>
+            {% endfor %}
+        </ol>
+    {% end_ui_card %}
+    {% endif %}
+</section>

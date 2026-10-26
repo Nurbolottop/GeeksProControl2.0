@@ -1,66 +1,53 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Шаблоны документов — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title="Шаблоны документов" subtitle="Заготовки без привязки к проекту — ПМ скачивает и берёт за основу, когда готовит настоящий документ по проекту." %}
+    {% url 'documents:list' as list_url %}{% ui_button "Документы проектов" href=list_url icon_name="folder" %}
+    {% url 'documents:template_create' as create_url %}{% ui_button "Новый шаблон" variant="primary" href=create_url icon_name="plus" %}
+{% end_ui_page_header %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Документы</h1>
-        <div class="sub">Шаблонов: {{ templates|length }}</div>
-    </div>
-    <div class="page-actions">
-        <a href="{% url 'documents:template_create' %}" class="btn">+ Новый шаблон</a>
-    </div>
+{% url 'documents:list' as list_url %}{% url 'documents:templates' as templates_url %}
+<div style="margin-bottom: var(--space-4)">
+<nav class="gp-tabs" aria-label="Разделы документов">
+    <a href="{{ list_url }}" class="gp-tabs__tab">Документы проектов</a>
+    <a href="{{ templates_url }}" class="gp-tabs__tab is-active" aria-current="page">Шаблоны<span class="gp-tabs__count">{{ templates|length }}</span></a>
+</nav>
 </div>
 
-<div class="tabs">
-    <a href="{% url 'documents:list' %}">Документы проектов</a>
-    <a href="{% url 'documents:templates' %}" class="is-active">Шаблоны</a>
-</div>
-
-<p class="sub" style="margin: 0 0 16px;">
-    Заготовки без привязки к проекту — ПМ скачивает и берёт за основу,
-    когда готовит настоящий документ по проекту.
-</p>
-
-<div class="panel" style="padding: 0;">
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
+{% ui_card flush=True %}
+{% if templates %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Шаблоны документов</caption>
+        <thead><tr><th scope="col">Тип · название</th><th scope="col">Комментарий</th><th scope="col">Загружен</th><th scope="col">Файл</th><th scope="col"><span class="gp-sr-only">Действия</span></th></tr></thead>
+        <tbody>
+        {% for template in templates %}
             <tr>
-                <th>Тип</th>
-                <th>Название</th>
-                <th>Комментарий</th>
-                <th>Загружен</th>
-                <th>Кем</th>
-                <th>Файл</th>
-                <th></th>
+                <td class="is-primary" data-label="Тип · название"><span class="gp-table__primary">{{ template.doc_type }}</span><span class="gp-table__secondary">{{ template.name|default:'—' }}</span></td>
+                <td data-label="Комментарий" style="overflow-wrap:anywhere">{{ template.comment|default:'—' }}</td>
+                <td data-label="Загружен">{{ template.created_at|date:'d.m.Y' }}<span class="gp-table__secondary">{{ template.uploaded_by.display_name|default:'—' }}</span></td>
+                <td data-label="Файл">{% if template.file %}<a class="gp-link" href="{{ template.file.url }}" target="_blank" rel="noopener">Скачать</a>{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td data-label="Действия">
+                    <div class="gp-cluster" style="--cluster-gap: var(--space-2); flex-wrap: nowrap; justify-content: flex-end">
+                        {% url 'documents:template_update' template.pk as edit_url %}{% ui_button "Изменить" size="sm" href=edit_url icon_name="pencil" %}
+                        {% with pk_s=template.pk|stringformat:"s" %}{% with modal_id="template-delete-"|add:pk_s %}{% ui_button "Удалить" size="sm" variant="ghost" icon_name="trash" data_gp_open=modal_id %}{% endwith %}{% endwith %}
+                    </div>
+                </td>
             </tr>
-            </thead>
-            <tbody>
-            {% for template in templates %}
-                <tr>
-                    <td><strong>{{ template.doc_type }}</strong></td>
-                    <td>{{ template.name|default:'—' }}</td>
-                    <td>{{ template.comment|default:'—' }}</td>
-                    <td>{{ template.created_at|date:'d.m.Y' }}</td>
-                    <td>{{ template.uploaded_by.display_name|default:'—' }}</td>
-                    <td>{% if template.file %}<a href="{{ template.file.url }}" target="_blank" rel="noopener">Скачать</a>{% else %}—{% endif %}</td>
-                    <td style="white-space: nowrap;">
-                        <a href="{% url 'documents:template_update' template.pk %}" class="btn btn--secondary btn--sm">Изменить</a>
-                        <form method="post" action="{% url 'documents:template_delete' template.pk %}"
-                              data-confirm="Удалить шаблон «{{ template }}»?"
-                              data-confirm-ok="Удалить" style="display:inline; margin: 0;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn--secondary btn--sm">Удалить</button>
-                        </form>
-                    </td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="7" class="empty" style="text-align:center; padding: 24px;">Шаблонов пока нет.</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+        {% endfor %}
+        </tbody>
+    </table>
 </div>
+{% else %}<div style="padding: var(--space-6)">{% url 'documents:template_create' as create_url %}{% ui_empty "Шаблонов пока нет" "Загрузите заготовку договора, брифа или акта — ПМ возьмёт её за основу." icon_name="file-text" action_label="Новый шаблон" action_href=create_url %}</div>{% endif %}
+{% end_ui_card %}
+
+{% for template in templates %}
+{% with pk_s=template.pk|stringformat:"s" %}{% with modal_id="template-delete-"|add:pk_s form_id="template-delete-form-"|add:pk_s %}
+{% ui_modal id=modal_id title="Удалить шаблон?" %}
+    <form method="post" action="{% url 'documents:template_delete' template.pk %}" id="{{ form_id }}">{% csrf_token %}<p class="gp-text" style="margin:0">Шаблон «{{ template }}» будет удалён.</p></form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Удалить" variant="danger" type="submit" form=form_id %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endwith %}{% endwith %}
+{% endfor %}
 {% endblock %}

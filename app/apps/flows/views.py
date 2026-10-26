@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from apps.flows.models import Flow, Group
 from apps.interns.models import Intern, InternStatus, WORKING_STATUSES
@@ -37,6 +38,18 @@ class FlowForm(forms.ModelForm):
         }
 
 
+def _crumbs(flow=None, *tail) -> list[dict]:
+    """Навигационная цепочка: Главная › Потоки › поток › …"""
+    crumbs = [
+        {'label': 'Главная', 'href': reverse('dashboard')},
+        {'label': 'Потоки', 'href': reverse('flows:list')},
+    ]
+    if flow is not None:
+        crumbs.append({'label': f'Поток {flow.number}', 'href': flow.get_absolute_url()})
+    crumbs += [{'label': label, 'href': href} for label, href in tail]
+    return crumbs
+
+
 @login_required
 def flow_list(request):
     flows = Flow.objects.annotate(
@@ -54,14 +67,19 @@ def flow_list(request):
             'active': active,
             'completed': completed,
         })
-    return render(request, 'flows/list.html', {'rows': rows})
+    return render(request, 'flows/list.html', {
+        'rows': rows, 'crumbs': _crumbs()[:-1] + [{'label': 'Потоки', 'href': ''}],
+    })
 
 
 @login_required
 def flow_detail(request, pk):
     flow = get_object_or_404(Flow, pk=pk)
     tab = request.GET.get('tab', 'groups')
-    context = {'flow': flow, 'tab': tab}
+    context = {
+        'flow': flow, 'tab': tab,
+        'crumbs': _crumbs() + [{'label': f'Поток {flow.number}', 'href': ''}],
+    }
 
     if tab == 'groups':
         groups = list(
@@ -151,6 +169,7 @@ def group_detail(request, pk):
         'members': members,
         'sections': team_selectors.group_by_role(members),
         'active_members': [m for m in members if m.status == 'active'],
+        'crumbs': _crumbs(group.flow, (f'Группа {group.code}', '')),
     })
 
 
@@ -167,6 +186,7 @@ def group_create(request, flow_pk):
         return redirect(group.get_absolute_url())
     return render(request, 'flows/group_form.html', {
         'form': form, 'flow': flow, 'title': f'Новая группа потока {flow.number}',
+        'crumbs': _crumbs(flow, ('Новая группа', '')),
     })
 
 
@@ -181,6 +201,8 @@ def group_update(request, pk):
     return render(request, 'flows/group_form.html', {
         'form': form, 'flow': group.flow, 'group': group,
         'title': f'Редактирование: {group}',
+        'crumbs': _crumbs(group.flow, (f'Группа {group.code}', group.get_absolute_url()),
+                          ('Редактирование', '')),
     })
 
 
@@ -192,7 +214,10 @@ def flow_create(request):
         messages.success(request, f'{flow} создан.')
         return redirect(flow.get_absolute_url())
     return render(
-        request, 'flows/form.html', {'form': form, 'title': 'Новый поток'},
+        request, 'flows/form.html', {
+            'form': form, 'title': 'Новый поток',
+            'crumbs': _crumbs(None, ('Новый поток', '')),
+        },
     )
 
 
@@ -206,5 +231,6 @@ def flow_update(request, pk):
         return redirect(flow.get_absolute_url())
     return render(
         request, 'flows/form.html',
-        {'form': form, 'flow': flow, 'title': f'Редактирование: {flow}'},
+        {'form': form, 'flow': flow, 'title': f'Редактирование: {flow}',
+         'crumbs': _crumbs(flow, ('Редактирование', ''))},
     )

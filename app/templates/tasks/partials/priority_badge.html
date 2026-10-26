@@ -1,0 +1,1 @@
+{% load ui %}{% if task.priority == 'critical' %}{% ui_badge "Critical" tone="danger" %}{% elif task.priority == 'high' %}{% ui_badge "High" tone="warning" %}{% elif task.priority == 'medium' %}{% ui_badge "Medium" tone="info" %}{% else %}{% ui_badge "Low" %}{% endif %}

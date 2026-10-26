@@ -1,82 +1,74 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% comment %}
+Pipeline проектов по этапам (2.0). Контекст: columns [{key, label, projects}].
+Карточку перетаскивают в другую колонку — POST /projects/<pk>/move-stage/ (views.project_move_stage).
+{% endcomment %}
 {% block title %}Pipeline — GeeksPro Control{% endblock %}
-
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Pipeline</h1>
-        <div class="sub">Перетащите карточку, чтобы сменить этап — изменение попадёт в историю</div>
-    </div>
-    <div class="page-actions">
-        <a href="{% url 'projects:list' %}" class="btn btn--secondary">Таблица</a>
-        <a href="{% url 'projects:create' %}" class="btn">+ Новый проект</a>
-    </div>
-</div>
-
-<div class="kanban">
-    {% for column in columns %}
-        <div class="kanban__col" data-stage="{{ column.key }}">
-            <div class="kanban__title">
-                <span>{{ column.label }}</span>
-                <span>{{ column.projects|length }}</span>
-            </div>
-            <div class="kanban__cards">
-                {% for project in column.projects %}
-                    <div class="kanban-card" draggable="true" data-project="{{ project.pk }}">
-                        <div class="kanban-card__title">
-                            <a href="{{ project.get_absolute_url }}">{{ project.name }}</a>
-                        </div>
-                        <div class="kanban-card__meta">
-                            <span>{{ project.display_code }}{% if project.client %} · {{ project.client }}{% endif %}</span>
-                            <span>ПМ: {{ project.pm.full_name|default:'не назначен' }}</span>
-                            {% if project.planned_end_date %}<span>Deadline: {{ project.planned_end_date|date:'d.m.Y' }}</span>{% endif %}
-                            <span>
-                                {% include 'projects/partials/deadline_badge.html' with status=project.deadline_status %}
-                            </span>
-                            <div class="progress">
-                                <div class="progress__bar"><div class="progress__fill" style="width: {{ project.progress }}%"></div></div>
-                                <span class="progress__label">{{ project.progress }}%</span>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% endfor %}
-</div>
+{% block extra_head %}
+<style>
+    .gp-pipeline { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+    .gp-pipeline .gp-board__col { transition: border-color var(--duration-fast), background-color var(--duration-fast); }
+    .gp-pipeline .gp-board__col.is-over { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-sunken)); }
+    .gp-pipeline .gp-task[draggable="true"] { cursor: grab; }
+    .gp-pipeline .gp-task.is-dragging { opacity: .5; }
+    .gp-pipeline .gp-board__list { min-height: 48px; }
+</style>
 {% endblock %}
+{% block page %}
+{% ui_page_header title="Pipeline" subtitle="Перетащите карточку, чтобы сменить этап — изменение попадёт в историю" %}
+    {% url 'projects:list' as list_url %}{% ui_button "Таблица" href=list_url icon_name="layout-grid" %}
+    {% url 'projects:create' as create_url %}{% ui_button "Новый проект" variant="primary" href=create_url icon_name="plus" %}
+{% end_ui_page_header %}
 
-{% block extra_js %}
+<div class="gp-board gp-pipeline" aria-label="Проекты по этапам">
+{% for column in columns %}
+    <section class="gp-board__col" data-stage="{{ column.key }}" aria-labelledby="stage-{{ column.key }}">
+        <h2 class="gp-board__head" id="stage-{{ column.key }}"><span>{{ column.label }}</span>{% ui_badge column.projects|length %}</h2>
+        <ul class="gp-board__list">
+        {% for project in column.projects %}
+            <li class="gp-task" draggable="true" data-project="{{ project.pk }}">
+                <p class="gp-task__title"><a href="{{ project.get_absolute_url }}">{{ project.name }}</a></p>
+                <p class="gp-task__meta">{{ project.display_code }}{% if project.client %} · {{ project.client }}{% endif %}</p>
+                <p class="gp-task__meta">ПМ: {{ project.pm.full_name|default:'не назначен' }}{% if project.planned_end_date %} · срок {{ project.planned_end_date|date:'d.m.Y' }}{% endif %}</p>
+                <div class="gp-task__tags">
+                    {% if not project.deadline_status %}{% ui_badge "—" %}
+                    {% elif project.deadline_status == 'overdue' %}{% ui_badge "Просрочен" tone="danger" dot=True %}
+                    {% elif project.deadline_status == 'behind' %}{% ui_badge "Отставание" tone="warning" dot=True %}
+                    {% elif project.deadline_status == 'at_risk' %}{% ui_badge "Риск задержки" tone="warning" dot=True %}
+                    {% else %}{% ui_badge "По графику" tone="success" dot=True %}{% endif %}
+                </div>
+                <span class="gp-cluster" style="--cluster-gap: var(--space-2); flex-wrap: nowrap"><span class="gp-segments" style="flex: 1 1 auto; height: 6px" aria-hidden="true"><span class="gp-tone-2" style="width: {{ project.progress }}%"></span></span><span class="gp-small gp-nowrap">{{ project.progress }}%</span></span>
+            </li>
+        {% empty %}
+            <li class="gp-board__empty">Нет проектов</li>
+        {% endfor %}
+        </ul>
+    </section>
+{% endfor %}
+</div>
+
 <script>
 (function () {
-    let dragged = null;
-    document.querySelectorAll('.kanban-card').forEach(function (card) {
-        card.addEventListener('dragstart', function () { dragged = card; });
+    var dragged = null;
+    document.querySelectorAll('.gp-pipeline .gp-task[draggable]').forEach(function (card) {
+        card.addEventListener('dragstart', function () { dragged = card; card.classList.add('is-dragging'); });
+        card.addEventListener('dragend', function () { card.classList.remove('is-dragging'); });
     });
-    document.querySelectorAll('.kanban__col').forEach(function (col) {
-        col.addEventListener('dragover', function (e) {
-            e.preventDefault();
-            col.classList.add('is-over');
-        });
+    document.querySelectorAll('.gp-pipeline .gp-board__col').forEach(function (col) {
+        col.addEventListener('dragover', function (e) { e.preventDefault(); col.classList.add('is-over'); });
         col.addEventListener('dragleave', function () { col.classList.remove('is-over'); });
         col.addEventListener('drop', function (e) {
             e.preventDefault();
             col.classList.remove('is-over');
             if (!dragged) return;
-            const projectId = dragged.dataset.project;
-            const stage = col.dataset.stage;
-            const body = new URLSearchParams({stage: stage});
+            var projectId = dragged.dataset.project;
+            var body = new URLSearchParams({stage: col.dataset.stage});
             fetch('/projects/' + projectId + '/move-stage/', {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
+                headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/x-www-form-urlencoded'},
                 body: body,
-            }).then(function (resp) {
-                if (resp.ok) { window.location.reload(); }
-            });
+            }).then(function (resp) { if (resp.ok) { window.location.reload(); } });
             dragged = null;
         });
     });

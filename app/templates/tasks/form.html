@@ -1,56 +1,28 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}{{ title }} — GeeksPro Control{% endblock %}
-
-{% block content %}
-<div class="form-page">
-    <div class="page-head">
-        <div>
-            <h1>{{ title }}</h1>
-            <div class="sub">Заполните название и срок — остальное по желанию</div>
-        </div>
-    </div>
-
-    <form method="post" class="panel">
+{% block page %}
+{% ui_page_header title=title subtitle="Заполните название и срок — остальное по желанию" %}{% end_ui_page_header %}
+<div style="max-width: 760px">
+{% ui_card %}
+    <form method="post" class="gp-form">
         {% csrf_token %}
-        {% if form.non_field_errors %}
-            <div class="message message--error">{{ form.non_field_errors }}</div>
-        {% endif %}
-
-        <div class="form-field form-field--lg">
-            <label for="{{ form.title.id_for_label }}">Название задачи</label>
-            {{ form.title }}
-            {% if form.title.errors %}<div class="form-errors">{{ form.title.errors.0 }}</div>{% endif %}
+        {% if form.non_field_errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+        <div class="gp-form-grid">
+            {% ui_field form.title label="Название задачи" %}
+            {% ui_field form.description label="Описание" %}
         </div>
-
-        <div class="form-field" style="margin-top: 18px">
-            <label for="{{ form.description.id_for_label }}">Описание</label>
-            {{ form.description }}
-            {% if form.description.errors %}<div class="form-errors">{{ form.description.errors.0 }}</div>{% endif %}
+        <div class="gp-form-grid gp-form-grid--2" style="margin-top: var(--space-5)">
+            {% ui_field form.project label="Проект" wide=True %}
+            {% ui_field form.priority label="Приоритет" %}
+            {% ui_field form.deadline label="Deadline" %}
         </div>
-
-        <div class="form-row" style="margin-top: 18px">
-            <div class="form-field">
-                <label for="{{ form.project.id_for_label }}">Проект</label>
-                {{ form.project }}
-                {% if form.project.errors %}<div class="form-errors">{{ form.project.errors.0 }}</div>{% endif %}
-            </div>
-            <div class="form-field">
-                <label for="{{ form.priority.id_for_label }}">Приоритет</label>
-                {{ form.priority }}
-            </div>
-            <div class="form-field">
-                <label for="{{ form.deadline.id_for_label }}">Deadline</label>
-                {{ form.deadline }}
-                {% if form.deadline.errors %}<div class="form-errors">{{ form.deadline.errors.0 }}</div>{% endif %}
-            </div>
-        </div>
-
-        <div class="form-actions">
-            <button type="submit" class="btn">Сохранить</button>
-            <a href="{% if task %}{{ task.get_absolute_url }}{% else %}{% url 'tasks:list' %}{% endif %}"
-               class="btn btn--secondary">Отмена</a>
+        {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+        <div class="gp-form-actions">
+            {% ui_button "Сохранить" variant="primary" type="submit" %}
+            {% if task %}{% ui_button "Отмена" variant="ghost" href=task.get_absolute_url %}{% else %}{% url 'tasks:list' as cancel_url %}{% ui_button "Отмена" variant="ghost" href=cancel_url %}{% endif %}
         </div>
     </form>
+{% end_ui_card %}
 </div>
 {% endblock %}

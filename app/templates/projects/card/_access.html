@@ -1,0 +1,78 @@
+{% load ui %}
+{% comment %}
+Доступы проекта (вкладка руководителя). Контекст: accesses, access_form, project.
+Пароль скрыт до нажатия «Показать»; копирование — через буфер обмена.
+{% endcomment %}
+<div class="gp-stack gp-stack--lg">
+{% with count=accesses|length|stringformat:"s" %}
+{% ui_card title="Доступы проекта · "|add:count flush=True %}
+    {% if accesses %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0">
+        <table class="gp-table">
+            <caption class="gp-sr-only">Доступы проекта</caption>
+            <thead><tr><th scope="col">Сервис</th><th scope="col">Адрес</th><th scope="col">Логин</th><th scope="col">Пароль</th><th scope="col">Комментарий</th><th scope="col"><span class="gp-sr-only">Действия</span></th></tr></thead>
+            <tbody>
+            {% for access in accesses %}
+                <tr>
+                    <td class="is-primary" data-label="Сервис"><span class="gp-table__primary">{{ access.service }}</span></td>
+                    <td data-label="Адрес">{% if access.url %}<a class="gp-link" href="{{ access.url }}" target="_blank" rel="noopener" style="overflow-wrap: anywhere">{{ access.url|cut:'https://'|cut:'http://'|truncatechars:34 }}</a>{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                    <td data-label="Логин">
+                        {% if access.login %}
+                        <span class="gp-cluster" style="--cluster-gap: var(--space-1); flex-wrap: nowrap">
+                            <span class="gp-code" style="overflow-wrap: anywhere">{{ access.login }}</span>
+                            <button type="button" class="gp-btn gp-btn--ghost gp-btn--sm" title="Скопировать логин" x-data="{ done: false }"
+                                    @click="navigator.clipboard.writeText('{{ access.login|escapejs }}'); done = true; setTimeout(() => done = false, 1200)"
+                                    x-text="done ? 'Скопировано' : 'Копировать'">Копировать</button>
+                        </span>
+                        {% else %}<span class="gp-muted">—</span>{% endif %}
+                    </td>
+                    <td data-label="Пароль">
+                        {% if access.password %}
+                        <span class="gp-cluster" style="--cluster-gap: var(--space-1); flex-wrap: nowrap" x-data="{ show: false, done: false }">
+                            <span class="gp-code" style="overflow-wrap: anywhere" x-text="show ? '{{ access.password|escapejs }}' : '••••••••'">••••••••</span>
+                            <button type="button" class="gp-btn gp-btn--ghost gp-btn--sm" @click="show = !show" :aria-pressed="show.toString()" x-text="show ? 'Скрыть' : 'Показать'">Показать</button>
+                            <button type="button" class="gp-btn gp-btn--ghost gp-btn--sm" title="Скопировать пароль"
+                                    @click="navigator.clipboard.writeText('{{ access.password|escapejs }}'); done = true; setTimeout(() => done = false, 1200)"
+                                    x-text="done ? 'Скопировано' : 'Копировать'">Копировать</button>
+                        </span>
+                        {% else %}<span class="gp-muted">—</span>{% endif %}
+                    </td>
+                    <td data-label="Комментарий"><span class="gp-muted gp-small" style="white-space: pre-line">{{ access.comment|default:'' }}</span></td>
+                    <td class="is-actions" data-label="">
+                        <span class="gp-cluster" style="--cluster-gap: var(--space-1); flex-wrap: nowrap; justify-content: flex-end">
+                            {% url 'projects:access_update' access.pk as edit_url %}{% ui_button "Изменить" size="sm" variant="ghost" icon_name="pencil" href=edit_url %}
+                            {% with pk=access.pk|stringformat:"s" %}{% with modal="access-delete-"|add:pk %}{% ui_button "Удалить" size="sm" variant="ghost" icon_name="trash" label_hidden=True data_gp_open=modal %}{% endwith %}{% endwith %}
+                        </span>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="padding: var(--space-6)">{% ui_empty "Доступов пока нет" text="Добавьте логины и пароли при выходе в прод или сдаче проекта." icon_name="eye" %}</div>
+    {% endif %}
+{% end_ui_card %}
+{% endwith %}
+
+{% ui_card title="Добавить доступ" %}
+    <form method="post" action="{% url 'projects:access_create' project.pk %}" class="gp-form">
+        {% csrf_token %}
+        {% if access_form.non_field_errors %}<div class="gp-form-errors">{% ui_alert access_form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% for field in access_form.visible_fields %}{% if field.field.widget.attrs.rows %}{% ui_field field wide=True %}{% else %}{% ui_field field %}{% endif %}{% endfor %}
+        </div>
+        {% for field in access_form.hidden_fields %}{{ field }}{% endfor %}
+        <div class="gp-form-actions">{% ui_button "Добавить" variant="primary" type="submit" icon_name="plus" %}</div>
+    </form>
+{% end_ui_card %}
+</div>
+
+{% for access in accesses %}
+{% with pk=access.pk|stringformat:"s" %}{% with modal="access-delete-"|add:pk form_id="access-delete-form-"|add:pk %}
+{% ui_modal id=modal title="Удалить доступ?" %}
+    <form method="post" action="{% url 'projects:access_delete' access.pk %}" id="{{ form_id }}">{% csrf_token %}<p class="gp-text" style="margin:0">Доступ «{{ access.service }}» будет удалён из проекта.</p></form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Удалить" variant="danger" type="submit" form=form_id %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endwith %}{% endwith %}
+{% endfor %}

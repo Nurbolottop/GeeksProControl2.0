@@ -1,75 +1,84 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% comment %}
+Новый проект / редактирование проекта (2.0). Контекст: form, title, project (при правке).
+При создании заказчика можно завести тут же (поле new_client, см. views.project_create).
+Удаление проекта — только с вводом кода проекта (views.project_delete сверяет confirm_code).
+{% endcomment %}
 {% block title %}{{ title }} — GeeksPro Control{% endblock %}
+{% block page %}
+{% if project %}{% ui_page_header title=title subtitle=project.display_code %}{% end_ui_page_header %}{% else %}{% ui_page_header title=title subtitle="Поток и номер в потоке проставятся сами по текущему потоку" %}{% end_ui_page_header %}{% endif %}
 
-{% block content %}
-<div class="page-head">
-    <div><h1>{{ title }}</h1></div>
+{% ui_card %}
+    <form method="post" class="gp-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+        {% if project %}
+            <div class="gp-form-grid gp-form-grid--2">
+                {% for field in form.visible_fields %}{% if field.field.widget.attrs.rows %}{% ui_field field wide=True %}{% else %}{% ui_field field %}{% endif %}{% endfor %}
+            </div>
+            {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+        {% else %}
+            <div class="gp-form-grid gp-form-grid--2">
+                {% ui_field form.name %}
+                <div class="gp-field" x-data="{ newClient: false }">
+                    <label class="gp-label" for="{{ form.client.id_for_label }}">Заказчик</label>
+                    <div class="gp-cluster" style="--cluster-gap: var(--space-2); flex-wrap: nowrap">
+                        <template x-if="!newClient">
+                            <select class="gp-select" name="client" id="{{ form.client.id_for_label }}" style="flex: 1 1 auto; min-width: 0"{% if form.client.errors %} aria-invalid="true"{% endif %}>
+                                <option value="">Выберите заказчика</option>
+                                {% for value, label in form.fields.client.choices %}
+                                    {% if value %}<option value="{{ value }}"{% if form.client.value|stringformat:"s" == value|stringformat:"s" %} selected{% endif %}>{{ label }}</option>{% endif %}
+                                {% endfor %}
+                            </select>
+                        </template>
+                        <template x-if="newClient">
+                            <input class="gp-input" type="text" name="new_client" id="new-client" autocomplete="off" style="flex: 1 1 auto; min-width: 0"
+                                   placeholder="Название организации заказчика">
+                        </template>
+                        <span x-show="!newClient">{% ui_button "Добавить нового заказчика" icon_name="plus" label_hidden=True x_on_click="newClient = true" title="Добавить нового заказчика" %}</span>
+                        <span x-show="newClient" x-cloak>{% ui_button "Выбрать из списка" icon_name="x" label_hidden=True x_on_click="newClient = false" title="Выбрать из списка" %}</span>
+                    </div>
+                    <span class="gp-help">Нет в списке — нажмите «+» и впишите организацию.</span>
+                    {% if form.client.errors %}<div class="gp-error">{% ui_icon "alert-circle" %}<span>{{ form.client.errors|join:" " }}</span></div>{% endif %}
+                </div>
+                {% ui_field form.city %}
+                {% ui_field form.description wide=True %}
+            </div>
+            <p class="gp-muted gp-small" style="margin: 0">
+                Тип проекта и ссылки заполнит ПМ в своём портале, сроки и доступы — потом в «Обзоре».
+                Команда проекта создаётся сразу, ПМ назначите на следующем шаге.
+            </p>
+        {% endif %}
+        <div class="gp-form-actions">
+            {% ui_button "Сохранить" variant="primary" type="submit" %}
+            {% if project %}{% ui_button "Отмена" variant="ghost" href=project.get_absolute_url %}{% else %}{% url 'projects:list' as list_url %}{% ui_button "Отмена" variant="ghost" href=list_url %}{% endif %}
+        </div>
+    </form>
+{% end_ui_card %}
+
+{% if project %}
+{% firstof project.display_code project.pk as delete_code %}
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Удалить проект" subtitle="Безвозвратно, вместе с этапами, задачами, отчётами, документами, доступами и историей. Факт удаления останется в журнале аудита." %}
+    {% ui_button "Удалить проект" variant="danger" icon_name="trash" data_gp_open="project-delete" %}
+{% end_ui_card %}
 </div>
 
-<form method="post" class="panel">
-    {% csrf_token %}
-    {% if form.non_field_errors %}
-        <div class="message message--error">{{ form.non_field_errors }}</div>
-    {% endif %}
-
-    {% if project %}
-        <div class="form-grid">
-            {% include 'partials/form_fields.html' %}
+{% ui_modal id="project-delete" title="Удалить проект?" %}
+    <form method="post" action="{% url 'projects:delete' project.pk %}" id="project-delete-form" class="gp-stack">
+        {% csrf_token %}
+        <p class="gp-text" style="margin: 0">«{{ project.name }}» будет удалён безвозвратно вместе с этапами, задачами, отчётами, документами и историей.</p>
+        <div class="gp-field">
+            <label class="gp-label" for="project-delete-code">Для подтверждения введите код проекта <span class="gp-code">{{ delete_code }}</span></label>
+            <input class="gp-input" id="project-delete-code" name="confirm_code" autocomplete="off" required pattern="{{ delete_code }}" title="Код проекта: {{ delete_code }}">
         </div>
-    {% else %}
-        <div class="form-grid">
-            <div class="form-field">
-                <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
-                {{ form.name }}
-                {% if form.name.errors %}<div class="form-errors">{{ form.name.errors.0 }}</div>{% endif %}
-            </div>
-
-            <div class="form-field" x-data="{ newClient: false }">
-                <label for="{{ form.client.id_for_label }}">Заказчик</label>
-                <div class="input-add">
-                    <template x-if="!newClient">
-                        <select name="client" id="{{ form.client.id_for_label }}">
-                            <option value="">Выберите заказчика</option>
-                            {% for value, label in form.fields.client.choices %}
-                                {% if value %}<option value="{{ value }}">{{ label }}</option>{% endif %}
-                            {% endfor %}
-                        </select>
-                    </template>
-                    <template x-if="newClient">
-                        <input type="text" name="new_client" autocomplete="off"
-                               placeholder="Название организации заказчика">
-                    </template>
-                    <button type="button"
-                            class="input-add__btn" :class="newClient && 'input-add__btn--cancel'"
-                            @click="newClient = !newClient"
-                            :title="newClient ? 'Выбрать из списка' : 'Добавить нового заказчика'"
-                            x-text="newClient ? '✕' : '+'"></button>
-                </div>
-                {% if form.client.errors %}<div class="form-errors">{{ form.client.errors.0 }}</div>{% endif %}
-            </div>
-
-            <div class="form-field">
-                <label for="{{ form.city.id_for_label }}">{{ form.city.label }}</label>
-                {{ form.city }}
-            </div>
-
-            <div class="form-field form-field--wide">
-                <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
-                {{ form.description }}
-            </div>
+        <div class="gp-field">
+            <label class="gp-label" for="project-delete-reason">Причина</label>
+            <input class="gp-input" id="project-delete-reason" name="reason" autocomplete="off">
         </div>
-        <div class="sub" style="color: var(--text-muted); font-size: 12.5px; margin-top: 4px">
-            Поток и номер в потоке проставятся сами по текущему потоку.
-            Тип проекта и ссылки заполнит ПМ в своём портале, сроки и доступы — потом в «Обзоре».
-            Команда проекта создаётся сразу, ПМ назначите на следующем шаге.
-        </div>
-    {% endif %}
-
-    <div class="form-actions">
-        <button type="submit" class="btn">Сохранить</button>
-        <a href="{% if project %}{{ project.get_absolute_url }}{% else %}{% url 'projects:list' %}{% endif %}"
-           class="btn btn--secondary">Отмена</a>
-    </div>
-</form>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Удалить проект" variant="danger" type="submit" form="project-delete-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endif %}
 {% endblock %}

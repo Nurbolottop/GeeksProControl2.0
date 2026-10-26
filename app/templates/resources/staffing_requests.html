@@ -1,128 +1,113 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Запросы на стажёров — GeeksPro Control{% endblock %}
-
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Запросы на стажёров</h1>
-        <div class="sub">Сколько людей и на какой проект нужно, к какой дате</div>
-    </div>
-    <div class="page-actions">
-        <a href="#new" class="btn">+ Запрос</a>
-    </div>
-</div>
+{% block page %}
+<div x-data="{ open: {% if not open_requests or form.errors %}true{% else %}false{% endif %} }">
+{% ui_page_header title="Запросы на стажёров" subtitle="Сколько людей и на какой проект нужно, к какой дате" %}
+    {% ui_button "Запрос" variant="primary" href="#new" icon_name="plus" x_on_click="open = true" %}
+{% end_ui_page_header %}
 
 {% if open_requests %}
-    <div class="lead-summary">
-        <div class="lead-summary__item lead-summary__item--total">
-            <span class="lead-summary__value">{{ total_needed }}</span>
-            <span class="lead-summary__label">всего нужно</span>
-        </div>
-        {% for row in by_spec %}
-            <div class="lead-summary__item">
-                <span class="lead-summary__value">{{ row.total }}</span>
-                <span class="lead-summary__label">{{ row.specialization__name }}</span>
-            </div>
-        {% endfor %}
+<section aria-label="Сколько нужно" class="gp-grid" style="--grid-min: 150px; margin-bottom: var(--space-6)">
+    <div class="gp-stat gp-stat--accent">
+        <span class="gp-stat__label">Итого</span>
+        <span class="gp-stat__value">{{ total_needed }}</span>
+        <span class="gp-stat__caption">всего нужно</span>
     </div>
+    {% for row in by_spec %}
+    <div class="gp-stat">
+        <span class="gp-stat__label">{{ row.specialization__name }}</span>
+        <span class="gp-stat__value">{{ row.total }}</span>
+        <span class="gp-stat__caption">в открытых запросах</span>
+    </div>
+    {% endfor %}
+</section>
 {% endif %}
 
-<div class="panel" style="padding: 0;">
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
+{% ui_card title="Открытые запросы" flush=True %}
+{% if open_requests %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Открытые запросы на стажёров</caption>
+        <thead><tr><th scope="col">Проект</th><th scope="col">Направление</th><th scope="col" class="is-numeric">Сколько</th><th scope="col">Нужны к</th><th scope="col">Кто запросил</th><th scope="col">Комментарий</th><th scope="col"><span class="gp-sr-only">Действия</span></th></tr></thead>
+        <tbody>
+        {% for req in open_requests %}
             <tr>
-                <th>Проект</th>
-                <th>Направление</th>
-                <th>Сколько</th>
-                <th>Нужны к</th>
-                <th>Кто запросил</th>
-                <th>Комментарий</th>
-                <th></th>
+                <td class="is-primary" data-label="Проект"><a class="gp-link gp-table__primary" href="{{ req.project.get_absolute_url }}">{{ req.project.name }}</a></td>
+                <td data-label="Направление">{% ui_badge req.specialization tone="info" %}</td>
+                <td class="is-numeric" data-label="Сколько">{{ req.count }}</td>
+                <td data-label="Нужны к" class="gp-nowrap">{% if req.needed_by %}{{ req.needed_by|date:'d.m.Y' }}{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td data-label="Кто запросил">{% if req.created_by %}{{ req.created_by.display_name|default:req.created_by.username }}{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td data-label="Комментарий" class="gp-muted gp-small" style="overflow-wrap:anywhere">{{ req.comment|default:'—' }}</td>
+                <td data-label="Действия">
+                    <div class="gp-cluster" style="--cluster-gap: var(--space-2); flex-wrap: nowrap; justify-content: flex-end">
+                        <form method="post" action="{% url 'resources:staffing_request_toggle' req.pk %}" style="margin:0">
+                            {% csrf_token %}
+                            {% ui_button "Закрыть" size="sm" type="submit" icon_name="check" %}
+                        </form>
+                        {% with pk_s=req.pk|stringformat:"s" %}{% with modal_id="request-delete-"|add:pk_s %}{% ui_button "Удалить" size="sm" variant="ghost" icon_name="trash" label_hidden=True data_gp_open=modal_id title="Удалить" %}{% endwith %}{% endwith %}
+                    </div>
+                </td>
             </tr>
-            </thead>
-            <tbody>
-            {% for req in open_requests %}
-                <tr>
-                    <td><a href="{{ req.project.get_absolute_url }}"><strong>{{ req.project.name }}</strong></a></td>
-                    <td><span class="badge badge--blue">{{ req.specialization }}</span></td>
-                    <td>{{ req.count }}</td>
-                    <td>
-                        {% if req.needed_by %}{{ req.needed_by|date:'d.m.Y' }}{% else %}—{% endif %}
-                    </td>
-                    <td>
-                        {% if req.created_by %}{{ req.created_by.display_name|default:req.created_by.username }}
-                        {% else %}—{% endif %}
-                    </td>
-                    <td style="color: var(--text-muted); font-size: 13px">{{ req.comment|default:'—' }}</td>
-                    <td style="white-space: nowrap">
-                        <form method="post" action="{% url 'resources:staffing_request_toggle' req.pk %}" style="display:inline; margin:0">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn--secondary btn--sm">Закрыть</button>
-                        </form>
-                        <form method="post" action="{% url 'resources:staffing_request_delete' req.pk %}" style="display:inline; margin:0"
-                              data-confirm="Удалить запрос «{{ req.project.name|escapejs }}: {{ req.specialization|escapejs }} × {{ req.count }}»?">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn--secondary btn--sm">✕</button>
-                        </form>
-                    </td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="7" class="empty" style="text-align:center; padding: 24px;">
-                    Открытых запросов нет.
-                </td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+        {% endfor %}
+        </tbody>
+    </table>
 </div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Открытых запросов нет" "Добавьте запрос ниже — сколько людей и к какой дате нужно проекту." icon_name="users" %}</div>{% endif %}
+{% end_ui_card %}
 
-<div class="panel" id="new" x-data="{ open: {% if not open_requests %}true{% else %}false{% endif %} }">
-    <div class="panel-head">
-        <h2>Новый запрос</h2>
-        <button type="button" class="btn btn--secondary btn--sm" @click="open = !open"
-                x-text="open ? 'Отмена' : '+ Запрос'"></button>
-    </div>
-    <form method="post" x-show="open" x-cloak>
+<div id="new" style="margin-top: var(--space-5); scroll-margin-top: var(--space-6)">
+{% ui_card title="Новый запрос" %}
+    {% ui_slot "actions" %}<button type="button" class="gp-btn gp-btn--secondary gp-btn--sm" @click="open = !open" :aria-expanded="open.toString()" aria-controls="new-request-form"><span x-text="open ? 'Свернуть' : 'Добавить запрос'">Добавить запрос</span></button>{% end_ui_slot %}
+    <form method="post" class="gp-form" id="new-request-form" x-show="open" x-cloak>
         {% csrf_token %}
-        {% if form.non_field_errors %}
-            <div class="message message--error">{{ form.non_field_errors }}</div>
-        {% endif %}
-        <div class="form-grid">
-            {% include 'partials/form_fields.html' %}
+        {% if form.non_field_errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% for field in form.visible_fields %}{% ui_field field wide=field.field.widget.attrs.rows %}{% endfor %}
         </div>
-        <div class="form-actions">
-            <button type="submit" class="btn">Добавить запрос</button>
-        </div>
+        {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+        <div class="gp-form-actions">{% ui_button "Добавить запрос" variant="primary" type="submit" %}</div>
     </form>
+    <p class="gp-muted gp-small" style="margin:0" x-show="!open">Нажмите «Добавить запрос», чтобы открыть форму.</p>
+{% end_ui_card %}
 </div>
 
 {% if closed_requests %}
-    <div class="panel" style="padding: 0; margin-top: 16px;">
-        <div class="panel-head" style="padding: 18px 20px 0">
-            <h2>Закрытые</h2>
-        </div>
-        <div class="table-wrap">
-            <table class="data">
-                <tbody>
-                {% for req in closed_requests %}
-                    <tr style="color: var(--text-muted)">
-                        <td>{{ req.project.name }}</td>
-                        <td><span class="badge badge--gray">{{ req.specialization }}</span></td>
-                        <td>{{ req.count }}</td>
-                        <td>{% if req.needed_by %}{{ req.needed_by|date:'d.m.Y' }}{% else %}—{% endif %}</td>
-                        <td style="white-space: nowrap">
-                            <form method="post" action="{% url 'resources:staffing_request_toggle' req.pk %}" style="display:inline; margin:0">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn--secondary btn--sm">Вернуть</button>
-                            </form>
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Закрытые" subtitle="Последние 20" flush=True %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Закрытые запросы</caption>
+        <thead><tr><th scope="col">Проект</th><th scope="col">Направление</th><th scope="col" class="is-numeric">Сколько</th><th scope="col">Нужны к</th><th scope="col"><span class="gp-sr-only">Действия</span></th></tr></thead>
+        <tbody>
+        {% for req in closed_requests %}
+            <tr class="gp-muted">
+                <td class="is-primary" data-label="Проект">{{ req.project.name }}</td>
+                <td data-label="Направление">{% ui_badge req.specialization %}</td>
+                <td class="is-numeric" data-label="Сколько">{{ req.count }}</td>
+                <td data-label="Нужны к" class="gp-nowrap">{% if req.needed_by %}{{ req.needed_by|date:'d.m.Y' }}{% else %}—{% endif %}</td>
+                <td data-label="Действия">
+                    <form method="post" action="{% url 'resources:staffing_request_toggle' req.pk %}" style="margin:0">
+                        {% csrf_token %}
+                        {% ui_button "Вернуть" size="sm" variant="ghost" type="submit" %}
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% end_ui_card %}
+</div>
 {% endif %}
+</div>
+
+{% for req in open_requests %}
+{% with pk_s=req.pk|stringformat:"s" %}{% with modal_id="request-delete-"|add:pk_s form_id="request-delete-form-"|add:pk_s %}
+{% ui_modal id=modal_id title="Удалить запрос?" %}
+    <form method="post" action="{% url 'resources:staffing_request_delete' req.pk %}" id="{{ form_id }}">{% csrf_token %}<p class="gp-text" style="margin:0">Запрос «{{ req.project.name }}: {{ req.specialization }} × {{ req.count }}» будет удалён.</p></form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Удалить" variant="danger" type="submit" form=form_id %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endwith %}{% endwith %}
+{% endfor %}
 {% endblock %}

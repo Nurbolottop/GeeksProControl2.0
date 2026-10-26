@@ -1,77 +1,54 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Риски — GeeksPro Control{% endblock %}
+{% block page %}
+{% with count_s=page.paginator.count|stringformat:"s" %}{% ui_page_header title="Риски" subtitle="Всего: "|add:count_s %}
+    {% url 'risks:create' as create_url %}{% ui_button "Новый риск" variant="primary" href=create_url icon_name="plus" %}
+{% end_ui_page_header %}{% endwith %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Риски</h1>
-        <div class="sub">Всего: {{ page.paginator.count }}</div>
+<form method="get" class="gp-card" style="margin-bottom: var(--space-4)" role="search" aria-label="Фильтры рисков">
+    <div class="gp-card__body">
+        <div class="gp-filters">
+            <div class="gp-field"><label class="gp-label" for="r-status">Статус</label><select class="gp-select" id="r-status" name="status"><option value="">Открытые</option><option value="closed"{% if params.status == 'closed' %} selected{% endif %}>Закрытые</option></select></div>
+            <div class="gp-field"><label class="gp-label" for="r-category">Категория</label><select class="gp-select" id="r-category" name="category"><option value="">Все</option>{% for value, label in categories %}<option value="{{ value }}"{% if params.category == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+            <div class="gp-field gp-filters__wide"><label class="gp-label" for="r-project">Проект</label><select class="gp-select" id="r-project" name="project"><option value="">Все</option>{% for project in projects %}<option value="{{ project.pk }}"{% if params.project == project.pk|stringformat:'s' %} selected{% endif %}>{{ project.name }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="gp-cluster" style="margin-top: var(--space-4)">
+            {% ui_button "Применить" variant="primary" type="submit" icon_name="filter" %}
+            {% if params.status or params.category or params.project %}{% url 'risks:list' as reset_url %}{% ui_button "Сбросить" variant="ghost" href=reset_url %}{% endif %}
+        </div>
     </div>
-    <div class="page-actions">
-        <a href="{% url 'risks:create' %}" class="btn">+ Новый риск</a>
-    </div>
-</div>
-
-<form method="get" class="filters">
-    <select name="status">
-        <option value="">Открытые</option>
-        <option value="closed" {% if params.status == 'closed' %}selected{% endif %}>Закрытые</option>
-    </select>
-    <select name="category">
-        <option value="">Категория: все</option>
-        {% for value, label in categories %}
-            <option value="{{ value }}" {% if params.category == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-    </select>
-    <select name="project">
-        <option value="">Проект: все</option>
-        {% for project in projects %}
-            <option value="{{ project.pk }}" {% if params.project == project.pk|stringformat:'s' %}selected{% endif %}>{{ project.name }}</option>
-        {% endfor %}
-    </select>
-    <button type="submit" class="btn btn--secondary btn--sm">Применить</button>
 </form>
 
-<div class="panel" style="padding: 0;">
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
+{% ui_card flush=True %}
+{% if page.object_list %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Риски</caption>
+        <thead><tr><th scope="col">Проект</th><th scope="col">Категория</th><th scope="col">Описание</th><th scope="col">Причина</th><th scope="col">Источник</th><th scope="col">Дата</th><th scope="col"><span class="gp-sr-only">Действия</span></th></tr></thead>
+        <tbody>
+        {% for risk in page.object_list %}
             <tr>
-                <th>Проект</th>
-                <th>Категория</th>
-                <th>Описание</th>
-                <th>Причина</th>
-                <th>Источник</th>
-                <th>Дата</th>
-                <th></th>
+                <td class="is-primary" data-label="Проект"><a class="gp-link gp-table__primary" href="{{ risk.project.get_absolute_url }}">{{ risk.project.name }}</a></td>
+                <td data-label="Категория">{% ui_badge risk.get_category_display tone="warning" %}</td>
+                <td data-label="Описание" style="overflow-wrap:anywhere; min-width: 200px">{{ risk.description }}</td>
+                <td data-label="Причина">{{ risk.delay_reason|default:'—' }}</td>
+                <td data-label="Источник">{% if risk.is_auto %}{% ui_badge "Авто" %}{% else %}{% ui_badge "Ручной" tone="info" %}{% endif %}</td>
+                <td data-label="Дата" class="gp-nowrap">{{ risk.created_at|date:'d.m.Y' }}</td>
+                <td data-label="Действия">
+                    {% if risk.status == 'open' %}
+                        <form method="post" action="{% url 'risks:close' risk.pk %}" style="margin:0">
+                            {% csrf_token %}
+                            {% ui_button "Закрыть" size="sm" type="submit" icon_name="check" %}
+                        </form>
+                    {% else %}{% ui_badge "Закрыт" tone="success" %}{% endif %}
+                </td>
             </tr>
-            </thead>
-            <tbody>
-            {% for risk in page.object_list %}
-                <tr>
-                    <td><a href="{{ risk.project.get_absolute_url }}">{{ risk.project.name }}</a></td>
-                    <td><span class="badge badge--orange">{{ risk.get_category_display }}</span></td>
-                    <td>{{ risk.description }}</td>
-                    <td>{{ risk.delay_reason|default:'—' }}</td>
-                    <td>{% if risk.is_auto %}<span class="badge badge--gray">Авто</span>{% else %}<span class="badge badge--blue">Ручной</span>{% endif %}</td>
-                    <td>{{ risk.created_at|date:'d.m.Y' }}</td>
-                    <td>
-                        {% if risk.status == 'open' %}
-                            <form method="post" action="{% url 'risks:close' risk.pk %}" style="margin:0">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn--secondary btn--sm">Закрыть</button>
-                            </form>
-                        {% else %}
-                            <span class="badge badge--gray">Закрыт</span>
-                        {% endif %}
-                    </td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="7" class="empty" style="text-align:center; padding: 24px;">Рисков нет.</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+        {% endfor %}
+        </tbody>
+    </table>
 </div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Рисков нет" "По выбранным фильтрам ничего не найдено." icon_name="alert-triangle" %}</div>{% endif %}
+{% end_ui_card %}
+<div style="margin-top: var(--space-4)">{% ui_pagination page label="рисков" %}</div>
 {% endblock %}

@@ -1,95 +1,88 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Группа {{ group.code }} — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Группа "|add:group.code subtitle=group.name %}
+    {% ui_slot "eyebrow" %}
+        <a class="gp-badge gp-badge--neutral" href="{{ group.flow.get_absolute_url }}">← Поток {{ group.flow.number }}</a>
+        <span class="gp-badge gp-badge--primary">{{ active_members|length }} человек</span>
+    {% end_ui_slot %}
+    {% url 'attendance:group_sheet' group.pk as sheet_url %}{% ui_button "Табель" href=sheet_url icon_name="clipboard-check" %}
+    {% url 'flows:group_update' group.pk as edit_url %}{% ui_button "Редактировать" href=edit_url icon_name="pencil" %}
+    {% if group.project %}{% url 'teams:member_add_group' group.pk as add_url %}{% ui_button "Участник" variant="primary" href=add_url icon_name="plus" %}{% endif %}
+{% end_ui_page_header %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Группа {{ group.code }}</h1>
-        <div class="sub" style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
-            <a href="{{ group.flow.get_absolute_url }}" class="badge badge--gray">← Поток {{ group.flow.number }}</a>
-            {% if group.name %}<span class="badge badge--gray">{{ group.name }}</span>{% endif %}
-            <span class="badge badge--blue">{{ active_members|length }} человек</span>
-        </div>
-    </div>
-    <div class="page-actions">
-        <a href="{% url 'attendance:group_sheet' group.pk %}" class="btn btn--secondary">📋 Табель</a>
-        <a href="{% url 'flows:group_update' group.pk %}" class="btn btn--secondary">Редактировать</a>
-        {% if group.project %}
-            <a href="{% url 'teams:member_add_group' group.pk %}" class="btn">+ Участник</a>
-        {% endif %}
-    </div>
-</div>
-
-<div class="detail-grid">
-    <div class="detail-grid__main">
-        {% for section in sections %}
-            <div class="panel team-section">
-                <div class="team-section__head">
-                    <h2>
-                        <span class="badge badge--{{ section.tone }}">{{ section.label }}</span>
-                    </h2>
-                    <span class="team-section__count">{{ section.count }} чел.</span>
-                </div>
-                <div class="member-list">
-                    {% for member in section.members %}
-                        <div class="member {% if member.status != 'active' %}member--left{% endif %}">
-                            <div class="member__avatar">{{ member.person_name|first|upper }}</div>
-                            <div class="member__body">
-                                {% if member.intern %}
-                                    <a href="{{ member.intern.get_absolute_url }}" class="member__name">{{ member.person_name }}</a>
-                                {% else %}
-                                    <span class="member__name">{{ member.person_name }}</span>
-                                {% endif %}
-                                {% if member.intern.status == 'paused' %}<span class="badge badge--gray" style="margin-left:6px;">Приостановлен</span>{% endif %}
-                                <div class="member__meta">
-                                    {{ member.intern.specialization|default:'—' }} · загрузка {{ member.workload }}%
-                                    {% if member.status != 'active' %} · вышел{% if member.left_reason %} ({{ member.get_left_reason_display }}){% endif %}{% endif %}
-                                </div>
-                            </div>
-                            <div class="member__actions">
-                                <a href="{% url 'teams:member_edit' member.pk %}" class="btn-edit" title="Изменить">✎</a>
-                                <form method="post" action="{% url 'teams:member_delete' member.pk %}" style="margin:0"
-                                      data-confirm="Убрать {{ member.person_name|escapejs }} из команды?"
-                                      data-confirm-reasons='[["self","Сам ушёл"],["unresponsive","Не отвечает"],["not_fit","Не подошёл"],["other","Другое"]]'>
-                                    {% csrf_token %}
-                                    <input type="hidden" name="left_reason">
-                                    <button type="submit" class="btn-edit btn-edit--danger" title="Убрать из команды">✕</button>
-                                </form>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-        {% empty %}
-            <div class="panel empty">Команда не сформирована — добавьте участников.</div>
-        {% endfor %}
-    </div>
-
-    <div class="detail-grid__side">
-        <div class="panel">
-            <h2>Проект группы</h2>
-            {% if group.project %}
-                <div class="meta-list">
-                    <div class="meta-row">
-                        <span>Проект</span>
-                        <div><a href="{{ group.project.get_absolute_url }}">{{ group.project.name }}</a></div>
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    <div class="gp-stack">
+    {% for section in sections %}
+        {% with c=section.count|stringformat:"s" %}{% ui_card title=section.label subtitle=c|add:" чел." flush=True %}
+        {% if section.members %}
+        <ul class="gp-marks">
+            {% for member in section.members %}
+            <li class="gp-mark"{% if member.status != 'active' %} style="opacity: 0.6"{% endif %}>
+                <span class="gp-avatar gp-avatar--sm" aria-hidden="true">{{ member.person_name|first|upper }}</span>
+                <div style="min-width: 0">
+                    <div class="gp-cluster" style="gap: var(--space-2)">
+                        {% if member.intern %}<a class="gp-link gp-table__primary" href="{{ member.intern.get_absolute_url }}">{{ member.person_name }}</a>{% else %}<span class="gp-table__primary">{{ member.person_name }}</span>{% endif %}
+                        {% if member.intern.status == 'paused' %}{% ui_badge "Приостановлен" %}{% endif %}
                     </div>
-                    <div class="meta-row"><span>Клиент</span><div>{{ group.project.client|default:'—' }}</div></div>
-                    <div class="meta-row"><span>Этап</span><div>{% include 'projects/partials/stage_badge.html' with stage_key=group.project.current_stage stage_display=group.project.get_current_stage_display %}</div></div>
-                    <div class="meta-row"><span>Срок</span><div>{% include 'projects/partials/deadline_badge.html' with status=group.project.deadline_status %}</div></div>
-                    <div class="meta-row"><span>Deadline</span><div>{{ group.project.planned_end_date|date:'d.m.Y'|default:'—' }}</div></div>
-                    <div class="meta-row"><span>Прогресс</span><div>{{ group.project.progress }}%</div></div>
+                    <span class="gp-table__secondary">{{ member.intern.specialization|default:'—' }} · загрузка {{ member.workload }}%{% if member.status != 'active' %} · вышел{% if member.left_reason %} ({{ member.get_left_reason_display }}){% endif %}{% endif %}</span>
                 </div>
+                <div class="gp-cluster" style="flex-wrap: nowrap; gap: var(--space-1)">
+                    {% url 'teams:member_edit' member.pk as member_edit_url %}{% ui_button "Изменить" size="sm" variant="ghost" icon_name="pencil" label_hidden=True href=member_edit_url title="Изменить" %}
+                    <button type="button" class="gp-btn gp-btn--ghost gp-btn--sm gp-btn--icon" data-gp-open="member-remove-{{ member.pk }}" aria-label="Убрать {{ member.person_name }} из команды" title="Убрать из команды">{% ui_icon "x" size="sm" %}</button>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}<p class="gp-muted gp-small" style="margin:0; padding: var(--space-4) var(--space-5)">Никого нет.</p>{% endif %}
+        {% end_ui_card %}{% endwith %}
+    {% empty %}
+        <div class="gp-card">{% ui_empty "Команда не сформирована" "Добавьте участников." icon_name="users" %}</div>
+    {% endfor %}
+    </div>
+
+    <div class="gp-stack">
+        {% ui_card title="Проект группы" %}
+            {% if group.project %}
+            <dl class="gp-metrics">
+                <div class="gp-metrics__row"><dt>Проект</dt><dd style="white-space: normal; overflow-wrap: anywhere"><a class="gp-link" href="{{ group.project.get_absolute_url }}">{{ group.project.name }}</a></dd></div>
+                <div class="gp-metrics__row"><dt>Клиент</dt><dd style="white-space: normal; overflow-wrap: anywhere">{{ group.project.client|default:'—' }}</dd></div>
+                <div class="gp-metrics__row"><dt>Этап</dt><dd>{% include "flows/_project_badges.html" with project=group.project only="stage" %}</dd></div>
+                <div class="gp-metrics__row"><dt>Срок</dt><dd>{% include "flows/_project_badges.html" with project=group.project only="deadline" %}</dd></div>
+                <div class="gp-metrics__row"><dt>Deadline</dt><dd>{{ group.project.planned_end_date|date:'d.m.Y'|default:'—' }}</dd></div>
+                <div class="gp-metrics__row"><dt>Прогресс</dt><dd>{{ group.project.progress }}%</dd></div>
+            </dl>
             {% else %}
-                <div class="empty">Проект не назначен. Укажите его в настройках группы.</div>
-                <a href="{% url 'flows:group_update' group.pk %}" class="btn btn--secondary btn--sm" style="margin-top:10px">Назначить проект</a>
+            <p class="gp-muted gp-small" style="margin: 0 0 var(--space-3)">Проект не назначен. Укажите его в настройках группы.</p>
+            {% url 'flows:group_update' group.pk as edit_url %}{% ui_button "Назначить проект" size="sm" href=edit_url icon_name="folder" %}
             {% endif %}
-        </div>
+        {% end_ui_card %}
 
         {% if group.comment %}
-            <div class="panel"><h2>Комментарий</h2><p style="margin:0">{{ group.comment|linebreaksbr }}</p></div>
+        {% ui_card title="Комментарий" %}<p class="gp-text" style="margin:0">{{ group.comment|linebreaksbr }}</p>{% end_ui_card %}
         {% endif %}
     </div>
 </div>
+
+{% for section in sections %}{% for member in section.members %}
+{% with pk_s=member.pk|stringformat:"s" %}{% with modal_id="member-remove-"|add:pk_s form_id="member-remove-form-"|add:pk_s %}
+{% ui_modal id=modal_id title="Убрать из команды?" %}
+    <form method="post" action="{% url 'teams:member_delete' member.pk %}" class="gp-stack" id="{{ form_id }}">{% csrf_token %}
+        <p class="gp-text" style="margin:0">{{ member.person_name }} будет снят(а) с команды. Человек останется в базе.</p>
+        <div class="gp-field"><label class="gp-label" for="{{ form_id }}-reason">Причина (необязательно)</label>
+            <select class="gp-select" id="{{ form_id }}-reason" name="left_reason">
+                <option value="">Без причины</option>
+                <option value="self">Сам ушёл</option>
+                <option value="unresponsive">Не отвечает</option>
+                <option value="not_fit">Не подошёл</option>
+                <option value="other">Другое</option>
+            </select>
+        </div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Убрать" variant="danger" type="submit" form=form_id %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endwith %}{% endwith %}
+{% endfor %}{% endfor %}
 {% endblock %}

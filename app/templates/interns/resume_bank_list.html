@@ -1,71 +1,55 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}{{ title }} — GeeksPro Control{% endblock %}
+{% block page %}
+{% with total_label=people|length|stringformat:"s" %}
+{% ui_page_header title=title subtitle="Заявки выпускников в банк резюме. Всего: "|add:total_label %}{% end_ui_page_header %}
+{% endwith %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>{{ title }}</h1>
-        <div class="sub">Всего: {{ people|length }}</div>
-    </div>
-</div>
-
-<div class="panel" style="padding: 0;">
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
+{% ui_card flush=True %}
+{% if people %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">{{ title }}</caption>
+        <thead><tr><th scope="col">ФИО</th><th scope="col">Направление</th><th scope="col">Телефон</th><th scope="col">Статус проверки</th><th scope="col"><span class="gp-sr-only">Действия</span></th></tr></thead>
+        <tbody>
+        {% for person in people %}
             <tr>
-                <th>ФИО</th>
-                <th>Направление</th>
-                <th>Телефон</th>
-                <th>Статус проверки</th>
-                <th>Действия</th>
+                <td class="is-primary" data-label="ФИО"><a class="gp-link gp-table__primary" style="overflow-wrap:anywhere" href="{{ person.get_absolute_url }}">{{ person.full_name }}</a></td>
+                <td data-label="Направление">{{ person.specialization|default:'—' }}</td>
+                <td data-label="Телефон">{% if person.phone %}<a class="gp-link" href="tel:{{ person.phone }}">{{ person.phone }}</a>{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td data-label="Статус проверки">
+                    {% if person.resume_bank_status == 'approved' %}{% ui_badge "Принят" tone="success" %}
+                    {% elif person.resume_bank_status == 'revision' %}{% ui_badge "На доработке" tone="danger" %}{% if person.resume_bank_comment %}<span class="gp-table__secondary" style="overflow-wrap:anywhere">{{ person.resume_bank_comment }}</span>{% endif %}
+                    {% else %}{% ui_badge "Ожидает проверки" tone="warning" %}{% endif %}
+                </td>
+                <td data-label="Действия">
+                    {% if person.resume_bank_status == 'pending' %}{% with pid=person.pk|stringformat:"s" %}
+                    <div class="gp-cluster" style="gap: var(--space-2)">
+                        {% ui_button "Принять" size="sm" icon_name="check" data_gp_open="approve-"|add:pid %}
+                        {% ui_button "На доработку" size="sm" variant="ghost" icon_name="pencil" data_gp_open="revise-"|add:pid %}
+                    </div>
+                    {% endwith %}{% endif %}
+                </td>
             </tr>
-            </thead>
-            <tbody>
-            {% for person in people %}
-                <tr>
-                    <td><a href="{{ person.get_absolute_url }}"><strong>{{ person.full_name }}</strong></a></td>
-                    <td>{{ person.specialization|default:'—' }}</td>
-                    <td>{{ person.phone|default:'—' }}</td>
-                    <td>
-                        {% if person.resume_bank_status == 'approved' %}
-                            <span class="badge badge--green">Принят</span>
-                        {% elif person.resume_bank_status == 'revision' %}
-                            <span class="badge badge--red">На доработке</span>
-                            {% if person.resume_bank_comment %}
-                                <div class="sub" style="margin-top:4px;">{{ person.resume_bank_comment }}</div>
-                            {% endif %}
-                        {% else %}
-                            <span class="badge badge--yellow">Ожидает проверки</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if person.resume_bank_status == 'pending' %}
-                        <div style="display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap;">
-                            <form method="post" action="{% url 'interns:resume_bank_approve' person.pk %}" style="margin:0"
-                                  data-confirm="Принять резюме {{ person.full_name|escapejs }}? Выпускнику придёт уведомление в Telegram."
-                                  data-confirm-ok="Принять">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn--secondary btn--sm">Принять</button>
-                            </form>
-                            <details>
-                                <summary class="btn btn--secondary btn--sm" style="display:inline-block; cursor:pointer;">На доработку</summary>
-                                <form method="post" action="{% url 'interns:resume_bank_revise' person.pk %}" style="margin-top:8px;">
-                                    {% csrf_token %}
-                                    <textarea name="comment" required placeholder="Что нужно исправить — уйдёт стажёру в Telegram" rows="2" style="width:220px;"></textarea>
-                                    <button type="submit" class="btn btn--secondary btn--sm" style="margin-top:4px;">Отправить</button>
-                                </form>
-                            </details>
-                        </div>
-                        {% endif %}
-                    </td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="5" class="empty" style="text-align:center; padding: 24px;">Пока никого нет.</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+        {% endfor %}
+        </tbody>
+    </table>
 </div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Пока никого нет" icon_name="file-text" %}</div>{% endif %}
+{% end_ui_card %}
+
+{% for person in people %}{% if person.resume_bank_status == 'pending' %}{% with pid=person.pk|stringformat:"s" %}
+{% ui_modal id="approve-"|add:pid title="Принять резюме?" %}
+    <p class="gp-text" style="margin:0">Резюме: {{ person.full_name }}. Выпускнику придёт уведомление в Telegram.</p>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}<form method="post" action="{% url 'interns:resume_bank_approve' person.pk %}" style="margin:0">{% csrf_token %}{% ui_button "Принять" variant="primary" type="submit" icon_name="check" %}</form>{% end_ui_slot %}
+{% end_ui_modal %}
+{% ui_modal id="revise-"|add:pid title="Отправить на доработку" %}
+    <form method="post" action="{% url 'interns:resume_bank_revise' person.pk %}" class="gp-stack" id="revise-form-{{ person.pk }}">
+        {% csrf_token %}
+        <div class="gp-field"><label class="gp-label" for="rv-{{ person.pk }}">Что нужно исправить</label><textarea class="gp-textarea" id="rv-{{ person.pk }}" name="comment" rows="3" required placeholder="Уйдёт стажёру в Telegram"></textarea></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Отправить" variant="primary" type="submit" form="revise-form-"|add:pid %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endwith %}{% endif %}{% endfor %}
 {% endblock %}

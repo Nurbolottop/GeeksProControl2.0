@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.attendance import overview, services
@@ -40,6 +41,24 @@ class MeetingCreateForm(forms.Form):
             ).distinct().order_by('full_name')
 
 
+def _crumbs(group, *tail) -> list[dict]:
+    """Навигационная цепочка страниц команды: Табель › проект › команда › …"""
+    crumbs = [
+        {'label': 'Главная', 'href': reverse('dashboard')},
+        {'label': 'Табель', 'href': reverse('attendance:dashboard')},
+    ]
+    if group.project_id:
+        crumbs.append({
+            'label': group.project.name, 'href': group.project.get_absolute_url(),
+        })
+    crumbs.append({
+        'label': f'Команда {group.code}',
+        'href': reverse('attendance:group_meetings', args=[group.pk]),
+    })
+    crumbs += [{'label': label, 'href': href} for label, href in tail]
+    return crumbs
+
+
 def _period(request) -> tuple[int, int]:
     today = timezone.localdate()
     try:
@@ -73,6 +92,7 @@ def group_sheet(request, pk):
         'prev_month': prev_month,
         'next_month': next_month,
         'today': timezone.localdate(),
+        'crumbs': _crumbs(group, ('Табель за месяц', '')),
     })
 
 
@@ -126,6 +146,7 @@ def meeting_create(request, pk):
         'current': datetime.date(year, month, 1),
         'today': timezone.localdate(),
         'date_error': date_error,
+        'crumbs': _crumbs(group, ('Создать собрание', '')),
     })
 
 
@@ -248,6 +269,7 @@ def group_meetings(request, pk):
         'meetings': meetings,
         'people': people,
         'today': timezone.localdate(),
+        'crumbs': _crumbs(group)[:-1] + [{'label': f'Команда {group.code}', 'href': ''}],
     })
 
 
@@ -311,6 +333,7 @@ def meeting_detail(request, pk):
         'period_start': meeting.period_start,
         'period_days': meeting.period_days,
         'tab': 'scores' if request.GET.get('tab') == 'scores' else 'marks',
+        'crumbs': _crumbs(meeting.group, (meeting.date.strftime('%d.%m.%Y'), '')),
     })
 
 

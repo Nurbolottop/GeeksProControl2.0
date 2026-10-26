@@ -1,0 +1,7 @@
+{% load ui %}{# Подтверждение удаления собрания: meeting, text. Кнопка-открывашка: data-gp-open="meeting-delete-<pk>" #}
+{% with pk_s=meeting.pk|stringformat:"s" day=meeting.date|date:"d.m.Y" %}{% with modal_id="meeting-delete-"|add:pk_s form_id="meeting-delete-form-"|add:pk_s %}
+{% ui_modal id=modal_id title="Удалить собрание "|add:day|add:"?" %}
+    <form method="post" action="{% url 'attendance:meeting_delete' meeting.pk %}" id="{{ form_id }}">{% csrf_token %}<p class="gp-text" style="margin:0">{{ meeting.get_kind_display }} · {{ day }}. {{ text }}</p></form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Удалить" variant="danger" type="submit" form=form_id %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endwith %}{% endwith %}

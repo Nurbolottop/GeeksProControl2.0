@@ -90,8 +90,11 @@ class HeadNavigationTests(TestCase):
         self.assertEqual([c['label'] for c in group['children'] if c['active']], ['Заявки с брифа'])
 
     def test_shell_wraps_legacy_page(self):
-        # Главная, проекты и стажёры уже на 2.0 — берём страницу, ещё живущую на стилях 1.0
-        response = self.client.get(reverse('interns:reserve'))
+        # 11F: рабочие разделы на 2.0; мост base.html остался у скрытых «Скриптов»
+        from django.test import override_settings
+
+        with override_settings(SCRIPTS_ENABLED=True):
+            response = self.client.get(reverse('scripts:list'))
         html = response.content.decode()
         self.assertIn('class="gp-shell"', html)
         self.assertIn('class="gp-legacy"', html)

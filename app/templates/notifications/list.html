@@ -1,64 +1,44 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Уведомления — GeeksPro Control{% endblock %}
+{% block page %}
+{% with count_s=page.paginator.count|stringformat:"s" %}{% ui_page_header title="Уведомления" subtitle="Открытых: "|add:count_s %}
+    <form method="post" action="{% url 'notifications:close_all' %}" style="margin:0">
+        {% csrf_token %}
+        {% ui_button "Закрыть все" type="submit" icon_name="check" %}
+    </form>
+{% end_ui_page_header %}{% endwith %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Уведомления</h1>
-        <div class="sub">Открытых: {{ page.paginator.count }}</div>
-    </div>
-    <div class="page-actions">
-        <form method="post" action="{% url 'notifications:close_all' %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn--secondary">Закрыть все</button>
-        </form>
-    </div>
+{% url 'notifications:list' as list_url %}
+<div style="margin-bottom: var(--space-4)">
+<nav class="gp-tabs" aria-label="Уровень уведомлений">
+    <a href="{{ list_url }}" class="gp-tabs__tab{% if not level %} is-active{% endif %}"{% if not level %} aria-current="page"{% endif %}>Все</a>
+    <a href="?level=critical" class="gp-tabs__tab{% if level == 'critical' %} is-active{% endif %}"{% if level == 'critical' %} aria-current="page"{% endif %}>Critical</a>
+    <a href="?level=warning" class="gp-tabs__tab{% if level == 'warning' %} is-active{% endif %}"{% if level == 'warning' %} aria-current="page"{% endif %}>Warning</a>
+    <a href="?level=info" class="gp-tabs__tab{% if level == 'info' %} is-active{% endif %}"{% if level == 'info' %} aria-current="page"{% endif %}>Info</a>
+    <a href="?level=success" class="gp-tabs__tab{% if level == 'success' %} is-active{% endif %}"{% if level == 'success' %} aria-current="page"{% endif %}>Success</a>
+</nav>
 </div>
 
-<div class="tabs">
-    <a href="{% url 'notifications:list' %}" class="{% if not level %}is-active{% endif %}">Все</a>
-    <a href="?level=critical" class="{% if level == 'critical' %}is-active{% endif %}">Critical</a>
-    <a href="?level=warning" class="{% if level == 'warning' %}is-active{% endif %}">Warning</a>
-    <a href="?level=info" class="{% if level == 'info' %}is-active{% endif %}">Info</a>
-    <a href="?level=success" class="{% if level == 'success' %}is-active{% endif %}">Success</a>
-</div>
-
-<div class="panel">
+{% ui_card flush=True %}
+{% if page.object_list %}
+<ul class="gp-timeline" style="padding: 0 var(--space-5)">
     {% for notification in page.object_list %}
-        <div style="display:flex; gap:12px; align-items:flex-start; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
-            <div style="display:flex; gap:10px; align-items:flex-start;">
-                {% if notification.level == 'critical' %}<span class="dot dot--red" style="margin-top:5px"></span>
-                {% elif notification.level == 'warning' %}<span class="dot dot--orange" style="margin-top:5px"></span>
-                {% elif notification.level == 'success' %}<span class="dot" style="background:var(--green); margin-top:5px"></span>
-                {% else %}<span class="dot" style="background:var(--blue); margin-top:5px"></span>{% endif %}
-                <div>
-                    {% if notification.url %}
-                        <a href="{{ notification.url }}"><strong>{{ notification.title }}</strong></a>
-                    {% else %}
-                        <strong>{{ notification.title }}</strong>
-                    {% endif %}
-                    {% if notification.description %}
-                        <div style="font-size:12px; color:var(--text-muted)">{{ notification.description }}</div>
-                    {% endif %}
-                    <div style="font-size:12px; color:var(--text-muted)">{{ notification.created_at|date:'d.m.Y H:i' }}</div>
-                </div>
-            </div>
-            <form method="post" action="{% url 'notifications:close' notification.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn--secondary btn--sm">Закрыть</button>
-            </form>
+    <li class="gp-timeline__item gp-timeline__item--{% if notification.level == 'critical' %}danger{% elif notification.level == 'warning' %}warning{% elif notification.level == 'success' %}success{% else %}info{% endif %}">
+        <span class="gp-timeline__icon">{% if notification.level == 'critical' %}{% ui_icon "alert-circle" "sm" %}{% elif notification.level == 'warning' %}{% ui_icon "alert-triangle" "sm" %}{% elif notification.level == 'success' %}{% ui_icon "check-circle" "sm" %}{% else %}{% ui_icon "info" "sm" %}{% endif %}</span>
+        <div style="min-width:0">
+            <p class="gp-timeline__title">{% if notification.url %}<a class="gp-link" href="{{ notification.url }}">{{ notification.title }}</a>{% else %}{{ notification.title }}{% endif %}</p>
+            {% if notification.description %}<p class="gp-timeline__meta">{{ notification.description }}</p>{% endif %}
+            <p class="gp-timeline__meta">{{ notification.created_at|date:'d.m.Y H:i' }}</p>
         </div>
-    {% empty %}
-        <div class="empty">Уведомлений нет — всё чисто.</div>
+        <form method="post" action="{% url 'notifications:close' notification.pk %}" style="margin:0">
+            {% csrf_token %}
+            {% ui_button "Закрыть" size="sm" variant="ghost" type="submit" icon_name="x" %}
+        </form>
+    </li>
     {% endfor %}
-</div>
-
-{% if page.paginator.num_pages > 1 %}
-    <div class="pagination">
-        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">‹</a>{% endif %}
-        <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
-        {% if page.has_next %}<a href="?page={{ page.next_page_number }}">›</a>{% endif %}
-    </div>
-{% endif %}
+</ul>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Уведомлений нет" "Всё чисто." icon_name="bell" %}</div>{% endif %}
+{% end_ui_card %}
+<div style="margin-top: var(--space-4)">{% ui_pagination page label="уведомлений" %}</div>
 {% endblock %}

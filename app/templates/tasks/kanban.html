@@ -1,43 +1,30 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Задачи: Kanban — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title="Задачи — Kanban" subtitle="Перетащите карточку в другую колонку, чтобы сменить статус." %}
+    {% url 'tasks:list' as list_url %}{% ui_button "Таблица" href=list_url icon_name="menu" %}
+    {% url 'tasks:create' as create_url %}{% ui_button "Новая задача" variant="primary" href=create_url icon_name="plus" %}
+{% end_ui_page_header %}
 
-{% block content %}
-<div class="page-head">
-    <div><h1>Задачи — Kanban</h1></div>
-    <div class="page-actions">
-        <a href="{% url 'tasks:list' %}" class="btn btn--secondary">Таблица</a>
-        <a href="{% url 'tasks:create' %}" class="btn">+ Новая задача</a>
-    </div>
-</div>
-
-<div class="kanban">
+<div class="gp-board kanban" aria-label="Доска задач">
     {% for column in columns %}
-        <div class="kanban__col" data-status="{{ column.key }}">
-            <div class="kanban__title">
-                <span>{{ column.label }}</span>
-                <span>{{ column.tasks|length }}</span>
-            </div>
-            <div class="kanban__cards">
+        <section class="gp-board__col kanban__col" data-status="{{ column.key }}" aria-labelledby="kcol-{{ column.key }}">
+            <h2 class="gp-board__head" id="kcol-{{ column.key }}"><span>{{ column.label }}</span>{% ui_badge column.tasks|length %}</h2>
+            <ul class="gp-board__list kanban__cards">
                 {% for task in column.tasks %}
-                    <div class="kanban-card" draggable="true" data-task="{{ task.pk }}">
-                        <div class="kanban-card__title">
-                            <a href="{{ task.get_absolute_url }}">{{ task.title }}</a>
-                        </div>
-                        <div class="kanban-card__meta">
-                            {% if task.project %}<span>{{ task.project.name }}</span>{% endif %}
-                            {% if task.deadline %}<span>Deadline: {{ task.deadline|date:'d.m.Y' }}</span>{% endif %}
-                            <span>
-                                {% if task.priority == 'critical' %}<span class="badge badge--red">Critical</span>
-                                {% elif task.priority == 'high' %}<span class="badge badge--orange">High</span>
-                                {% elif task.priority == 'medium' %}<span class="badge badge--blue">Medium</span>
-                                {% else %}<span class="badge badge--gray">Low</span>{% endif %}
-                            </span>
-                        </div>
-                    </div>
+                    <li class="gp-task kanban-card" draggable="true" data-task="{{ task.pk }}" style="cursor: grab">
+                        <p class="gp-task__title"><a href="{{ task.get_absolute_url }}">{{ task.title }}</a></p>
+                        <div class="gp-task__tags">{% include "tasks/partials/priority_badge.html" %}</div>
+                        {% if task.project or task.deadline %}
+                        <p class="gp-task__meta">{% if task.project %}{{ task.project.name }}{% endif %}{% if task.project and task.deadline %} · {% endif %}{% if task.deadline %}Deadline: {{ task.deadline|date:'d.m.Y' }}{% endif %}</p>
+                        {% endif %}
+                    </li>
+                {% empty %}
+                    <li class="gp-board__empty">Нет задач</li>
                 {% endfor %}
-            </div>
-        </div>
+            </ul>
+        </section>
     {% endfor %}
 </div>
 {% endblock %}
@@ -53,11 +40,13 @@
         col.addEventListener('dragover', function (e) {
             e.preventDefault();
             col.classList.add('is-over');
+            col.style.outline = '2px dashed var(--color-primary)';
         });
-        col.addEventListener('dragleave', function () { col.classList.remove('is-over'); });
+        col.addEventListener('dragleave', function () { col.classList.remove('is-over'); col.style.outline = ''; });
         col.addEventListener('drop', function (e) {
             e.preventDefault();
             col.classList.remove('is-over');
+            col.style.outline = '';
             if (!dragged) return;
             fetch('/tasks/' + dragged.dataset.task + '/status/', {
                 method: 'POST',

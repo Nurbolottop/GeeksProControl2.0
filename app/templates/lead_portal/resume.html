@@ -1,145 +1,104 @@
 {% extends 'lead_portal/base.html' %}
-
+{% load static ui %}
 {% block title %}Моё резюме — Портал тимлида{% endblock %}
-
-{% block content %}
-<p><a href="{% url 'lead_portal:dashboard' %}">← Мои проекты</a></p>
-
+{# Анкета (reserve/partials/apply_form.html) общая с публичной страницей резерва и пока на стилях 1.0 #}
+{% block legacy_assets %}{% if candidate and editing %}<link rel="stylesheet" href="{% static 'gp2/legacy.css' %}">{% endif %}{% endblock %}
+{% block page %}
 {% if candidate and editing %}
-    <div class="portal-hero">
-        <div class="portal-hero__eyebrow">Резерв кадров GeeksPro</div>
-        <h1>Моё резюме</h1>
-        <p>
-            Это ваша анкета в резерве кадров — по ней мы рекомендуем вас работодателям.
-            Держите её свежей: навыки, опыт, ссылки на работы, чего ищете.
-            {% if candidate.submitted_at %}Последнее обновление — {{ candidate.submitted_at|date:'d.m.Y' }}.{% endif %}
-        </p>
-        {% if candidate.intern %}
-            <p class="sub">Проекты, на которых вы работали у нас, добавляются в резюме сами — их вписывать не нужно.</p>
-        {% endif %}
-        <p><a href="{% url 'lead_portal:resume' %}">← Отменить и вернуться к просмотру</a></p>
-    </div>
-    <div class="apply-embed">
-        {% include 'reserve/partials/apply_form.html' with submit_label='Сохранить резюме' actions_note='Изменения сразу попадают в резерв кадров. Оценки и комментарии сотрудников вы здесь не видите — их нет в анкете.' %}
+    {% ui_page_header title="Моё резюме" subtitle="Это ваша анкета в резерве кадров — по ней мы рекомендуем вас работодателям. Держите её свежей: навыки, опыт, ссылки на работы, чего ищете." %}
+        {% ui_slot "eyebrow" %}{% ui_badge "Резерв кадров GeeksPro" tone="primary" %}{% if candidate.submitted_at %}<span class="gp-muted gp-small">Последнее обновление — {{ candidate.submitted_at|date:'d.m.Y' }}.</span>{% endif %}{% end_ui_slot %}
+        {% url 'lead_portal:resume' as resume_url %}{% ui_button "Отменить и вернуться к просмотру" variant="ghost" href=resume_url icon_name="chevron-left" %}
+    {% end_ui_page_header %}
+    {% if candidate.intern %}<div style="margin-bottom: var(--space-4)">{% ui_alert "Проекты, на которых вы работали у нас, добавляются в резюме сами — их вписывать не нужно." level="info" %}</div>{% endif %}
+    <div class="gp-legacy">
+        <div class="apply-embed">
+            {% include 'reserve/partials/apply_form.html' with submit_label='Сохранить резюме' actions_note='Изменения сразу попадают в резерв кадров. Оценки и комментарии сотрудников вы здесь не видите — их нет в анкете.' %}
+        </div>
     </div>
 {% elif candidate %}
-    <div class="page-head">
-        <div>
-            <h1>Моё резюме</h1>
-            <div class="sub">
-                Резерв кадров GeeksPro
-                {% if candidate.submitted_at %}· обновлено {{ candidate.submitted_at|date:'d.m.Y' }}{% endif %}
-            </div>
-        </div>
-        <div class="page-actions">
-            <a href="{% url 'lead_portal:resume' %}?edit=1" class="btn">Редактировать</a>
-        </div>
-    </div>
+    {% if candidate.submitted_at %}{% with updated=candidate.submitted_at|date:'d.m.Y' %}{% ui_page_header title="Моё резюме" subtitle="Резерв кадров GeeksPro · обновлено "|add:updated %}{% url 'lead_portal:resume' as resume_url %}{% ui_button "Редактировать" variant="primary" href=resume_url|add:"?edit=1" icon_name="pencil" %}{% end_ui_page_header %}{% endwith %}
+    {% else %}{% ui_page_header title="Моё резюме" subtitle="Резерв кадров GeeksPro" %}{% url 'lead_portal:resume' as resume_url %}{% ui_button "Редактировать" variant="primary" href=resume_url|add:"?edit=1" icon_name="pencil" %}{% end_ui_page_header %}{% endif %}
 
-    <div class="panel reserve-head">
-        {% if candidate.photo %}
-            <img src="{{ candidate.photo.url }}" alt="" class="reserve-head__photo">
-        {% else %}
-            <span class="reserve-head__photo reserve-head__photo--empty">{{ candidate.full_name|slice:':1' }}</span>
-        {% endif %}
-        <div class="reserve-head__body">
-            <div class="reserve-head__badges">
-                <span class="badge badge--gray">{{ candidate.direction }}</span>
-                {% if candidate.geekspro_level %}<span class="badge badge--blue">{{ candidate.get_geekspro_level_display }}</span>{% endif %}
-                {% if candidate.is_looking_for_job %}
-                    <span class="badge badge--green">Ищет работу · {{ candidate.readiness }}</span>
-                {% else %}
-                    <span class="badge badge--gray">Не ищет работу</span>
+    <div class="gp-stack" style="--stack-gap: var(--space-5)">
+    {% ui_card %}
+        <div class="gp-cluster" style="align-items: flex-start; gap: var(--space-5); flex-wrap: wrap">
+            {% if candidate.photo %}
+                <img src="{{ candidate.photo.url }}" alt="" style="width: 96px; height: 96px; border-radius: var(--radius-lg); object-fit: cover; flex: none">
+            {% else %}
+                {% ui_avatar candidate.full_name size="lg" %}
+            {% endif %}
+            <div class="gp-stack gp-stack--sm" style="flex: 1 1 260px; min-width: 0">
+                <h2 class="gp-section-title" style="margin:0">{{ candidate.full_name }}</h2>
+                <div class="gp-cluster" style="--cluster-gap: var(--space-2)">
+                    {% ui_badge candidate.direction %}
+                    {% if candidate.geekspro_level %}{% ui_badge candidate.get_geekspro_level_display tone="info" %}{% endif %}
+                    {% if candidate.is_looking_for_job %}{% ui_badge "Ищет работу · "|add:candidate.readiness tone="success" dot=True %}{% else %}{% ui_badge "Не ищет работу" %}{% endif %}
+                </div>
+                {% if candidate.rating %}<p class="gp-text" style="margin:0"><strong>{{ candidate.rating }}</strong> / 10 <span class="gp-muted gp-small">· оценка GeeksPro</span></p>{% endif %}
+                {% if candidate.skills_list %}
+                    <div class="gp-cluster" style="--cluster-gap: var(--space-2)" aria-label="Навыки">{% for skill in candidate.skills_list %}{% ui_badge skill tone="primary" %}{% endfor %}</div>
                 {% endif %}
-            </div>
-            {% if candidate.rating %}
-                <div class="reserve-head__rating">
-                    <strong>{{ candidate.rating }}</strong> / 10 <span class="sub">· оценка GeeksPro</span>
+                <div class="gp-cluster" style="--cluster-gap: var(--space-4)">
+                    {% if candidate.resume_file %}<a class="gp-link" href="{{ candidate.resume_file.url }}" target="_blank" rel="noopener">Резюме (файл)</a>{% endif %}
+                    {% if candidate.resume_url %}<a class="gp-link" href="{{ candidate.resume_url }}" target="_blank" rel="noopener">Резюме</a>{% endif %}
+                    {% if candidate.github_url %}<a class="gp-link" href="{{ candidate.github_url }}" target="_blank" rel="noopener">GitHub</a>{% endif %}
+                    {% if candidate.portfolio_url %}<a class="gp-link" href="{{ candidate.portfolio_url }}" target="_blank" rel="noopener">Портфолио</a>{% endif %}
+                    {% if candidate.behance_url %}<a class="gp-link" href="{{ candidate.behance_url }}" target="_blank" rel="noopener">Behance</a>{% endif %}
+                    {% if candidate.linkedin_url %}<a class="gp-link" href="{{ candidate.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>{% endif %}
+                    {% if candidate.website_url %}<a class="gp-link" href="{{ candidate.website_url }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
                 </div>
-            {% endif %}
-            {% if candidate.skills_list %}
-                <div class="reserve-skills">
-                    {% for skill in candidate.skills_list %}<span class="chip">{{ skill }}</span>{% endfor %}
-                </div>
-            {% endif %}
-            <div class="reserve-head__links">
-                {% if candidate.resume_file %}<a href="{{ candidate.resume_file.url }}" target="_blank" rel="noopener">Резюме (файл)</a>{% endif %}
-                {% if candidate.resume_url %}<a href="{{ candidate.resume_url }}" target="_blank" rel="noopener">Резюме</a>{% endif %}
-                {% if candidate.github_url %}<a href="{{ candidate.github_url }}" target="_blank" rel="noopener">GitHub</a>{% endif %}
-                {% if candidate.portfolio_url %}<a href="{{ candidate.portfolio_url }}" target="_blank" rel="noopener">Портфолио</a>{% endif %}
-                {% if candidate.behance_url %}<a href="{{ candidate.behance_url }}" target="_blank" rel="noopener">Behance</a>{% endif %}
-                {% if candidate.linkedin_url %}<a href="{{ candidate.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>{% endif %}
-                {% if candidate.website_url %}<a href="{{ candidate.website_url }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
             </div>
         </div>
-    </div>
+    {% end_ui_card %}
 
-    <div class="panel">
-        <h2>Что ищу</h2>
-        <dl class="def-grid">
-            <div class="def"><dt>Желаемая должность</dt><dd>{{ candidate.desired_position|default:'—' }}</dd></div>
-            <div class="def"><dt>Формат работы</dt><dd>{{ candidate.get_work_format_display|default:'—' }}</dd></div>
-            <div class="def"><dt>Занятость</dt><dd>{{ candidate.get_employment_type_display|default:'—' }}</dd></div>
-            <div class="def"><dt>Готов(а) приступить</dt><dd>{{ candidate.available_from|date:'d.m.Y'|default:'—' }}</dd></div>
-            <div class="def"><dt>Готов(а) к переезду</dt><dd>{% if candidate.ready_to_relocate %}Да{% else %}Нет{% endif %}</dd></div>
-            <div class="def"><dt>Желаемая зарплата</dt><dd>{{ candidate.desired_salary|default:'—' }}</dd></div>
-            <div class="def"><dt>Английский</dt><dd>{{ candidate.english_level|default:'—' }}</dd></div>
-        </dl>
+    <div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+        {% ui_card title="Что ищу" %}
+            <dl class="gp-metrics">
+                <div class="gp-metrics__row"><dt>Желаемая должность</dt><dd style="white-space: normal">{{ candidate.desired_position|default:'—' }}</dd></div>
+                <div class="gp-metrics__row"><dt>Формат работы</dt><dd>{{ candidate.get_work_format_display|default:'—' }}</dd></div>
+                <div class="gp-metrics__row"><dt>Занятость</dt><dd>{{ candidate.get_employment_type_display|default:'—' }}</dd></div>
+                <div class="gp-metrics__row"><dt>Готов(а) приступить</dt><dd>{{ candidate.available_from|date:'d.m.Y'|default:'—' }}</dd></div>
+                <div class="gp-metrics__row"><dt>Готов(а) к переезду</dt><dd>{% if candidate.ready_to_relocate %}Да{% else %}Нет{% endif %}</dd></div>
+                <div class="gp-metrics__row"><dt>Желаемая зарплата</dt><dd style="white-space: normal">{{ candidate.desired_salary|default:'—' }}</dd></div>
+                <div class="gp-metrics__row"><dt>Английский</dt><dd>{{ candidate.english_level|default:'—' }}</dd></div>
+            </dl>
+        {% end_ui_card %}
+
+        {% if candidate.project_memberships %}
+        {% ui_card title="Проекты в GeeksPro" flush=True %}
+            <ul class="gp-docs">
+                {% for member in candidate.project_memberships %}
+                <li class="gp-doc"><span class="gp-doc__icon">{% ui_icon "folder" %}</span><div style="min-width:0"><p class="gp-doc__title">{{ member.project.name|default:'—' }}</p><p class="gp-doc__meta">{{ member.get_role_display }} · {{ member.joined_at|date:'m.Y'|default:'—' }} — {{ member.left_at|date:'m.Y'|default:'сейчас' }}</p></div></li>
+                {% endfor %}
+            </ul>
+        {% end_ui_card %}
+        {% endif %}
     </div>
 
     {% if candidate.about %}
-        <div class="panel">
-            <h2>О себе</h2>
-            <p>{{ candidate.about|linebreaksbr }}</p>
-        </div>
-    {% endif %}
-
-    {% if candidate.project_memberships %}
-        <div class="panel">
-            <h2>Проекты в GeeksPro</h2>
-            <ul class="share-projects">
-                {% for member in candidate.project_memberships %}
-                    <li>
-                        <strong>{{ member.project.name|default:'—' }}</strong>
-                        <span>{{ member.get_role_display }} · {{ member.joined_at|date:'m.Y'|default:'—' }} — {{ member.left_at|date:'m.Y'|default:'сейчас' }}</span>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
+    {% ui_card title="О себе" %}<p class="gp-text" style="margin:0; white-space: pre-line; overflow-wrap: anywhere">{{ candidate.about }}</p>{% end_ui_card %}
     {% endif %}
 
     {% if candidate.work_experience or candidate.internship_experience %}
-        <div class="panel">
-            <h2>Опыт</h2>
-            {% if candidate.work_experience %}
-                <h3 class="share-subtitle">Опыт работы</h3>
-                <p>{{ candidate.work_experience|linebreaksbr }}</p>
-            {% endif %}
-            {% if candidate.internship_experience %}
-                <h3 class="share-subtitle">Опыт стажировки</h3>
-                <p>{{ candidate.internship_experience|linebreaksbr }}</p>
-            {% endif %}
+    {% ui_card title="Опыт" %}
+        <div class="gp-stack">
+        {% if candidate.work_experience %}<div><h3 class="gp-section-title" style="margin: 0 0 var(--space-2)">Опыт работы</h3><p class="gp-text" style="margin:0; white-space: pre-line; overflow-wrap: anywhere">{{ candidate.work_experience }}</p></div>{% endif %}
+        {% if candidate.internship_experience %}<div><h3 class="gp-section-title" style="margin: 0 0 var(--space-2)">Опыт стажировки</h3><p class="gp-text" style="margin:0; white-space: pre-line; overflow-wrap: anywhere">{{ candidate.internship_experience }}</p></div>{% endif %}
         </div>
+    {% end_ui_card %}
     {% endif %}
 
     {% if candidate.education or candidate.courses %}
-        <div class="panel">
-            <h2>Образование</h2>
-            {% if candidate.education %}<p>{{ candidate.education|linebreaksbr }}</p>{% endif %}
-            {% if candidate.courses %}
-                <h3 class="share-subtitle">Пройденные курсы</h3>
-                <p>{{ candidate.courses|linebreaksbr }}</p>
-            {% endif %}
+    {% ui_card title="Образование" %}
+        <div class="gp-stack">
+        {% if candidate.education %}<p class="gp-text" style="margin:0; white-space: pre-line; overflow-wrap: anywhere">{{ candidate.education }}</p>{% endif %}
+        {% if candidate.courses %}<div><h3 class="gp-section-title" style="margin: 0 0 var(--space-2)">Пройденные курсы</h3><p class="gp-text" style="margin:0; white-space: pre-line; overflow-wrap: anywhere">{{ candidate.courses }}</p></div>{% endif %}
         </div>
+    {% end_ui_card %}
     {% endif %}
-{% else %}
-    <div class="portal-hero">
-        <div class="portal-hero__eyebrow">Резерв кадров GeeksPro</div>
-        <h1>Моё резюме</h1>
-        <p>
-            Вас пока нет в резерве кадров. Когда руководитель добавит вас туда,
-            здесь появится ваше резюме — и вы сможете сами его обновлять.
-        </p>
     </div>
+{% else %}
+    {% ui_page_header title="Моё резюме" %}{% ui_slot "eyebrow" %}{% ui_badge "Резерв кадров GeeksPro" tone="primary" %}{% end_ui_slot %}{% end_ui_page_header %}
+    {% ui_card %}{% url 'lead_portal:dashboard' as dashboard_url %}{% ui_empty "Вас пока нет в резерве кадров" "Когда руководитель добавит вас туда, здесь появится ваше резюме — и вы сможете сами его обновлять." icon_name="user" action_label="Мои проекты" action_href=dashboard_url %}{% end_ui_card %}
 {% endif %}
 {% endblock %}

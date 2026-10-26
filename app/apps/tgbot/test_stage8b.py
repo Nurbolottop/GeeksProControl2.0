@@ -326,6 +326,8 @@ class StageSevenFixTests(Base):
         with self.captureOnCommitCallbacks(execute=True):
             staff.assign_pm(self.project, pm, self.head)
         self.assertTrue(OutboundMessage.objects.filter(kind='staff_assignment', intern=pm).exists())
+        # участие — до проверяемой недели, иначе тест ломается с ходом календаря
+        TeamMember.objects.filter(intern=self.lead).update(joined_at=datetime.date(2026, 9, 1))
         with self.captureOnCommitCallbacks(execute=True):
             weekly.remind(datetime.date(2026, 10, 23))
             weekly.remind(datetime.date(2026, 10, 23))

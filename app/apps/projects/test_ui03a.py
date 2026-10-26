@@ -100,7 +100,9 @@ class CardAccessTests(TestCase):
         self.client.force_login(head_user())
         for tab in ('overview', 'stages', 'team', 'tasks', 'documents', 'report', 'access', 'graphics', 'history'):
             with self.subTest(tab=tab):
-                self.assertEqual(self.client.get(self.project.get_absolute_url(), {'tab': tab}).status_code, 200)
+                response = self.client.get(self.project.get_absolute_url(), {'tab': tab})
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, 'gp-legacy')  # доступы, графика, история — тоже 2.0
 
     def test_others_cannot_open_or_post(self):
         intern = UserModel.objects.create_user(username='u3-intern', password='x', role=User.Role.INTERN)

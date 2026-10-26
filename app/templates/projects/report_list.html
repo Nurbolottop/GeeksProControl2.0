@@ -1,59 +1,51 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
+{# Отчёты ПМ по всем проектам (2.0). Контекст: page, params, projects. #}
 {% block title %}Отчёты — GeeksPro Control{% endblock %}
+{% block page %}
+{% with total=page.paginator.count|stringformat:"s" %}{% ui_page_header title="Отчёты по проектам" subtitle="Всего: "|add:total %}{% end_ui_page_header %}{% endwith %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Отчёты по проектам</h1>
-        <div class="sub">Всего: {{ page.paginator.count }}</div>
-    </div>
-</div>
+{% ui_card %}
+    <form method="get" class="gp-filters" aria-label="Фильтр отчётов">
+        <div class="gp-field"><label class="gp-label" for="report-project">Проект</label>
+            <select class="gp-select" id="report-project" name="project">
+                <option value="">Все</option>
+                {% for project in projects %}<option value="{{ project.pk }}"{% if params.project == project.pk|stringformat:'s' %} selected{% endif %}>{{ project.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="gp-field" style="flex: 1 1 240px"><label class="gp-label" for="report-q">Поиск</label>
+            <input class="gp-input" type="search" id="report-q" name="q" placeholder="Поиск по тексту отчёта" value="{{ params.q|default:'' }}">
+        </div>
+        <div class="gp-cluster" style="--cluster-gap: var(--space-2); align-self: flex-end">
+            {% ui_button "Применить" type="submit" icon_name="filter" %}
+            {% if params.project or params.q %}{% url 'projects:reports' as reset_url %}{% ui_button "Сбросить" variant="ghost" href=reset_url %}{% endif %}
+        </div>
+    </form>
+{% end_ui_card %}
 
-<form method="get" class="filters">
-    <select name="project">
-        <option value="">Проект: все</option>
-        {% for project in projects %}
-            <option value="{{ project.pk }}" {% if params.project == project.pk|stringformat:'s' %}selected{% endif %}>{{ project.name }}</option>
-        {% endfor %}
-    </select>
-    <input type="text" name="q" placeholder="Поиск по тексту отчёта" value="{{ params.q|default:'' }}">
-    <button type="submit" class="btn btn--secondary btn--sm">Применить</button>
-    <a href="{% url 'projects:reports' %}" class="btn btn--secondary btn--sm">Сбросить</a>
-</form>
-
-<div class="panel" style="padding: 0;">
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
-            <tr>
-                <th>Проект</th>
-                <th>Дата</th>
-                <th>Автор</th>
-                <th>Отчёт</th>
-            </tr>
-            </thead>
+<div style="margin-top: var(--space-5)">
+{% if page.object_list %}
+{% ui_card flush=True %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0">
+        <table class="gp-table">
+            <caption class="gp-sr-only">Отчёты по проектам</caption>
+            <thead><tr><th scope="col">Проект</th><th scope="col">Дата</th><th scope="col">Автор</th><th scope="col">Отчёт</th></tr></thead>
             <tbody>
             {% for report in page.object_list %}
                 <tr>
-                    <td><a href="{{ report.project.get_absolute_url }}?tab=report">{{ report.project.name }}</a></td>
-                    <td>{{ report.date|date:'d.m.Y' }}</td>
-                    <td>{{ report.author.display_name|default:'—' }}</td>
-                    <td style="white-space: pre-wrap;">{{ report.text }}</td>
+                    <td class="is-primary" data-label="Проект"><a class="gp-link gp-table__primary" href="{{ report.project.get_absolute_url }}?tab=report">{{ report.project.name }}</a></td>
+                    <td data-label="Дата" class="gp-nowrap">{{ report.date|date:'d.m.Y' }}</td>
+                    <td data-label="Автор">{{ report.author.display_name|default:'—' }}</td>
+                    <td data-label="Отчёт" style="white-space: pre-wrap; overflow-wrap: anywhere">{{ report.text }}</td>
                 </tr>
-            {% empty %}
-                <tr><td colspan="4" class="empty" style="text-align:center; padding: 24px;">Отчётов нет.</td></tr>
             {% endfor %}
             </tbody>
         </table>
     </div>
-</div>
-
-{% if page.paginator.num_pages > 1 %}
-    <div class="pagination">
-        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">‹</a>{% endif %}
-        <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
-        {% if page.has_next %}<a href="?page={{ page.next_page_number }}">›</a>{% endif %}
-    </div>
+{% end_ui_card %}
+{% ui_pagination page label="отчётов" %}
+{% else %}
+<div class="gp-card">{% if params.project or params.q %}{% ui_empty "Ничего не найдено" text="Измените или сбросьте фильтры." icon_name="search" %}{% else %}{% ui_empty "Отчётов нет" icon_name="file-text" %}{% endif %}</div>
 {% endif %}
+</div>
 {% endblock %}

@@ -1,0 +1,29 @@
+{% load ui %}{# Список собраний на главной табеля: meetings, caption, show_date, primary_action #}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">{{ caption }}</caption>
+        <thead><tr>
+            {% if show_date %}<th scope="col">Дата</th>{% endif %}
+            <th scope="col">Команда</th>
+            <th scope="col">Вид собрания</th>
+            <th scope="col">Ведёт</th>
+            <th scope="col">Статус</th>
+            <th scope="col" class="is-actions"><span class="gp-sr-only">Действия</span></th>
+        </tr></thead>
+        <tbody>
+        {% for meeting in meetings %}
+            <tr>
+                {% if show_date %}<td class="is-primary" data-label="Дата"><span class="gp-table__primary">{{ meeting.date|date:"d.m, D" }}</span></td>{% endif %}
+                <td {% if not show_date %}class="is-primary" {% endif %}data-label="Команда">
+                    <a class="gp-link{% if not show_date %} gp-table__primary{% endif %}" href="{% url 'attendance:group_meetings' meeting.group.pk %}">Группа {{ meeting.group.code }}</a>
+                    {% if meeting.group.project %}<span class="gp-table__secondary">{{ meeting.group.project.name }}</span>{% endif %}
+                </td>
+                <td data-label="Вид собрания">{{ meeting.get_kind_display }}</td>
+                <td data-label="Ведёт">{{ meeting.host.full_name|default:"—" }}</td>
+                <td data-label="Статус">{% if meeting.status == 'held' %}<span class="gp-badge gp-badge--success">Проведено{% if meeting.attendance_rate is not None %} · {{ meeting.attendance_rate }}%{% endif %}</span>{% else %}{% ui_badge "Не отмечено" tone="warning" %}{% endif %}</td>
+                <td class="is-actions" data-label="">{% url 'attendance:meeting_detail' meeting.pk as meeting_url %}{% if primary_action %}{% ui_button "Отметить" size="sm" variant="primary" href=meeting_url icon_name="check" %}{% else %}{% ui_button "Открыть" size="sm" href=meeting_url %}{% endif %}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

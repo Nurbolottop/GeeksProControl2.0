@@ -1,106 +1,79 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}{{ title }} — GeeksPro Control{% endblock %}
+{% block page %}
+{% if candidate %}{% url 'reserve:detail' candidate.pk as cancel_url %}{% else %}{% url 'reserve:list' as cancel_url %}{% endif %}
+{% ui_page_header title=title subtitle="Анкетная часть и внутренняя учебная информация. Оценки — на отдельной странице." %}
+    {% ui_button "Отмена" href=cancel_url variant="ghost" %}
+{% end_ui_page_header %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>{{ title }}</h1>
-        <div class="sub">Анкетная часть и внутренняя учебная информация. Оценки — на отдельной странице.</div>
-    </div>
-    <div class="page-actions">
-        <a href="{% if candidate %}{{ candidate.get_absolute_url }}{% else %}{% url 'reserve:list' %}{% endif %}" class="btn btn--secondary">Отмена</a>
-    </div>
-</div>
-
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" class="gp-form gp-stack" style="--stack-gap: var(--space-5)">
     {% csrf_token %}
-    {% if form.errors %}
-        <div class="message message--error">
-            Проверьте выделенные поля.
-            {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+    {% if form.errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" title="Проверьте выделенные поля." %}</div>{% endif %}
+    {% ui_card title="Личные данные" %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% ui_field form.full_name %}
+            {% ui_field form.phone %}
+            {% ui_field form.email %}
+            {% ui_field form.telegram %}
+            {% ui_field form.city %}
+            {% ui_field form.birth_date %}
+            {% ui_field form.photo wide=True %}
         </div>
-    {% endif %}
-
-    <div class="panel">
-        <h2>Личные данные</h2>
-        <div class="agrid" style="margin-top: 14px;">
-            {% include 'partials/apply_field.html' with field=form.full_name %}
-            {% include 'partials/apply_field.html' with field=form.phone %}
-            {% include 'partials/apply_field.html' with field=form.email %}
-            {% include 'partials/apply_field.html' with field=form.telegram %}
-            {% include 'partials/apply_field.html' with field=form.city %}
-            {% include 'partials/apply_field.html' with field=form.birth_date %}
-            {% include 'partials/apply_field.html' with field=form.photo wide=1 %}
+    {% end_ui_card %}
+    {% ui_card title="Профессиональные данные" %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% ui_field form.specialization %}
+            {% ui_field form.direction_other %}
+            {% ui_field form.desired_position %}
+            {% ui_field form.expected_level %}
+            {% ui_field form.skills wide=True %}
+            {% ui_field form.work_experience wide=True %}
+            {% ui_field form.internship_experience wide=True %}
+            {% ui_field form.education wide=True %}
+            {% ui_field form.courses wide=True %}
+            {% ui_field form.english_level %}
+            {% ui_field form.other_languages %}
+            {% ui_field form.about wide=True %}
         </div>
-    </div>
-
-    <div class="panel">
-        <h2>Профессиональные данные</h2>
-        <div class="agrid" style="margin-top: 14px;">
-            {% include 'partials/apply_field.html' with field=form.specialization %}
-            {% include 'partials/apply_field.html' with field=form.direction_other %}
-            {% include 'partials/apply_field.html' with field=form.desired_position %}
-            {% include 'partials/apply_field.html' with field=form.expected_level %}
-            {% include 'partials/apply_field.html' with field=form.skills wide=1 %}
-            {% include 'partials/apply_field.html' with field=form.work_experience wide=1 %}
-            {% include 'partials/apply_field.html' with field=form.internship_experience wide=1 %}
-            {% include 'partials/apply_field.html' with field=form.education wide=1 %}
-            {% include 'partials/apply_field.html' with field=form.courses wide=1 %}
-            {% include 'partials/apply_field.html' with field=form.english_level %}
-            {% include 'partials/apply_field.html' with field=form.other_languages %}
-            {% include 'partials/apply_field.html' with field=form.about wide=1 %}
+    {% end_ui_card %}
+    {% ui_card title="Ссылки и документы" %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% ui_field form.resume_file %}
+            {% ui_field form.resume_url %}
+            {% ui_field form.github_url %}
+            {% ui_field form.linkedin_url %}
+            {% ui_field form.portfolio_url %}
+            {% ui_field form.behance_url %}
+            {% ui_field form.website_url %}
+            {% ui_field form.project_links wide=True %}
         </div>
-    </div>
-
-    <div class="panel">
-        <h2>Ссылки и документы</h2>
-        <div class="agrid" style="margin-top: 14px;">
-            {% include 'partials/apply_field.html' with field=form.resume_file %}
-            {% include 'partials/apply_field.html' with field=form.resume_url %}
-            {% include 'partials/apply_field.html' with field=form.github_url %}
-            {% include 'partials/apply_field.html' with field=form.linkedin_url %}
-            {% include 'partials/apply_field.html' with field=form.portfolio_url %}
-            {% include 'partials/apply_field.html' with field=form.behance_url %}
-            {% include 'partials/apply_field.html' with field=form.website_url %}
-            {% include 'partials/apply_field.html' with field=form.project_links wide=1 %}
+    {% end_ui_card %}
+    {% ui_card title="Поиск работы" %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% ui_field form.work_format %}
+            {% ui_field form.employment_type %}
+            {% ui_field form.available_from %}
+            {% ui_field form.desired_salary %}
+            {% ui_field form.target_positions wide=True %}
+            {% ui_field form.is_looking_for_job wide=True %}
+            {% ui_field form.ready_for_internship wide=True %}
+            {% ui_field form.ready_to_relocate wide=True %}
         </div>
-    </div>
-
-    <div class="panel">
-        <h2>Поиск работы</h2>
-        <div class="agrid" style="margin-top: 14px;">
-            {% include 'partials/apply_field.html' with field=form.work_format %}
-            {% include 'partials/apply_field.html' with field=form.employment_type %}
-            {% include 'partials/apply_field.html' with field=form.available_from %}
-            {% include 'partials/apply_field.html' with field=form.desired_salary %}
-            {% include 'partials/apply_field.html' with field=form.target_positions wide=1 %}
+    {% end_ui_card %}
+    {% ui_card title="Внутреннее: обучение и статус" subtitle="Кандидат этих полей не видит и не заполняет." %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% ui_field form.intern wide=True %}
+            {% ui_field form.training_group %}
+            {% ui_field form.study_specialization %}
+            {% ui_field form.teacher %}
+            {% ui_field form.curator %}
+            {% ui_field form.study_start %}
+            {% ui_field form.study_end %}
+            {% ui_field form.status %}
         </div>
-        <div class="achecks">
-            {% include 'partials/apply_check.html' with field=form.is_looking_for_job %}
-            {% include 'partials/apply_check.html' with field=form.ready_for_internship %}
-            {% include 'partials/apply_check.html' with field=form.ready_to_relocate %}
-        </div>
-    </div>
-
-    <div class="panel">
-        <h2>Внутреннее: обучение и статус</h2>
-        <div class="sub" style="margin-top: 4px;">Кандидат этих полей не видит и не заполняет.</div>
-        <div class="agrid" style="margin-top: 14px;">
-            {% include 'partials/apply_field.html' with field=form.intern wide=1 %}
-            {% include 'partials/apply_field.html' with field=form.training_group %}
-            {% include 'partials/apply_field.html' with field=form.study_specialization %}
-            {% include 'partials/apply_field.html' with field=form.teacher %}
-            {% include 'partials/apply_field.html' with field=form.curator %}
-            {% include 'partials/apply_field.html' with field=form.study_start %}
-            {% include 'partials/apply_field.html' with field=form.study_end %}
-            {% include 'partials/apply_field.html' with field=form.status %}
-        </div>
-    </div>
-
-    <div class="form-actions">
-        <button type="submit" class="btn">Сохранить</button>
-        <a href="{% if candidate %}{{ candidate.get_absolute_url }}{% else %}{% url 'reserve:list' %}{% endif %}" class="btn btn--secondary">Отмена</a>
-    </div>
+    {% end_ui_card %}
+    {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+    <div class="gp-form-actions">{% ui_button "Сохранить" variant="primary" type="submit" %}{% ui_button "Отмена" variant="ghost" href=cancel_url %}</div>
 </form>
 {% endblock %}

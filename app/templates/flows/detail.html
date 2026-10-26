@@ -1,176 +1,136 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Поток {{ flow.number }} — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% with num=flow.number|stringformat:"s" %}{% ui_page_header title="Поток "|add:num %}
+    {% ui_slot "eyebrow" %}
+        {% if flow.status == 'active' %}{% ui_badge "Активный" tone="success" dot=True %}{% elif flow.status == 'planned' %}{% ui_badge "Набор" tone="warning" dot=True %}{% else %}{% ui_badge "Завершён" %}{% endif %}
+        {% if flow.start_date %}<span class="gp-badge gp-badge--neutral">{{ flow.start_date|date:'d.m.Y' }}{% if flow.end_date %} → {{ flow.end_date|date:'d.m.Y' }}{% endif %}</span>{% endif %}
+    {% end_ui_slot %}
+    {% url 'flows:update' flow.pk as edit_url %}{% ui_button "Редактировать" href=edit_url icon_name="pencil" %}
+    {% url 'flows:group_create' flow.pk as group_url %}{% ui_button "Группа" variant="primary" href=group_url icon_name="plus" %}
+{% end_ui_page_header %}{% endwith %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Поток {{ flow.number }}</h1>
-        <div class="sub" style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
-            {% if flow.status == 'active' %}<span class="badge badge--green">Активный</span>
-            {% elif flow.status == 'planned' %}<span class="badge badge--yellow">Набор</span>
-            {% else %}<span class="badge badge--gray">Завершён</span>{% endif %}
-            {% if flow.start_date %}
-                <span class="badge badge--gray">
-                    {{ flow.start_date|date:'d.m.Y' }}{% if flow.end_date %} → {{ flow.end_date|date:'d.m.Y' }}{% endif %}
-                </span>
-            {% endif %}
-        </div>
-    </div>
-    <div class="page-actions">
-        <a href="{% url 'flows:update' flow.pk %}" class="btn btn--secondary">Редактировать</a>
-        <a href="{% url 'flows:group_create' flow.pk %}" class="btn">+ Группа</a>
-    </div>
-</div>
-
-<div class="tabs">
-    <a href="?tab=groups" class="{% if tab == 'groups' %}is-active{% endif %}">Группы</a>
-    <a href="?tab=projects" class="{% if tab == 'projects' %}is-active{% endif %}">Проекты</a>
-    <a href="?tab=roster" class="{% if tab == 'roster' %}is-active{% endif %}">Ведомость</a>
-    <a href="?tab=stats" class="{% if tab == 'stats' %}is-active{% endif %}">Статистика</a>
-</div>
+<nav class="gp-tabs" aria-label="Разделы потока" style="margin-bottom: var(--space-5)">
+    <a href="?tab=groups" class="gp-tabs__tab{% if tab == 'groups' %} is-active{% endif %}"{% if tab == 'groups' %} aria-current="page"{% endif %}>Группы</a>
+    <a href="?tab=projects" class="gp-tabs__tab{% if tab == 'projects' %} is-active{% endif %}"{% if tab == 'projects' %} aria-current="page"{% endif %}>Проекты</a>
+    <a href="?tab=roster" class="gp-tabs__tab{% if tab == 'roster' %} is-active{% endif %}"{% if tab == 'roster' %} aria-current="page"{% endif %}>Ведомость</a>
+    <a href="?tab=stats" class="gp-tabs__tab{% if tab == 'stats' %} is-active{% endif %}"{% if tab == 'stats' %} aria-current="page"{% endif %}>Статистика</a>
+</nav>
 
 {% if tab == 'groups' %}
-    <div class="group-grid">
+    {% if groups %}
+    <div class="gp-grid" style="--grid-min: 300px">
         {% for group in groups %}
-            <a href="{{ group.get_absolute_url }}" class="group-card">
-                <div class="group-card__head">
-                    <span class="group-card__code">{{ group.code }}</span>
-                    <div class="group-card__title">
-                        {% if group.project %}{{ group.project.name }}{% else %}{{ group.name|default:'Без проекта' }}{% endif %}
-                        <div class="group-card__sub">
-                            {% if group.project %}{{ group.project.client|default:'' }}{% else %}Проект не назначен{% endif %}
-                        </div>
+        <a href="{{ group.get_absolute_url }}" class="gp-card gp-card--interactive" style="color: inherit; text-decoration: none">
+            <div class="gp-card__body gp-stack">
+                <div class="gp-cluster" style="flex-wrap: nowrap; align-items: flex-start; gap: var(--space-3)">
+                    {% ui_badge group.code tone="primary" %}
+                    <div style="min-width: 0">
+                        <h2 class="gp-h3" style="margin:0; overflow-wrap: anywhere">{% if group.project %}{{ group.project.name }}{% else %}{{ group.name|default:'Без проекта' }}{% endif %}</h2>
+                        <span class="gp-muted gp-small">{% if group.project %}{{ group.project.client|default:'' }}{% else %}Проект не назначен{% endif %}</span>
                     </div>
                 </div>
-                <div class="group-card__body">
-                    {% if group.project %}
-                        <div class="group-card__row">
-                            {% include 'projects/partials/stage_badge.html' with stage_key=group.project.current_stage stage_display=group.project.get_current_stage_display %}
-                            {% include 'projects/partials/deadline_badge.html' with status=group.project.deadline_status %}
-                        </div>
-                        <div class="progress" style="margin-top:10px">
-                            <div class="progress__bar"><div class="progress__fill" style="width: {{ group.project.progress }}%"></div></div>
-                            <span class="progress__label">{{ group.project.progress }}%</span>
-                        </div>
-                    {% endif %}
-                    <div class="group-card__members">
-                        <strong>{{ group.active_count }}</strong> человек в команде
-                    </div>
-                </div>
-            </a>
-        {% empty %}
-            <div class="panel empty">У потока пока нет групп — создайте первую.</div>
+                {% if group.project %}
+                <div class="gp-cluster">{% include "flows/_project_badges.html" with project=group.project only="" %}</div>
+                {% include "flows/_progress.html" with value=group.project.progress %}
+                {% endif %}
+                <span class="gp-small"><strong>{{ group.active_count }}</strong> <span class="gp-muted">человек в команде</span></span>
+            </div>
+        </a>
         {% endfor %}
     </div>
+    {% else %}
+    <div class="gp-card">{% url 'flows:group_create' flow.pk as group_url %}{% ui_empty "У потока пока нет групп" "Создайте первую группу — команду, которая ведёт проект." icon_name="users" action_label="Создать группу" action_href=group_url %}</div>
+    {% endif %}
+
 {% elif tab == 'roster' %}
+    <div class="gp-stack">
     {% for section in roster_sections %}
-        <div class="panel" style="padding: 0;">
-            <div class="team-section__head" style="padding: 18px 24px 0">
-                <h2><span class="badge badge--blue">{{ section.label }}</span></h2>
-                <span class="team-section__count">{{ section.count }} чел. · на проектах: {{ section.busy }}</span>
-            </div>
-            <div class="table-wrap">
-                <table class="data">
-                    <thead>
+        {% with c=section.count|stringformat:"s" b=section.busy|stringformat:"s" %}{% ui_card title=section.label subtitle=c|add:" чел. · на проектах: "|add:b flush=True %}
+        <div class="gp-table-wrap gp-table--stack" style="border:0">
+            <table class="gp-table">
+                <caption class="gp-sr-only">{{ section.label }}</caption>
+                <thead><tr><th scope="col">ФИО</th><th scope="col">Статус</th><th scope="col">Филиал</th><th scope="col">Занятость</th></tr></thead>
+                <tbody>
+                {% for intern in section.interns %}
                     <tr>
-                        <th>ФИО</th>
-                        <th>Статус</th>
-                        <th>Филиал</th>
-                        <th>Занятость</th>
+                        <td class="is-primary" data-label="ФИО"><a class="gp-link gp-table__primary" href="{{ intern.get_absolute_url }}">{{ intern.full_name }}</a></td>
+                        <td data-label="Статус">{% if intern.status == 'dropped' %}{% ui_badge "Выбыл" tone="danger" %}{% elif intern.status == 'active' %}{% ui_badge intern.get_status_display tone="success" %}{% else %}{% ui_badge intern.get_status_display %}{% endif %}</td>
+                        <td data-label="Филиал">{{ intern.branch|default:intern.city|default:'—' }}</td>
+                        <td data-label="Занятость">{% if intern.is_busy %}{% ui_badge "На проекте" tone="primary" %}{% else %}{% ui_badge "Свободен" %}{% endif %}</td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for intern in section.interns %}
-                        <tr>
-                            <td><a href="{{ intern.get_absolute_url }}"><strong>{{ intern.full_name }}</strong></a></td>
-                            <td>
-                                {% if intern.status == 'dropped' %}<span class="badge badge--red">Выбыл</span>
-                                {% elif intern.status == 'active' %}<span class="badge badge--green">{{ intern.get_status_display }}</span>
-                                {% else %}<span class="badge badge--gray">{{ intern.get_status_display }}</span>{% endif %}
-                            </td>
-                            <td>{{ intern.branch|default:intern.city|default:'—' }}</td>
-                            <td>{% if intern.is_busy %}<span class="badge badge--blue">На проекте</span>{% else %}<span class="badge badge--gray">Свободен</span>{% endif %}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
+        {% end_ui_card %}{% endwith %}
     {% empty %}
-        <div class="panel empty">В ведомости потока пока никого нет.</div>
+        <div class="gp-card">{% ui_empty "В ведомости потока пока никого нет" icon_name="users" %}</div>
     {% endfor %}
-{% elif tab == 'stats' %}
-    <div class="kpi-grid">
-        <div class="kpi-card kpi-card--info"><div class="kpi-card__value">{{ stats.projects }}</div><div class="kpi-card__label">Проектов в потоке</div></div>
-        <div class="kpi-card kpi-card--green"><div class="kpi-card__value">{{ stats.active }}</div><div class="kpi-card__label">В работе</div></div>
-        <div class="kpi-card kpi-card--blue"><div class="kpi-card__value">{{ stats.completed }}</div><div class="kpi-card__label">Завершено</div></div>
-        <div class="kpi-card kpi-card--red"><div class="kpi-card__value">{{ stats.stopped }}</div><div class="kpi-card__label">Отклонено</div></div>
-        <div class="kpi-card kpi-card--info"><div class="kpi-card__value">{{ stats.interns }}</div><div class="kpi-card__label">Человек в потоке</div></div>
-        <div class="kpi-card kpi-card--green"><div class="kpi-card__value">{{ stats.working }}</div><div class="kpi-card__label">Активны</div></div>
-        <div class="kpi-card kpi-card--orange"><div class="kpi-card__value">{{ stats.dropped }}</div><div class="kpi-card__label">Выбыли</div></div>
     </div>
-    <div class="panel" style="padding: 0;">
-        <h2 style="padding: 18px 24px 0">Состав по направлениям</h2>
-        <div class="table-wrap">
-            <table class="data">
-                <thead><tr><th>Направление</th><th>Человек</th></tr></thead>
+
+{% elif tab == 'stats' %}
+    <section aria-label="Статистика потока" class="gp-grid" style="--grid-min: 160px; margin-bottom: var(--space-6)">
+        <div class="gp-stat gp-stat--accent"><span class="gp-stat__label">Проектов в потоке</span><span class="gp-stat__value">{{ stats.projects }}</span></div>
+        <div class="gp-stat"><span class="gp-stat__label">В работе</span><span class="gp-stat__value" style="color: var(--color-success)">{{ stats.active }}</span></div>
+        <div class="gp-stat"><span class="gp-stat__label">Завершено</span><span class="gp-stat__value" style="color: var(--color-info)">{{ stats.completed }}</span></div>
+        <div class="gp-stat"><span class="gp-stat__label">Отклонено</span><span class="gp-stat__value" style="color: var(--color-danger)">{{ stats.stopped }}</span><span class="gp-stat__caption">отменены или отказ</span></div>
+        <div class="gp-stat gp-stat--accent"><span class="gp-stat__label">Человек в потоке</span><span class="gp-stat__value">{{ stats.interns }}</span></div>
+        <div class="gp-stat"><span class="gp-stat__label">Активны</span><span class="gp-stat__value" style="color: var(--color-success)">{{ stats.working }}</span></div>
+        <div class="gp-stat"><span class="gp-stat__label">Выбыли</span><span class="gp-stat__value" style="color: var(--color-warning)">{{ stats.dropped }}</span></div>
+    </section>
+    {% ui_card title="Состав по направлениям" flush=True %}
+        {% if by_spec %}
+        <div class="gp-table-wrap gp-table--stack" style="border:0">
+            <table class="gp-table">
+                <caption class="gp-sr-only">Состав по направлениям</caption>
+                <thead><tr><th scope="col">Направление</th><th scope="col" class="is-numeric">Человек</th></tr></thead>
                 <tbody>
                 {% for row in by_spec %}
                     <tr>
-                        <td><strong>{{ row.specialization__name|default:'Без направления' }}</strong></td>
-                        <td>{{ row.total }}</td>
+                        <td class="is-primary" data-label="Направление"><span class="gp-table__primary">{{ row.specialization__name|default:'Без направления' }}</span></td>
+                        <td class="is-numeric" data-label="Человек">{{ row.total }}</td>
                     </tr>
-                {% empty %}
-                    <tr><td colspan="2" class="empty" style="text-align:center; padding: 20px;">Данных нет.</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "Данных нет" icon_name="users" %}</div>{% endif %}
+    {% end_ui_card %}
+
 {% else %}
-    <div class="panel" style="padding: 0;">
-        <h2 style="padding: 18px 24px 0">Проекты потока ({{ projects|length }})</h2>
-        <div class="table-wrap">
-            <table class="data">
-                <thead>
-                <tr>
-                    <th>№</th>
-                    <th>Проект</th>
-                    <th>Клиент</th>
-                    <th>Этап</th>
-                    <th>Срок</th>
-                    <th>Deadline</th>
-                    <th>Прогресс</th>
-                </tr>
-                </thead>
+    {% with n=projects|length|stringformat:"s" %}{% ui_card title="Проекты потока ("|add:n|add:")" flush=True %}
+        {% if projects %}
+        <div class="gp-table-wrap gp-table--stack" style="border:0">
+            <table class="gp-table">
+                <caption class="gp-sr-only">Проекты потока</caption>
+                <thead><tr>
+                    <th scope="col">№</th>
+                    <th scope="col">Проект</th>
+                    <th scope="col">Клиент</th>
+                    <th scope="col">Этап</th>
+                    <th scope="col">Срок</th>
+                    <th scope="col">Deadline</th>
+                    <th scope="col">Прогресс</th>
+                </tr></thead>
                 <tbody>
                 {% for project in projects %}
-                    <tr {% if project.status == 'completed' %}class="project-row--completed"{% elif project.status == 'cancelled' %}class="project-row--cancelled"{% endif %}>
-                        <td><strong>{{ project.display_code }}</strong></td>
-                        <td>
-                            <a href="{{ project.get_absolute_url }}"><strong>{{ project.name }}</strong></a>
-                            <div style="font-size:12px; color: var(--text-muted)">{{ project.get_status_display }}{% if project.city %} · {{ project.city }}{% endif %}</div>
-                        </td>
-                        <td>{{ project.client|default:'—' }}</td>
-                        <td>{% include 'projects/partials/stage_badge.html' with stage_key=project.current_stage stage_display=project.get_current_stage_display %}</td>
-                        <td>{% include 'projects/partials/deadline_badge.html' with status=project.deadline_status %}</td>
-                        <td>{{ project.planned_end_date|date:'d.m.Y'|default:'—' }}</td>
-                        <td>
-                            <div class="progress">
-                                <div class="progress__bar"><div class="progress__fill" style="width: {{ project.progress }}%"></div></div>
-                                <span class="progress__label">{{ project.progress }}%</span>
-                            </div>
-                        </td>
+                    <tr{% if project.status == 'completed' %} class="gp-row--completed"{% elif project.status == 'cancelled' %} class="gp-row--cancelled"{% endif %}>
+                        <td data-label="№"><strong>{{ project.display_code }}</strong></td>
+                        <td class="is-primary" data-label="Проект"><a class="gp-link gp-table__primary" href="{{ project.get_absolute_url }}">{{ project.name }}</a><span class="gp-table__secondary">{{ project.get_status_display }}{% if project.city %} · {{ project.city }}{% endif %}</span></td>
+                        <td data-label="Клиент">{{ project.client|default:'—' }}</td>
+                        <td data-label="Этап">{% include "flows/_project_badges.html" with project=project only="stage" %}</td>
+                        <td data-label="Срок">{% include "flows/_project_badges.html" with project=project only="deadline" %}</td>
+                        <td data-label="Deadline">{{ project.planned_end_date|date:'d.m.Y'|default:'—' }}</td>
+                        <td data-label="Прогресс">{% include "flows/_progress.html" with value=project.progress %}</td>
                     </tr>
-                {% empty %}
-                    <tr><td colspan="7" class="empty" style="text-align:center; padding: 24px;">
-                        У потока пока нет проектов.
-                    </td></tr>
                 {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "У потока пока нет проектов" icon_name="folder" %}</div>{% endif %}
+    {% end_ui_card %}{% endwith %}
 {% endif %}
 {% endblock %}

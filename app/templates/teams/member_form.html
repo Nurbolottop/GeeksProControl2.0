@@ -1,77 +1,36 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% comment %}
+Добавление / правка участника команды у руководителя (2.0): проект или группа потока.
+Контекст: form, project, group, people, specializations, role, selected_id, selected_name, title.
+Человека нет в базе — «+» открывает поля new_person / new_spec (views._with_new_person).
+{% endcomment %}
 {% block title %}{{ title }} — GeeksPro Control{% endblock %}
-
-{% block content %}
-<div class="form-page">
-    <div class="page-head">
-        <div>
-            <h1>{{ title }}</h1>
-            <div class="sub">
-                {% if group %}Группа <a href="{{ group.get_absolute_url }}">{{ group.code }}</a>{% if project %} · {% endif %}{% endif %}
-                {% if project %}Проект: <a href="{{ project.get_absolute_url }}">{{ project.name }}</a>{% endif %}
-            </div>
-        </div>
-    </div>
-
-    <form method="post" class="panel">
+{% block page %}
+{% ui_page_header title=title %}
+    {% ui_slot "eyebrow" %}{% if group %}<a class="gp-link" href="{{ group.get_absolute_url }}">Группа {{ group.code }}</a>{% endif %}{% if group and project %} · {% endif %}{% if project %}<a class="gp-link" href="{{ project.get_absolute_url }}">{{ project.name }}</a>{% endif %}{% end_ui_slot %}
+{% end_ui_page_header %}
+{% ui_card %}
+    <form method="post" class="gp-form">
         {% csrf_token %}
         {% if role %}<input type="hidden" name="role" value="{{ role }}">{% endif %}
-        {% if form.non_field_errors %}
-            <div class="message message--error">{{ form.non_field_errors }}</div>
-        {% endif %}
-
-        <div class="form-field">
-            <label>Участник</label>
-            {% include 'partials/person_picker.html' %}
-            <div class="field-hint">
-                {% if form.intern.help_text %}{{ form.intern.help_text }}{% else %}Направление подставится из карточки человека{% endif %}
-            </div>
-            {% if form.intern.errors %}<div class="form-errors">{{ form.intern.errors.0 }}</div>{% endif %}
+        {% if form.non_field_errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+        <div class="gp-field">
+            <span class="gp-label">Участник<span class="gp-required" aria-hidden="true">*</span></span>
+            {% include "components/person_picker.html" %}
+            <span class="gp-help">{% if form.intern.help_text %}{{ form.intern.help_text }}{% else %}Направление подставится из карточки человека{% endif %}</span>
+            {% if form.intern.errors %}<div class="gp-error">{% ui_icon "alert-circle" %}<span>{{ form.intern.errors|join:" " }}</span></div>{% endif %}
         </div>
-
-        {% if role != 'team_lead' and role != 'pm' %}
-            <label class="checkbox-field">
-                {{ form.is_lead }}
-                <span>
-                    <strong>Тимлид направления</strong>
-                    <span>Отметьте, если человек ведёт своё направление в этой команде</span>
-                </span>
-            </label>
-        {% endif %}
-
-        <div class="form-row" style="margin-top: 18px">
-            {% if form.status %}
-                <div class="form-field">
-                    <label for="{{ form.status.id_for_label }}">Статус</label>
-                    {{ form.status }}
-                </div>
-            {% endif %}
+        {% if form.is_lead and role != 'team_lead' and role != 'pm' %}{% ui_field form.is_lead help_text="Отметьте, если человек ведёт своё направление в этой команде" label="Тимлид направления" %}{% endif %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% if form.status %}{% ui_field form.status label="Статус" %}{% endif %}
+            {% if form.joined_at %}{% ui_field form.joined_at label="Дата подключения" %}{% ui_field form.left_at label="Дата выхода" %}{% endif %}
+            {% ui_field form.comment wide=True label="Комментарий" %}
         </div>
-
-        {% if form.joined_at %}
-            <div class="form-row" style="margin-top: 16px">
-                <div class="form-field">
-                    <label for="{{ form.joined_at.id_for_label }}">Дата подключения</label>
-                    {{ form.joined_at }}
-                </div>
-                <div class="form-field">
-                    <label for="{{ form.left_at.id_for_label }}">Дата выхода</label>
-                    {{ form.left_at }}
-                </div>
-            </div>
-        {% endif %}
-
-        <div class="form-field" style="margin-top: 16px">
-            <label for="{{ form.comment.id_for_label }}">Комментарий</label>
-            {{ form.comment }}
-        </div>
-
-        <div class="form-actions">
-            <button type="submit" class="btn">Сохранить</button>
-            <a href="{% if group %}{{ group.get_absolute_url }}{% elif project %}{{ project.get_absolute_url }}?tab=team{% else %}{% url 'teams:overview' %}{% endif %}"
-               class="btn btn--secondary">Отмена</a>
+        <div class="gp-form-actions">
+            {% ui_button "Сохранить" variant="primary" type="submit" %}
+            {% if group %}{% ui_button "Отмена" variant="ghost" href=group.get_absolute_url %}{% elif project %}{% with back=project.get_absolute_url|add:"?tab=team" %}{% ui_button "Отмена" variant="ghost" href=back %}{% endwith %}{% else %}{% url 'teams:overview' as back %}{% ui_button "Отмена" variant="ghost" href=back %}{% endif %}
         </div>
     </form>
-</div>
+{% end_ui_card %}
 {% endblock %}

@@ -1,70 +1,52 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Стажёры по филиалам — GeeksPro Control{% endblock %}
+{% block page %}
+{% url 'interns:list' as list_url %}
+{% ui_page_header title="Стажёры по филиалам" subtitle="Сколько человек в каждом филиале и по каким направлениям. Тимлиды сюда не входят — они сотрудники." %}
+    {% ui_button "Все стажёры" href=list_url icon_name="users" %}
+{% end_ui_page_header %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Стажёры по филиалам</h1>
-        <div class="sub">
-            Сколько человек в каждом филиале и по каким направлениям.
-            Тимлиды сюда не входят — они сотрудники.
-        </div>
-    </div>
-    <div class="page-actions">
-        <a href="{% url 'interns:list' %}" class="btn btn--secondary">Все стажёры</a>
-    </div>
-</div>
-
-<div class="spec-grid">
+{% if cards %}
+<section aria-label="Филиалы" class="gp-grid" style="--grid-min: 220px; margin-bottom: var(--space-6)">
     {% for card in cards %}
-        <a href="{% url 'interns:list' %}?branch={{ card.branch|urlencode }}" class="spec-card">
-            <div class="spec-card__name">{{ card.branch }}</div>
-            <div class="spec-card__row">
-                <div><strong>{{ card.total }}</strong><span>всего</span></div>
-                <div><strong>{{ card.busy }}</strong><span>занято</span></div>
-                <div><strong style="color: var(--green)">{{ card.free }}</strong><span>свободно</span></div>
-            </div>
-        </a>
+    <a class="gp-stat" href="{{ list_url }}?branch={{ card.branch|urlencode }}">
+        <span class="gp-stat__label">{{ card.branch }}</span>
+        <span class="gp-stat__value">{{ card.total }}</span>
+        <span class="gp-stat__caption">занято {{ card.busy }} · <span style="color: var(--color-success)">свободно {{ card.free }}</span></span>
+    </a>
     {% endfor %}
-</div>
+</section>
+{% endif %}
 
-<div class="panel" style="padding: 0;">
-    <h2 style="padding: 16px 20px 0">По направлениям</h2>
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
+{% ui_card title="По направлениям" flush=True %}
+{% if rows %}
+<div class="gp-table-wrap" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Стажёры по направлениям и филиалам</caption>
+        <thead><tr>
+            <th scope="col">Направление</th>
+            {% for branch in branches %}<th scope="col" class="is-numeric">{{ branch }}</th>{% endfor %}
+            <th scope="col" class="is-numeric">Всего</th>
+        </tr></thead>
+        <tbody>
+        {% for row in rows %}
             <tr>
-                <th>Направление</th>
-                {% for branch in branches %}<th>{{ branch }}</th>{% endfor %}
-                <th>Всего</th>
+                <td class="is-primary"><span class="gp-table__primary">{{ row.name }}</span></td>
+                {% for count in row.cells %}<td class="is-numeric">{% if count %}{{ count }}{% else %}<span class="gp-muted">—</span>{% endif %}</td>{% endfor %}
+                <td class="is-numeric"><strong>{{ row.total }}</strong></td>
             </tr>
-            </thead>
-            <tbody>
-            {% for row in rows %}
-                <tr>
-                    <td><strong>{{ row.name }}</strong></td>
-                    {% for count in row.cells %}
-                        <td>{% if count %}{{ count }}{% else %}—{% endif %}</td>
-                    {% endfor %}
-                    <td><strong>{{ row.total }}</strong></td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="{{ branches|length|add:2 }}" class="empty" style="text-align:center; padding: 24px;">
-                    Стажёров пока нет.
-                </td></tr>
-            {% endfor %}
-            </tbody>
-            {% if rows %}
-                <tfoot>
-                <tr>
-                    <td><strong>Итого</strong></td>
-                    {% for count in totals.cells %}<td><strong>{{ count }}</strong></td>{% endfor %}
-                    <td><strong>{{ totals.total }}</strong></td>
-                </tr>
-                </tfoot>
-            {% endif %}
-        </table>
-    </div>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td class="is-primary"><strong>Итого</strong></td>
+                {% for count in totals.cells %}<td class="is-numeric"><strong>{{ count }}</strong></td>{% endfor %}
+                <td class="is-numeric"><strong>{{ totals.total }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
 </div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Стажёров пока нет" icon_name="users" %}</div>{% endif %}
+{% end_ui_card %}
 {% endblock %}

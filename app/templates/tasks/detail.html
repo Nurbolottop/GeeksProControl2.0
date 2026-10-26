@@ -1,126 +1,75 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}{{ task.title }} — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title=task.title subtitle=task.project.name %}
+    {% ui_slot "eyebrow" %}
+        {% include "tasks/partials/status_badge.html" %}
+        {% include "tasks/partials/priority_badge.html" %}
+        {% if task.deadline %}{% with deadline_s=task.deadline|date:"d.m.Y" %}{% ui_badge "Deadline: "|add:deadline_s %}{% endwith %}{% endif %}
+    {% end_ui_slot %}
+    {% url 'tasks:update' task.pk as edit_url %}{% ui_button "Редактировать" href=edit_url icon_name="pencil" %}
+    {% if task.is_open %}
+        <form method="post" action="{% url 'tasks:set_status' task.pk %}" style="margin:0">
+            {% csrf_token %}
+            <input type="hidden" name="status" value="done">
+            {% ui_button "Готово" variant="primary" type="submit" icon_name="check" %}
+        </form>
+    {% endif %}
+{% end_ui_page_header %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>{{ task.title }}</h1>
-        <div class="sub" style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
-            {% if task.status == 'done' %}<span class="badge badge--green">✓ Готово</span>
-            {% elif task.status == 'in_progress' %}<span class="badge badge--blue">В работе</span>
-            {% elif task.status == 'review' %}<span class="badge badge--yellow">На проверке</span>
-            {% elif task.status == 'cancelled' %}<span class="badge badge--gray">Отменена</span>
-            {% else %}<span class="badge badge--blue">К выполнению</span>{% endif %}
-            {% if task.priority == 'critical' %}<span class="badge badge--red">Critical</span>
-            {% elif task.priority == 'high' %}<span class="badge badge--orange">High</span>
-            {% elif task.priority == 'medium' %}<span class="badge badge--gray">Medium</span>
-            {% else %}<span class="badge badge--gray">Low</span>{% endif %}
-            {% if task.deadline %}<span class="badge badge--gray">Deadline: {{ task.deadline|date:'d.m.Y' }}</span>{% endif %}
-        </div>
-    </div>
-    <div class="page-actions">
-        {% if task.is_open %}
-            <form method="post" action="{% url 'tasks:set_status' task.pk %}" style="margin:0">
-                {% csrf_token %}
-                <input type="hidden" name="status" value="done">
-                <button type="submit" class="btn">✓ Готово</button>
-            </form>
-        {% endif %}
-        <a href="{% url 'tasks:update' task.pk %}" class="btn btn--secondary">Редактировать</a>
-    </div>
-</div>
-
-<div class="detail-grid">
-    <div class="detail-grid__main">
-        <div class="panel">
-            <h2>Описание</h2>
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    <div class="gp-stack">
+        {% ui_card title="Описание" %}
             {% if task.description %}
-                <p style="margin:0">{{ task.description|linebreaksbr }}</p>
+                <p class="gp-text" style="white-space: pre-line; margin: 0; overflow-wrap: anywhere">{{ task.description }}</p>
             {% else %}
-                <div class="empty">Описания нет.</div>
+                <p class="gp-muted" style="margin:0">Описания нет.</p>
             {% endif %}
-        </div>
+        {% end_ui_card %}
 
-        <div class="panel">
-            <h2>Комментарии <span class="count-chip">{{ comments|length }}</span></h2>
-            {% for comment in comments %}
-                <div class="comment">
-                    <div class="comment__avatar">{{ comment.author.display_name|default:'?'|first|upper }}</div>
-                    <div class="comment__body">
-                        <div class="comment__head">
-                            <strong>{{ comment.author.display_name|default:'—' }}</strong>
-                            <span>{{ comment.created_at|date:'d.m.Y H:i' }}</span>
-                        </div>
-                        <div>{{ comment.text|linebreaksbr }}</div>
-                    </div>
-                </div>
-            {% empty %}
-                <div class="empty" style="padding-bottom:4px">Комментариев пока нет — напишите первый.</div>
-            {% endfor %}
-            <form method="post" class="comment-form">
+        {% with comments_count=comments|length|stringformat:"s" %}
+        {% ui_card title="Комментарии · "|add:comments_count flush=True %}
+            <div id="comments">
+            {% if comments %}
+            <ul class="gp-timeline" style="padding: 0 var(--space-5)">{% for comment in comments %}<li class="gp-timeline__item"><span class="gp-timeline__icon">{% ui_avatar comment.author.display_name|default:"?" size="sm" %}</span><div style="min-width:0"><p class="gp-timeline__title">{{ comment.author.display_name|default:"—" }}</p><p class="gp-timeline__meta">{{ comment.text }}</p></div><span class="gp-timeline__date">{{ comment.created_at|date:"d.m.Y H:i" }}</span></li>{% endfor %}</ul>
+            {% else %}<div style="padding: var(--space-6)">{% ui_empty "Комментариев пока нет" "Напишите первый." icon_name="inbox" %}</div>{% endif %}
+            <form method="post" class="gp-stack" style="padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border)">
                 {% csrf_token %}
                 <input type="hidden" name="comment" value="1">
-                {{ comment_form.text }}
-                <button type="submit" class="btn btn--sm">Отправить</button>
+                {% ui_field comment_form.text label="Комментарий" %}
+                <div>{% ui_button "Отправить" variant="primary" size="sm" type="submit" %}</div>
             </form>
-        </div>
+            </div>
+        {% end_ui_card %}
+        {% endwith %}
     </div>
 
-    <div class="detail-grid__side">
-        <div class="panel">
-            <h2>Детали</h2>
-            <div class="meta-list">
-                <div class="meta-row">
-                    <span>Проект</span>
-                    <div>{% if task.project %}<a href="{{ task.project.get_absolute_url }}">{{ task.project.name }}</a>{% else %}—{% endif %}</div>
-                </div>
-                <div class="meta-row">
-                    <span>Приоритет</span>
-                    <div>{{ task.get_priority_display }}</div>
-                </div>
-                <div class="meta-row">
-                    <span>Автор</span>
-                    <div>{{ task.author.display_name|default:'—' }}</div>
-                </div>
-                <div class="meta-row">
-                    <span>Создана</span>
-                    <div>{{ task.created_at|date:'d.m.Y H:i' }}</div>
-                </div>
-                <div class="meta-row">
-                    <span>Deadline</span>
-                    <div>{{ task.deadline|date:'d.m.Y'|default:'—' }}</div>
-                </div>
-                <div class="meta-row">
-                    <span>Завершена</span>
-                    <div>{{ task.completed_at|date:'d.m.Y'|default:'—' }}</div>
-                </div>
-            </div>
-        </div>
+    <div class="gp-stack">
+        {% ui_card title="Детали" %}
+            <dl class="gp-metrics">
+                <div class="gp-metrics__row"><dt>Проект</dt><dd>{% if task.project %}<a class="gp-link" href="{{ task.project.get_absolute_url }}">{{ task.project.name }}</a>{% else %}—{% endif %}</dd></div>
+                <div class="gp-metrics__row"><dt>Приоритет</dt><dd>{{ task.get_priority_display }}</dd></div>
+                <div class="gp-metrics__row"><dt>Автор</dt><dd>{{ task.author.display_name|default:'—' }}</dd></div>
+                <div class="gp-metrics__row"><dt>Создана</dt><dd>{{ task.created_at|date:'d.m.Y H:i' }}</dd></div>
+                <div class="gp-metrics__row"><dt>Deadline</dt><dd>{{ task.deadline|date:'d.m.Y'|default:'—' }}</dd></div>
+                <div class="gp-metrics__row"><dt>Завершена</dt><dd>{{ task.completed_at|date:'d.m.Y'|default:'—' }}</dd></div>
+            </dl>
+        {% end_ui_card %}
 
-        <div class="panel">
-            <h2>Вложения <span class="count-chip">{{ attachments|length }}</span></h2>
-            {% for attachment in attachments %}
-                <div class="file-row">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-                    <div>
-                        <a href="{{ attachment.file.url }}" target="_blank" rel="noopener">{{ attachment.name|truncatechars:32 }}</a>
-                        <div class="file-row__meta">{{ attachment.created_at|date:'d.m.Y H:i' }}</div>
-                    </div>
-                </div>
-            {% empty %}
-                <div class="empty" style="padding-bottom:4px">Вложений нет.</div>
-            {% endfor %}
-            <form method="post" enctype="multipart/form-data" class="upload-form">
+        {% with attachments_count=attachments|length|stringformat:"s" %}
+        {% ui_card title="Вложения · "|add:attachments_count flush=True %}
+            {% if attachments %}
+            <ul class="gp-docs">{% for attachment in attachments %}<li class="gp-doc"><span class="gp-doc__icon">{% ui_icon "file-text" %}</span><div style="min-width:0"><p class="gp-doc__title"><a class="gp-link" href="{{ attachment.file.url }}" target="_blank" rel="noopener" title="{{ attachment.name }}">{{ attachment.name|truncatechars:32 }}</a></p><p class="gp-doc__meta">{{ attachment.created_at|date:'d.m.Y H:i' }}</p></div></li>{% endfor %}</ul>
+            {% else %}<div style="padding: var(--space-6)">{% ui_empty "Вложений нет" icon_name="file-text" %}</div>{% endif %}
+            <form method="post" enctype="multipart/form-data" class="gp-cluster" style="padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border); align-items: flex-end">
                 {% csrf_token %}
                 <input type="hidden" name="attachment" value="1">
-                {{ attachment_form.file }}
-                {% if attachment_form.file.errors %}
-                    <div class="form-errors">{{ attachment_form.file.errors.0 }}</div>
-                {% endif %}
-                <button type="submit" class="btn btn--secondary btn--sm">Загрузить</button>
+                <div style="flex: 1 1 200px; min-width: 0">{% ui_field attachment_form.file label="Добавить файл" %}</div>
+                {% ui_button "Загрузить" type="submit" icon_name="upload" %}
             </form>
-        </div>
+        {% end_ui_card %}
+        {% endwith %}
     </div>
 </div>
 {% endblock %}

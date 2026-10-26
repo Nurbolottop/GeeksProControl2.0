@@ -1,26 +1,23 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
+{# Правка доступа проекта (2.0). Контекст: form, title, project. #}
 {% block title %}{{ title }} — GeeksPro Control{% endblock %}
-
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>{{ title }}</h1>
-        <div class="sub">Проект: <a href="{{ project.get_absolute_url }}?tab=access">{{ project.name }}</a></div>
-    </div>
-</div>
-
-<form method="post" class="panel">
-    {% csrf_token %}
-    {% if form.non_field_errors %}
-        <div class="message message--error">{{ form.non_field_errors }}</div>
-    {% endif %}
-    <div class="form-grid">
-        {% include 'partials/form_fields.html' %}
-    </div>
-    <div class="form-actions">
-        <button type="submit" class="btn">Сохранить</button>
-        <a href="{{ project.get_absolute_url }}?tab=access" class="btn btn--secondary">Отмена</a>
-    </div>
-</form>
+{% block page %}
+{% ui_page_header title=title subtitle="Проект: "|add:project.name %}
+    {% with back=project.get_absolute_url|add:"?tab=access" %}{% ui_button "К доступам проекта" variant="ghost" href=back %}{% endwith %}
+{% end_ui_page_header %}
+{% ui_card %}
+    <form method="post" class="gp-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% for field in form.visible_fields %}{% if field.field.widget.attrs.rows %}{% ui_field field wide=True %}{% else %}{% ui_field field %}{% endif %}{% endfor %}
+        </div>
+        {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+        <div class="gp-form-actions">
+            {% ui_button "Сохранить" variant="primary" type="submit" %}
+            {% with back=project.get_absolute_url|add:"?tab=access" %}{% ui_button "Отмена" variant="ghost" href=back %}{% endwith %}
+        </div>
+    </form>
+{% end_ui_card %}
 {% endblock %}

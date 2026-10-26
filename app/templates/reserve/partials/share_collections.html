@@ -1,32 +1,24 @@
-{% if can_edit and share_collections %}
-    <div class="form-link">
-        <div class="form-link__body">
-            <div class="form-link__label">Подборки для работодателей</div>
-            {% for link in share_collections %}
-                <div class="form-link__row">
-                    <div>
-                        <strong>{{ link.recipient|default:'Без названия' }}</strong>
-                        · {{ link.directions|join:', '|default:'—' }} · кандидатов: {{ link.size }}
-                        <div class="form-link__meta">{{ link.names|slice:':6'|join:', ' }}{% if link.size > 6 %} и ещё {{ link.size|add:'-6' }}{% endif %}</div>
-                        <a class="form-link__url" id="collection-url-{{ link.pk }}" href="{{ link.get_absolute_url }}" target="_blank" rel="noopener">{{ request.scheme }}://{{ request.get_host }}{{ link.get_absolute_url }}</a>
-                        <div class="form-link__meta">
-                            {% if link.show_contacts %}с контактами{% else %}без контактов{% endif %}
-                            · {% if link.expires_at %}действует до {{ link.expires_at|date:'d.m.Y H:i' }}{% else %}без срока{% endif %}
-                            · {% if link.views %}просмотров: {{ link.views }}, последний {{ link.viewed_at|date:'d.m.Y H:i' }}{% else %}ещё не открывали{% endif %}
-                        </div>
-                    </div>
-                    <div class="form-link__actions">
-                        <button type="button" class="btn btn--secondary btn--sm" data-copy="collection-url-{{ link.pk }}">Копировать</button>
-                        <form method="post" action="{% url 'reserve:share_disable' link.pk %}" style="margin: 0;"
-                              data-confirm="Отключить ссылку? Подборка по ней больше не откроется."
-                              data-confirm-ok="Отключить">
-                            {% csrf_token %}
-                            {% if request.resolver_match.url_name == 'overview' %}<input type="hidden" name="next" value="overview">{% endif %}
-                            <button type="submit" class="btn btn--secondary btn--sm">Отключить</button>
-                        </form>
-                    </div>
-                </div>
-            {% endfor %}
+{% load ui %}{% if can_edit and share_collections %}
+<div style="margin-bottom: var(--space-4)">
+{% ui_card title="Подборки для работодателей" subtitle="Одна ссылка — список кандидатов, работодатель откроет профиль каждого." %}
+    <div class="gp-stack">
+    {% for link in share_collections %}{% with lid=link.pk|stringformat:"s" %}
+        <div class="gp-stack gp-stack--sm">
+            <div class="gp-small"><strong>{{ link.recipient|default:'Без названия' }}</strong> <span class="gp-muted">· {{ link.directions|join:', '|default:'—' }} · кандидатов: {{ link.size }}</span></div>
+            <p class="gp-muted gp-small" style="margin:0; overflow-wrap:anywhere">{{ link.names|slice:':6'|join:', ' }}{% if link.size > 6 %} и ещё {{ link.size|add:'-6' }}{% endif %}</p>
+            <div class="gp-copyline">
+                <a class="gp-copyline__url" id="collection-url-{{ link.pk }}" href="{{ link.get_absolute_url }}" target="_blank" rel="noopener">{{ request.scheme }}://{{ request.get_host }}{{ link.get_absolute_url }}</a>
+                {% ui_button "Копировать" size="sm" icon_name="copy" data_gp_copy="collection-url-"|add:lid %}
+                {% ui_button "Отключить" size="sm" variant="ghost" data_gp_open="disable-collection-"|add:lid %}
+            </div>
+            <p class="gp-muted gp-small" style="margin:0">{% if link.show_contacts %}С контактами{% else %}Без контактов{% endif %} · {% if link.expires_at %}действует до {{ link.expires_at|date:'d.m.Y H:i' }}{% else %}без срока{% endif %} · {% if link.views %}просмотров: {{ link.views }}, последний {{ link.viewed_at|date:'d.m.Y H:i' }}{% else %}ещё не открывали{% endif %}</p>
         </div>
+        {% ui_modal id="disable-collection-"|add:lid title="Отключить ссылку?" %}
+            <p class="gp-text" style="margin:0">Подборка «{{ link.recipient|default:'Без названия' }}» по ней больше не откроется.</p>
+            {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}<form method="post" action="{% url 'reserve:share_disable' link.pk %}" style="margin:0">{% csrf_token %}{% if request.resolver_match.url_name == 'overview' %}<input type="hidden" name="next" value="overview">{% endif %}{% ui_button "Отключить" variant="danger" type="submit" %}</form>{% end_ui_slot %}
+        {% end_ui_modal %}
+    {% endwith %}{% endfor %}
     </div>
+{% end_ui_card %}
+</div>
 {% endif %}

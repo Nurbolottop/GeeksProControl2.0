@@ -1,57 +1,31 @@
-<tr id="score-{{ row.intern.pk }}" class="score-line score-line--{{ row.level }}">
-    <td>
-        <a href="{{ row.intern.get_absolute_url }}"><strong>{{ row.intern.full_name }}</strong></a>
-        <div style="font-size:11.5px; color: var(--text-muted)">
-            {{ row.intern.specialization|default:'' }}
-        </div>
-    </td>
-    <td>
-        <div class="score-line__bar">
-            <button type="button" class="score-zero {% if row.score == 0 %}is-on{% endif %}"
-                    title="Совсем не работал"
+{% load ui %}<li class="gp-score gp-score--{{ row.level }}" id="score-{{ row.intern.pk }}">
+    <div class="gp-score__who">
+        <a class="gp-link gp-table__primary" href="{{ row.intern.get_absolute_url }}">{{ row.intern.full_name }}</a>
+        <span class="gp-muted gp-small">{{ row.intern.specialization|default:'' }}</span>
+    </div>
+    <div class="gp-score__scale" role="group" aria-label="Оценка {{ row.intern.full_name }}">
+        <button type="button" class="gp-score__seg gp-score__seg--zero{% if row.score == 0 %} is-on{% endif %}" title="Совсем не работал"
+                hx-post="{% url 'attendance:score_person' meeting.pk %}"
+                hx-vals='{"intern": "{{ row.intern.pk }}", "score": "{% if row.score == 0 %}clear{% else %}0{% endif %}"}'
+                hx-target="#score-{{ row.intern.pk }}" hx-swap="outerHTML">0</button>
+        {% for segment in row.segments %}<button type="button" class="gp-score__seg{% if segment.on %} is-on{% endif %}" title="{{ segment.value }} из 10"
+                hx-post="{% url 'attendance:score_person' meeting.pk %}"
+                hx-vals='{"intern": "{{ row.intern.pk }}", "score": "{% if row.score == segment.value %}clear{% else %}{{ segment.value }}{% endif %}"}'
+                hx-target="#score-{{ row.intern.pk }}" hx-swap="outerHTML">{{ segment.value }}</button>{% endfor %}
+    </div>
+    <div class="gp-score__value">
+        <span class="gp-cluster" style="gap: var(--space-1); flex-wrap: nowrap">
+            {% if row.score is None %}<span class="gp-muted">не оценён</span>{% else %}<span><strong>{{ row.score }}</strong>/10</span>
+            <button type="button" class="gp-btn gp-btn--ghost gp-btn--sm gp-btn--icon" title="Снять оценку" aria-label="Снять оценку"
                     hx-post="{% url 'attendance:score_person' meeting.pk %}"
-                    hx-vals='{"intern": "{{ row.intern.pk }}", "score": "{% if row.score == 0 %}clear{% else %}0{% endif %}"}'
-                    hx-target="#score-{{ row.intern.pk }}" hx-swap="outerHTML">0</button>
-            <div class="score-bar score-bar--{{ row.level }}">
-                {% for segment in row.segments %}
-                    <button type="button" class="score-seg {% if segment.on %}is-on{% endif %}"
-                            title="{{ segment.value }} из 10"
-                            hx-post="{% url 'attendance:score_person' meeting.pk %}"
-                            hx-vals='{"intern": "{{ row.intern.pk }}", "score": "{% if row.score == segment.value %}clear{% else %}{{ segment.value }}{% endif %}"}'
-                            hx-target="#score-{{ row.intern.pk }}" hx-swap="outerHTML"><span>{{ segment.value }}</span></button>
-                {% endfor %}
-            </div>
-            <div class="score-value score-value--{{ row.level }}">
-                {% if row.score is None %}
-                    <span class="score-value__none">не оценён</span>
-                {% else %}
-                    <strong>{{ row.score }}</strong><span>/10</span>
-                {% endif %}
-            </div>
-            {% if row.score is not None %}
-                <button type="button" class="score-clear" title="Снять оценку"
-                        hx-post="{% url 'attendance:score_person' meeting.pk %}"
-                        hx-vals='{"intern": "{{ row.intern.pk }}", "score": "clear"}'
-                        hx-target="#score-{{ row.intern.pk }}" hx-swap="outerHTML">✕</button>
-            {% endif %}
-        </div>
-    </td>
-    <td class="score-prev">
-        {% if row.previous is not None %}
-            <span class="score-prev__was">было {{ row.previous }}</span>
-            {% if row.delta > 0 %}
-                <span class="score-delta score-delta--up">↑ +{{ row.delta }}</span>
-            {% elif row.delta < 0 %}
-                <span class="score-delta score-delta--down">↓ {{ row.delta }}</span>
-            {% elif row.delta == 0 %}
-                <span class="score-delta score-delta--same">= без изменений</span>
-            {% endif %}
-        {% else %}
-            <span class="score-prev__none">—</span>
-        {% endif %}
-    </td>
-    <td style="min-width: 200px">
-        <input type="text" class="score-note" placeholder="за что балл"
+                    hx-vals='{"intern": "{{ row.intern.pk }}", "score": "clear"}'
+                    hx-target="#score-{{ row.intern.pk }}" hx-swap="outerHTML">{% ui_icon "x" size="sm" %}</button>{% endif %}
+        </span>
+        <span class="gp-score__prev">{% if row.previous is not None %}было {{ row.previous }}{% if row.delta > 0 %} · <span class="gp-delta gp-delta--up">↑ +{{ row.delta }}</span>{% elif row.delta < 0 %} · <span class="gp-delta gp-delta--down">↓ {{ row.delta }}</span>{% elif row.delta == 0 %} · без изменений{% endif %}{% else %}прошлый раз: —{% endif %}</span>
+    </div>
+    <div class="gp-score__note">
+        <label class="gp-sr-only" for="note-{{ row.intern.pk }}">Комментарий к оценке {{ row.intern.full_name }}</label>
+        <input type="text" class="gp-input" id="note-{{ row.intern.pk }}" placeholder="за что балл"
                value="{{ row.score_comment }}" maxlength="255"
                hx-post="{% url 'attendance:score_person' meeting.pk %}"
                hx-trigger="change"
@@ -59,5 +33,5 @@
                hx-vals='{"intern": "{{ row.intern.pk }}"}'
                name="comment"
                hx-target="#score-{{ row.intern.pk }}" hx-swap="outerHTML">
-    </td>
-</tr>
+    </div>
+</li>

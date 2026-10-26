@@ -1,48 +1,34 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}{{ title }} — GeeksPro Control{% endblock %}
-
-{% block content %}
-<div class="page-head">
-    <div><h1>{{ title }}</h1></div>
-</div>
-
-<form method="post" class="panel">
+{% block page %}
+{% ui_page_header title=title subtitle="Проект, который может стартовать, и сколько людей по направлениям он потребует." %}{% end_ui_page_header %}
+<form method="post" class="gp-form gp-stack">
     {% csrf_token %}
-    {% if form.non_field_errors %}
-        <div class="message message--error">{{ form.non_field_errors }}</div>
-    {% endif %}
-    <div class="form-grid">
-        {% include 'partials/form_fields.html' %}
-    </div>
-
-    <h2 style="margin-top:20px">Предполагаемый состав команды</h2>
-    {{ formset.management_form }}
-    {% for need_form in formset %}
-        <div style="display:flex; gap:12px; align-items:flex-end; padding: 6px 0; flex-wrap:wrap;">
-            {% for hidden in need_form.hidden_fields %}{{ hidden }}{% endfor %}
-            <div class="form-field">
-                <label>Направление</label>
-                {{ need_form.specialization }}
-            </div>
-            <div class="form-field" style="max-width: 100px">
-                <label>Человек</label>
-                {{ need_form.count }}
-            </div>
-            {% if need_form.instance.pk %}
-                <label style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:4px; padding-bottom:8px">
-                    {{ need_form.DELETE }} удалить
-                </label>
-            {% endif %}
-            {% if need_form.errors %}
-                <div class="form-errors">{{ need_form.errors }}</div>
-            {% endif %}
+    {% ui_card title="Проект" %}
+        {% if form.non_field_errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% for field in form.visible_fields %}{% ui_field field wide=field.field.widget.attrs.rows %}{% endfor %}
         </div>
-    {% endfor %}
+        {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+    {% end_ui_card %}
 
-    <div class="form-actions">
-        <button type="submit" class="btn">Сохранить</button>
-        <a href="{% url 'resources:forecast' %}" class="btn btn--secondary">Отмена</a>
-    </div>
+    {% ui_card title="Предполагаемый состав команды" subtitle="Пустые строки не сохраняются." %}
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}<div class="gp-form-errors">{% ui_alert formset.non_form_errors|join:" " level="danger" %}</div>{% endif %}
+        <div class="gp-stack">
+        {% for need_form in formset %}
+            <div class="gp-cluster" style="align-items: flex-end; gap: var(--space-4)">
+                {% for hidden in need_form.hidden_fields %}{{ hidden }}{% endfor %}
+                <div style="flex: 1 1 240px; min-width: 0">{% ui_field need_form.specialization label="Направление" %}</div>
+                <div style="flex: 0 1 120px; min-width: 0">{% ui_field need_form.count label="Человек" %}</div>
+                {% if need_form.instance.pk %}<div style="padding-bottom: var(--space-2)">{% ui_field need_form.DELETE label="удалить" %}</div>{% endif %}
+                {% if need_form.non_field_errors %}<div class="gp-error" style="flex-basis: 100%">{% ui_icon "alert-circle" %}<span>{{ need_form.non_field_errors|join:" " }}</span></div>{% endif %}
+            </div>
+        {% endfor %}
+        </div>
+    {% end_ui_card %}
+
+    <div class="gp-form-actions">{% ui_button "Сохранить" variant="primary" type="submit" %}{% url 'resources:forecast' as cancel_url %}{% ui_button "Отмена" variant="ghost" href=cancel_url %}</div>
 </form>
 {% endblock %}

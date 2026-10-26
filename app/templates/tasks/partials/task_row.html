@@ -1,47 +1,42 @@
-<tr id="task-{{ task.pk }}" class="task-row task-row--{{ task.status }}">
-    <td>
-        <a href="{{ task.get_absolute_url }}"><strong>{{ task.title }}</strong></a>
+{% load ui %}{% with pk_s=task.pk|stringformat:"s" %}{% with modal_id="task-delete-"|add:pk_s form_id="task-delete-form-"|add:pk_s %}<tr id="task-{{ task.pk }}" class="task-row task-row--{{ task.status }}">
+    <td class="is-primary" data-label="Задача">
+        <a class="gp-link gp-table__primary" href="{{ task.get_absolute_url }}" style="overflow-wrap:anywhere">{{ task.title }}</a>
         {% if task.project %}
-            <div style="font-size:12px; color: var(--text-muted)">
-                <a href="{{ task.project.get_absolute_url }}">{{ task.project.name }}</a>
-            </div>
+            <span class="gp-table__secondary"><a class="gp-link" href="{{ task.project.get_absolute_url }}">{{ task.project.name }}</a></span>
         {% else %}
-            <div style="font-size:12px; color: var(--text-muted)">Без проекта</div>
+            <span class="gp-table__secondary">Без проекта</span>
         {% endif %}
     </td>
-    <td>
-        {% if task.priority == 'critical' %}<span class="badge badge--red">Critical</span>
-        {% elif task.priority == 'high' %}<span class="badge badge--orange">High</span>
-        {% elif task.priority == 'medium' %}<span class="badge badge--blue">Medium</span>
-        {% else %}<span class="badge badge--gray">Low</span>{% endif %}
-    </td>
-    <td>
+    <td data-label="Приоритет">{% include "tasks/partials/priority_badge.html" %}</td>
+    <td data-label="Deadline" class="gp-nowrap">
         {% if task.deadline %}
             {{ task.deadline|date:'d.m.Y' }}
-            {% if task.is_open and task.deadline < today %}
-                <span class="badge badge--red">просрочена</span>
-            {% endif %}
-        {% else %}—{% endif %}
+            {% if task.is_open and task.deadline < today %}<span class="gp-table__secondary">{% ui_badge "просрочена" tone="danger" dot=True %}</span>{% endif %}
+        {% else %}<span class="gp-muted">—</span>{% endif %}
     </td>
-    <td>
+    <td data-label="Статус">
         <form hx-post="{% url 'tasks:set_status' task.pk %}"
               hx-target="#task-{{ task.pk }}" hx-swap="outerHTML"
-              style="margin:0; display:flex; align-items:center; gap:8px">
-            {% if task.status == 'done' %}<span class="task-done-mark">✓</span>{% endif %}
-            <select name="status" onchange="this.form.requestSubmit()"
-                    class="task-status task-status--{{ task.status }}">
+              class="gp-cluster" style="--cluster-gap: var(--space-2); margin:0; flex-wrap: nowrap">
+            {% if task.status == 'done' %}<span class="task-done-mark" style="color: var(--color-success-text)" aria-hidden="true">{% ui_icon "check" "sm" %}</span>{% endif %}
+            <label class="gp-sr-only" for="task-status-{{ task.pk }}">Статус задачи «{{ task.title }}»</label>
+            <select name="status" id="task-status-{{ task.pk }}" onchange="this.form.requestSubmit()"
+                    class="gp-select task-status task-status--{{ task.status }}" style="min-width: 150px">
                 {% for value, label in statuses %}
                     <option value="{{ value }}" {% if task.status == value %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </form>
     </td>
-    <td style="white-space: nowrap; text-align: right">
-        <a href="{% url 'tasks:update' task.pk %}" class="btn btn--secondary btn--sm">Изменить</a>
-        <form method="post" action="{% url 'tasks:delete' task.pk %}" style="display:inline"
-              data-confirm="Удалить задачу «{{ task.title|escapejs }}»?">
-            {% csrf_token %}
-            <button type="submit" class="btn btn--secondary btn--sm" title="Удалить">✕</button>
-        </form>
+    <td data-label="Действия">
+        <div class="gp-cluster" style="--cluster-gap: var(--space-2); flex-wrap: nowrap; justify-content: flex-end">
+            {% url 'tasks:update' task.pk as edit_url %}{% ui_button "Изменить" size="sm" href=edit_url icon_name="pencil" %}
+            {% ui_button "Удалить" size="sm" variant="ghost" icon_name="trash" label_hidden=True data_gp_open=modal_id title="Удалить" %}
+        </div>
+        {% ui_modal id=modal_id title="Удалить задачу?" %}
+            <form method="post" action="{% url 'tasks:delete' task.pk %}" id="{{ form_id }}">{% csrf_token %}<p class="gp-text" style="margin:0">Задача «{{ task.title }}» уйдёт в архив: исполнители, сдачи и история сохранятся.</p></form>
+            {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Удалить" variant="danger" type="submit" form=form_id %}{% end_ui_slot %}
+        {% end_ui_modal %}
     </td>
 </tr>
+{% endwith %}{% endwith %}

@@ -1,68 +1,53 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Резерв кадров — GeeksPro Control{% endblock %}
+{% block page %}
+{% with total_label=candidates|length|stringformat:"s" %}
+{% ui_page_header title="Резерв кадров" subtitle="Отдельный пул кандидатов, не привязан к карточкам стажёров. Всего: "|add:total_label %}
+    {% url 'interns:reserve_create' as create_url %}{% ui_button "Добавить" href=create_url variant="primary" icon_name="plus" %}
+{% end_ui_page_header %}
+{% endwith %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Резерв кадров</h1>
-        <div class="sub">Отдельный пул кандидатов, не привязан к карточкам стажёров. Всего: {{ candidates|length }}</div>
-    </div>
-    <div class="page-actions">
-        <a href="{% url 'interns:reserve_create' %}" class="btn">+ Добавить</a>
-    </div>
-</div>
-
-<div class="panel" style="padding: 0;">
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
+{% ui_card flush=True %}
+{% if candidates %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Резерв кадров</caption>
+        <thead><tr><th scope="col">ФИО</th><th scope="col">Направление</th><th scope="col">Желаемая роль</th><th scope="col">Город</th><th scope="col">Приоритет</th><th scope="col"><span class="gp-sr-only">Действия</span></th></tr></thead>
+        <tbody>
+        {% for candidate in candidates %}
             <tr>
-                <th>ФИО</th>
-                <th>Направление</th>
-                <th>Желаемая роль</th>
-                <th>Город</th>
-                <th>Приоритет</th>
-                <th>Действия</th>
+                <td class="is-primary" data-label="ФИО"><span class="gp-table__primary" style="overflow-wrap:anywhere">{{ candidate.full_name }}</span>{% if candidate.phone or candidate.email %}<span class="gp-table__secondary" style="overflow-wrap:anywhere">{{ candidate.phone|default:'' }} {{ candidate.email|default:'' }}</span>{% endif %}</td>
+                <td data-label="Направление">{{ candidate.specialization|default:'—' }}</td>
+                <td data-label="Желаемая роль">{{ candidate.desired_role|default:'—' }}</td>
+                <td data-label="Город">{{ candidate.city|default:'—' }}</td>
+                <td data-label="Приоритет">
+                    <form method="post" action="{% url 'interns:reserve_set_priority' candidate.pk %}" class="gp-cluster" style="gap: var(--space-2); margin:0; flex-wrap: nowrap">
+                        {% csrf_token %}
+                        <input class="gp-input" type="number" name="priority" value="{{ candidate.priority }}" min="0" style="width: 80px" aria-label="Приоритет {{ candidate.full_name }}">
+                        {% ui_button "Сохранить" size="sm" type="submit" %}
+                    </form>
+                </td>
+                <td data-label="Действия">
+                    <div class="gp-cluster" style="gap: var(--space-1); flex-wrap: nowrap">
+                        {% url 'interns:reserve_update' candidate.pk as edit_url %}{% ui_button "Изменить" href=edit_url variant="ghost" size="sm" icon_name="pencil" label_hidden=True title="Изменить" %}
+                        {% with cid=candidate.pk|stringformat:"s" %}{% ui_button "Удалить" variant="ghost" size="sm" icon_name="trash" label_hidden=True title="Удалить" data_gp_open="delete-reserve-"|add:cid %}{% endwith %}
+                    </div>
+                </td>
             </tr>
-            </thead>
-            <tbody>
-            {% for candidate in candidates %}
-                <tr>
-                    <td>
-                        <strong>{{ candidate.full_name }}</strong>
-                        <div style="font-size:11.5px; color: var(--text-muted)">
-                            {{ candidate.phone|default:'' }} {{ candidate.email|default:'' }}
-                        </div>
-                    </td>
-                    <td>{{ candidate.specialization|default:'—' }}</td>
-                    <td>{{ candidate.desired_role|default:'—' }}</td>
-                    <td>{{ candidate.city|default:'—' }}</td>
-                    <td>
-                        <form method="post" action="{% url 'interns:reserve_set_priority' candidate.pk %}"
-                              style="display:flex; gap:6px; align-items:center; margin:0">
-                            {% csrf_token %}
-                            <input type="number" name="priority" value="{{ candidate.priority }}" min="0"
-                                   style="width:64px">
-                            <button type="submit" class="btn btn--secondary btn--sm">Сохранить</button>
-                        </form>
-                    </td>
-                    <td>
-                        <a href="{% url 'interns:reserve_update' candidate.pk %}" class="btn-edit" title="Изменить">✎</a>
-                        <form method="post" action="{% url 'interns:reserve_delete' candidate.pk %}" style="display:inline; margin:0"
-                              data-confirm="Удалить {{ candidate.full_name|escapejs }} из резерва?">
-                            {% csrf_token %}
-                            <button type="submit" class="btn-edit btn-edit--danger" title="Удалить">✕</button>
-                        </form>
-                    </td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="6" class="empty" style="text-align:center; padding: 24px;">
-                    В резерве пока никого нет.
-                </td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+        {% endfor %}
+        </tbody>
+    </table>
 </div>
+{% else %}<div style="padding: var(--space-6)">{% url 'interns:reserve_create' as create_url %}{% ui_empty "В резерве пока никого нет" icon_name="users" action_label="Добавить" action_href=create_url %}</div>{% endif %}
+{% end_ui_card %}
+
+{% for candidate in candidates %}
+{% with cid=candidate.pk|stringformat:"s" %}
+{% ui_modal id="delete-reserve-"|add:cid title="Удалить из резерва?" %}
+    <p class="gp-text" style="margin:0">{{ candidate.full_name }} будет удалён(а) из резерва.</p>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}<form method="post" action="{% url 'interns:reserve_delete' candidate.pk %}" style="margin:0">{% csrf_token %}{% ui_button "Удалить" variant="danger" type="submit" icon_name="trash" %}</form>{% end_ui_slot %}
+{% end_ui_modal %}
+{% endwith %}
+{% endfor %}
 {% endblock %}

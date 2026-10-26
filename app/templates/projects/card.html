@@ -1,7 +1,6 @@
 {% extends "layouts/app.html" %}
-{% load ui static %}
+{% load ui %}
 {% block title %}{{ project.name }} — GeeksPro Control{% endblock %}
-{% block legacy_assets %}{% if is_legacy_tab %}<link rel="stylesheet" href="{% static 'gp2/legacy.css' %}"><script src="{% static 'js/confirm-modal.js' %}" defer></script>{% endif %}{% endblock %}
 {% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
 {% block mobile_title %}{{ project.name }}{% endblock %}
 {% block page %}
@@ -30,8 +29,8 @@
 {% elif tab == 'report' %}{% include "projects/card/_reports.html" %}
 {% elif tab == 'attendance' %}{% include "projects/card/_attendance.html" %}
 {% elif tab == 'client' %}{% include "projects/card/_client.html" %}
-{% else %}
-    {% ui_alert "Раздел переносится на новый интерфейс в следующем этапе; данные и действия — прежние." title="Переходный вид" %}
-    <div class="gp-legacy" style="margin-top: var(--space-4)">{% include "projects/legacy/tab_"|add:tab|add:".html" %}</div>
+{% elif tab == 'access' %}{% include "projects/card/_access.html" %}
+{% elif tab == 'graphics' %}{% include "projects/card/_graphics.html" %}
+{% elif tab == 'history' %}{% include "projects/card/_history.html" %}
 {% endif %}
 {% endblock %}

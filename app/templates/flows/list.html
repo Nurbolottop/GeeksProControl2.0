@@ -1,43 +1,35 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Потоки — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Потоки" subtitle="Набор стажёров + его проекты. Всё начинается отсюда" %}
+    {% url 'flows:create' as create_url %}{% ui_button "Новый поток" variant="primary" href=create_url icon_name="plus" %}
+{% end_ui_page_header %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Потоки</h1>
-        <div class="sub">Набор стажёров + его проекты. Всё начинается отсюда</div>
-    </div>
-    <div class="page-actions">
-        <a href="{% url 'flows:create' %}" class="btn">+ Новый поток</a>
-    </div>
-</div>
-
-<div class="flow-grid">
+{% if rows %}
+<div class="gp-grid" style="--grid-min: 280px">
     {% for row in rows %}
-        <a href="{{ row.flow.get_absolute_url }}" class="flow-card flow-card--{{ row.flow.status }}">
-            <div class="flow-card__head">
-                <span class="flow-card__number">{{ row.flow.number }}</span>
-                <div>
-                    <div class="flow-card__title">Поток {{ row.flow.number }}</div>
-                    <div class="flow-card__dates">
-                        {% if row.flow.start_date %}{{ row.flow.start_date|date:'d.m.Y' }}{% else %}—{% endif %}
-                        {% if row.flow.end_date %} → {{ row.flow.end_date|date:'d.m.Y' }}{% endif %}
-                    </div>
+    <a href="{{ row.flow.get_absolute_url }}" class="gp-card gp-card--interactive" style="color: inherit; text-decoration: none">
+        <div class="gp-card__body gp-stack">
+            <div class="gp-cluster gp-cluster--between" style="flex-wrap: nowrap; align-items: flex-start">
+                <div style="min-width: 0">
+                    <h2 class="gp-h3" style="margin:0">Поток {{ row.flow.number }}</h2>
+                    <span class="gp-muted gp-small">{% if row.flow.start_date %}{{ row.flow.start_date|date:'d.m.Y' }}{% else %}—{% endif %}{% if row.flow.end_date %} → {{ row.flow.end_date|date:'d.m.Y' }}{% endif %}</span>
                 </div>
-                {% if row.flow.status == 'active' %}<span class="badge badge--green">Активный</span>
-                {% elif row.flow.status == 'planned' %}<span class="badge badge--yellow">Набор</span>
-                {% else %}<span class="badge badge--gray">Завершён</span>{% endif %}
+                {% if row.flow.status == 'active' %}{% ui_badge "Активный" tone="success" dot=True %}{% elif row.flow.status == 'planned' %}{% ui_badge "Набор" tone="warning" dot=True %}{% else %}{% ui_badge "Завершён" %}{% endif %}
             </div>
-            <div class="flow-card__stats">
-                <div><strong>{{ row.projects }}</strong><span>проектов</span></div>
-                <div><strong>{{ row.active }}</strong><span>в работе</span></div>
-                <div><strong>{{ row.completed }}</strong><span>завершено</span></div>
-                <div><strong>{{ row.interns }}</strong><span>человек</span></div>
-            </div>
-        </a>
-    {% empty %}
-        <div class="panel empty">Потоков пока нет — создайте первый.</div>
+            <dl class="gp-grid" style="--grid-min: 70px; --grid-gap: var(--space-2); margin: 0">
+                <div><dt class="gp-muted gp-small">проектов</dt><dd style="margin:0; font-size: var(--text-xl); font-weight: var(--weight-semibold)">{{ row.projects }}</dd></div>
+                <div><dt class="gp-muted gp-small">в работе</dt><dd style="margin:0; font-size: var(--text-xl); font-weight: var(--weight-semibold)">{{ row.active }}</dd></div>
+                <div><dt class="gp-muted gp-small">завершено</dt><dd style="margin:0; font-size: var(--text-xl); font-weight: var(--weight-semibold)">{{ row.completed }}</dd></div>
+                <div><dt class="gp-muted gp-small">человек</dt><dd style="margin:0; font-size: var(--text-xl); font-weight: var(--weight-semibold)">{{ row.interns }}</dd></div>
+            </dl>
+        </div>
+    </a>
     {% endfor %}
 </div>
+{% else %}
+<div class="gp-card">{% url 'flows:create' as create_url %}{% ui_empty "Потоков пока нет" "Создайте первый поток." icon_name="layout-grid" action_label="Новый поток" action_href=create_url %}</div>
+{% endif %}
 {% endblock %}

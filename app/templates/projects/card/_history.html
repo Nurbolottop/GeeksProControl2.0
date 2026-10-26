@@ -1,0 +1,21 @@
+{% load ui %}
+{# История изменений проекта (вкладка руководителя). Контекст: history — последние 50 записей. #}
+{% ui_card title="История изменений" subtitle="Последние 50 изменений: поля проекта, этапы, команда." %}
+    {% if history %}
+    <ol class="gp-timeline">
+        {% for record in history %}
+        <li class="gp-timeline__item">
+            <span class="gp-timeline__icon" aria-hidden="true">{% ui_icon "clock" "sm" %}</span>
+            <div>
+                <p class="gp-timeline__title">{{ record.field }}: {% if record.old_value %}<span class="gp-muted">{{ record.old_value }}</span> → {% endif %}{{ record.new_value|default:'—' }}</p>
+                {% if record.reason %}<p class="gp-timeline__meta">Причина: {{ record.reason }}</p>{% endif %}
+                {% if record.user %}<p class="gp-timeline__meta">{{ record.user.display_name }}</p>{% endif %}
+            </div>
+            <time class="gp-timeline__date" datetime="{{ record.created_at|date:'c' }}">{{ record.created_at|date:'d.m.Y H:i' }}</time>
+        </li>
+        {% endfor %}
+    </ol>
+    {% else %}
+    {% ui_empty "Изменений пока нет" icon_name="clock" %}
+    {% endif %}
+{% end_ui_card %}

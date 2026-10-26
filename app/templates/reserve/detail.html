@@ -1,388 +1,317 @@
-{% extends 'base.html' %}
-
-{% block title %}{{ candidate.full_name }} — Резерв кадров{% endblock %}
-
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>{{ candidate.full_name }}</h1>
-        <div class="sub">
-            Резерв кадров · добавлен(а) {{ candidate.created_at|date:'d.m.Y' }}{% if candidate.created_by %}, {{ candidate.created_by.display_name }}{% endif %}
-        </div>
-    </div>
-    <div class="page-actions">
-        <a href="{% url 'reserve:list' %}" class="btn btn--secondary">К списку</a>
-        {% if can_edit %}
-            <a href="{% url 'reserve:update' candidate.pk %}" class="btn btn--secondary">Редактировать</a>
-            <a href="{% url 'reserve:recommend' candidate.pk %}" class="btn">Рекомендовать компании</a>
-        {% endif %}
-    </div>
-</div>
-
-<div class="panel reserve-head">
-    {% if candidate.photo %}
-        <img src="{{ candidate.photo.url }}" alt="" class="reserve-head__photo">
-    {% else %}
-        <span class="reserve-head__photo reserve-head__photo--empty">{{ candidate.full_name|slice:':1' }}</span>
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}{{ candidate.full_name }} — Резерв кадров — GeeksPro Control{% endblock %}
+{% block extra_head %}
+<style>
+    .rs-metrics dd { white-space: normal; overflow-wrap: anywhere; }
+    .rs-photo { width: 64px; height: 64px; flex-shrink: 0; border-radius: var(--radius-lg); object-fit: cover; }
+    .rs-photo--empty { display: grid; place-items: center; background: var(--color-primary-soft); color: var(--color-primary-soft-text); font-size: var(--text-2xl); font-weight: var(--weight-bold); }
+    .rs-prose { margin: 0; overflow-wrap: anywhere; }
+</style>
+{% endblock %}
+{% block page %}
+{% with created=candidate.created_at|date:"d.m.Y" %}{% with page_subtitle="Резерв кадров · добавлен(а) "|add:created %}
+{% ui_page_header title=candidate.full_name subtitle=page_subtitle %}
+    {% ui_slot "eyebrow" %}
+        {% include "reserve/partials/tone_badge.html" with text=candidate.get_status_display tone=candidate.status_tone %}
+        {% if candidate.geekspro_level %}{% ui_badge candidate.get_geekspro_level_display tone="info" %}{% endif %}
+        {% ui_badge candidate.direction %}
+        {% if candidate.is_looking_for_job %}{% ui_badge "Ищет работу · "|add:candidate.readiness tone="success" %}{% else %}{% ui_badge "Не ищет работу" %}{% endif %}
+        {% if candidate.decision %}{% ui_badge candidate.get_decision_display tone="warning" %}{% endif %}
+    {% end_ui_slot %}
+    {% url 'reserve:list' as list_url %}{% ui_button "К списку" href=list_url variant="ghost" %}
+    {% if can_edit %}
+        {% url 'reserve:update' candidate.pk as update_url %}{% ui_button "Редактировать" href=update_url icon_name="pencil" %}
+        {% url 'reserve:recommend' candidate.pk as recommend_url %}{% ui_button "Рекомендовать компании" href=recommend_url variant="primary" icon_name="briefcase" %}
     {% endif %}
-    <div class="reserve-head__body">
-        <div class="reserve-head__badges">
-            <span class="badge badge--{{ candidate.status_tone }}">{{ candidate.get_status_display }}</span>
-            {% if candidate.geekspro_level %}<span class="badge badge--blue">{{ candidate.get_geekspro_level_display }}</span>{% endif %}
-            <span class="badge badge--gray">{{ candidate.direction }}</span>
-            {% if candidate.is_looking_for_job %}
-                <span class="badge badge--green">Ищет работу · {{ candidate.readiness }}</span>
-            {% else %}
-                <span class="badge badge--gray">Не ищет работу</span>
-            {% endif %}
-            {% if candidate.decision %}<span class="badge badge--yellow">{{ candidate.get_decision_display }}</span>{% endif %}
-        </div>
-        <div class="reserve-head__rating">
-            {% if candidate.rating %}<strong>{{ candidate.rating }}</strong> / 10{% else %}<span class="sub">Оценка не выставлена</span>{% endif %}
-            <span class="sub">· проектов: {{ candidate.projects_count }} · рекомендаций: {{ candidate.recommendations_count }}</span>
-        </div>
-        <div class="reserve-skills">
-            {% for skill in candidate.skills_list|slice:':10' %}<span class="chip">{{ skill }}</span>{% endfor %}
-        </div>
-        <div class="reserve-head__links">
-            {% if candidate.resume_file %}<a href="{{ candidate.resume_file.url }}" target="_blank" rel="noopener">Резюме (файл)</a>{% endif %}
-            {% if candidate.resume_url %}<a href="{{ candidate.resume_url }}" target="_blank" rel="noopener">Резюме</a>{% endif %}
-            {% if candidate.github_url %}<a href="{{ candidate.github_url }}" target="_blank" rel="noopener">GitHub</a>{% endif %}
-            {% if candidate.portfolio_url %}<a href="{{ candidate.portfolio_url }}" target="_blank" rel="noopener">Портфолио</a>{% endif %}
-            {% if candidate.behance_url %}<a href="{{ candidate.behance_url }}" target="_blank" rel="noopener">Behance</a>{% endif %}
-            {% if candidate.linkedin_url %}<a href="{{ candidate.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>{% endif %}
-            {% if candidate.website_url %}<a href="{{ candidate.website_url }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
+{% end_ui_page_header %}
+{% endwith %}{% endwith %}
+
+{% ui_card %}
+    <div class="gp-cluster" style="align-items: flex-start; gap: var(--space-4)">
+        {% if candidate.photo %}<img src="{{ candidate.photo.url }}" alt="" class="rs-photo">{% else %}<span class="rs-photo rs-photo--empty" aria-hidden="true">{{ candidate.full_name|slice:':1' }}</span>{% endif %}
+        <div class="gp-stack gp-stack--sm" style="flex: 1 1 260px">
+            <div>
+                {% if candidate.rating %}<span style="font-size: var(--text-2xl); font-weight: var(--weight-bold)">{{ candidate.rating }}</span> <span class="gp-muted">/ 10</span>{% else %}<span class="gp-muted">Оценка не выставлена</span>{% endif %}
+                <span class="gp-muted gp-small"> · проектов: {{ candidate.projects_count }} · рекомендаций: {{ candidate.recommendations_count }}{% if candidate.created_by %} · добавил(а) {{ candidate.created_by.display_name }}{% endif %}</span>
+            </div>
+            {% if candidate.skills_list %}<div class="gp-cluster" style="gap: var(--space-2)">{% for skill in candidate.skills_list|slice:':10' %}{% ui_badge skill %}{% endfor %}</div>{% endif %}
+            <div class="gp-cluster gp-small" style="gap: var(--space-3)">
+                {% if candidate.resume_file %}<a class="gp-link" href="{{ candidate.resume_file.url }}" target="_blank" rel="noopener">Резюме (файл)</a>{% endif %}
+                {% if candidate.resume_url %}<a class="gp-link" href="{{ candidate.resume_url }}" target="_blank" rel="noopener">Резюме</a>{% endif %}
+                {% if candidate.github_url %}<a class="gp-link" href="{{ candidate.github_url }}" target="_blank" rel="noopener">GitHub</a>{% endif %}
+                {% if candidate.portfolio_url %}<a class="gp-link" href="{{ candidate.portfolio_url }}" target="_blank" rel="noopener">Портфолио</a>{% endif %}
+                {% if candidate.behance_url %}<a class="gp-link" href="{{ candidate.behance_url }}" target="_blank" rel="noopener">Behance</a>{% endif %}
+                {% if candidate.linkedin_url %}<a class="gp-link" href="{{ candidate.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a>{% endif %}
+                {% if candidate.website_url %}<a class="gp-link" href="{{ candidate.website_url }}" target="_blank" rel="noopener">Сайт</a>{% endif %}
+            </div>
         </div>
     </div>
     {% if can_edit %}
-        <div class="reserve-head__actions" x-data="{ open: false }">
-            <button type="button" class="btn btn--secondary btn--sm" @click="open = !open">Изменить статус</button>
-            <form method="post" action="{% url 'reserve:status' candidate.pk %}" class="reserve-status-form" x-show="open" x-cloak>
-                {% csrf_token %}
-                <select name="status">
-                    {% for value, label in status_form.fields.status.choices %}
-                        <option value="{{ value }}" {% if candidate.status == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-                <input type="text" name="comment" placeholder="Комментарий (в историю)">
-                <button type="submit" class="btn btn--sm">Сохранить</button>
-            </form>
-            <a href="{% url 'reserve:evaluate' candidate.pk %}" class="btn btn--secondary btn--sm">Оценить</a>
-            <form method="post" action="{% url 'reserve:edit_link' candidate.pk %}" style="margin: 0; display: flex; gap: 6px;">
-                {% csrf_token %}
-                <select name="ttl_days" class="form-link__ttl" title="Срок действия ссылки">
-                    {% for value, label in invite_form.fields.ttl_days.choices %}
-                        <option value="{{ value }}" {% if value == '7' %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn btn--secondary btn--sm">Ссылка для редактирования</button>
-            </form>
-            <div class="reserve-share" x-data="{ open: false }" @keydown.escape="open = false">
-                <button type="button" class="btn btn--sm" @click="open = !open">Поделиться профилем</button>
-                <form method="post" action="{% url 'reserve:share_create' candidate.pk %}" class="reserve-share__form" x-show="open" x-cloak @click.outside="open = false">
-                    {% csrf_token %}
-                    <div class="reserve-share__title">Ссылка на профиль для работодателя</div>
-                    <p class="reserve-share__hint">Откроется без входа в систему. Внутренние комментарии, история и рекомендации другим компаниям не видны.</p>
-                    <input type="text" name="recipient" maxlength="255" placeholder="Для кого (компания, контакт)">
-                    <select name="ttl_days" title="Срок действия ссылки">
-                        {% for value, label in share_form.fields.ttl_days.choices %}
-                            <option value="{{ value }}" {% if value == '30' %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                    <label class="reserve-share__check">
-                        <input type="checkbox" name="show_contacts">
-                        <span>Показывать контакты (телефон, Telegram, email)</span>
-                    </label>
-                    <button type="submit" class="btn btn--sm">Создать ссылку</button>
-                </form>
-            </div>
-        </div>
+    {% ui_slot "footer" %}
+        {% ui_button "Изменить статус" size="sm" icon_name="check" data_gp_open="status-modal" %}
+        {% url 'reserve:evaluate' candidate.pk as evaluate_url %}{% ui_button "Оценить" size="sm" href=evaluate_url icon_name="clipboard-check" %}
+        {% ui_button "Ссылка для редактирования" size="sm" icon_name="pencil" data_gp_open="edit-link-modal" %}
+        {% ui_button "Поделиться профилем" size="sm" variant="primary" icon_name="external-link" data_gp_open="share-modal" %}
+    {% end_ui_slot %}
     {% endif %}
-</div>
+{% end_ui_card %}
 
 {% if can_edit and edit_links %}
-    <div class="form-link">
-        <div class="form-link__body">
-            <div class="form-link__label">Ссылка для редактирования анкеты</div>
-            {% for link in edit_links %}
-                <div class="form-link__row">
-                    <div>
-                        <a class="form-link__url" id="edit-link-{{ link.pk }}" href="{{ link.get_absolute_url }}" target="_blank" rel="noopener">{{ request.scheme }}://{{ request.get_host }}{{ link.get_absolute_url }}</a>
-                        <div class="form-link__meta">
-                            Кандидат откроет свою анкету с уже заполненными данными
-                            · {% if link.expires_at %}действует до {{ link.expires_at|date:'d.m.Y H:i' }}{% else %}без срока{% endif %}
-                            {% if link.used_at %}· правок: {{ link.submissions }}, последняя {{ link.used_at|date:'d.m.Y H:i' }}{% endif %}
-                        </div>
-                    </div>
-                    <div class="form-link__actions">
-                        <button type="button" class="btn btn--secondary btn--sm" data-copy="edit-link-{{ link.pk }}">Копировать</button>
-                        <form method="post" action="{% url 'reserve:invite_disable' link.pk %}" style="margin: 0;"
-                              data-confirm="Отключить ссылку? Кандидат больше не сможет править анкету."
-                              data-confirm-ok="Отключить">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn--secondary btn--sm">Отключить</button>
-                        </form>
-                    </div>
-                </div>
-            {% endfor %}
+<div style="margin-top: var(--space-4)">
+{% ui_card title="Ссылка для редактирования анкеты" subtitle="Кандидат откроет свою анкету с уже заполненными данными." %}
+    <div class="gp-stack">
+    {% for link in edit_links %}{% with lid=link.pk|stringformat:"s" %}
+        <div class="gp-stack gp-stack--sm">
+            <div class="gp-copyline">
+                <a class="gp-copyline__url" id="edit-link-{{ link.pk }}" href="{{ link.get_absolute_url }}" target="_blank" rel="noopener">{{ request.scheme }}://{{ request.get_host }}{{ link.get_absolute_url }}</a>
+                {% ui_button "Копировать" size="sm" icon_name="copy" data_gp_copy="edit-link-"|add:lid %}
+                {% ui_button "Отключить" size="sm" variant="ghost" data_gp_open="disable-edit-"|add:lid %}
+            </div>
+            <p class="gp-muted gp-small" style="margin:0">{% if link.expires_at %}Действует до {{ link.expires_at|date:'d.m.Y H:i' }}{% else %}Без срока{% endif %}{% if link.used_at %} · правок: {{ link.submissions }}, последняя {{ link.used_at|date:'d.m.Y H:i' }}{% endif %}</p>
         </div>
+    {% endwith %}{% endfor %}
     </div>
+{% end_ui_card %}
+</div>
 {% endif %}
 
 {% if can_edit and share_links %}
-    <div class="form-link">
-        <div class="form-link__body">
-            <div class="form-link__label">Ссылки на профиль для работодателей</div>
-            {% for link in share_links %}
-                <div class="form-link__row">
-                    <div>
-                        {% if link.recipient %}<strong>{{ link.recipient }}</strong><br>{% endif %}
-                        <a class="form-link__url" id="share-link-{{ link.pk }}" href="{{ link.get_absolute_url }}" target="_blank" rel="noopener">{{ request.scheme }}://{{ request.get_host }}{{ link.get_absolute_url }}</a>
-                        <div class="form-link__meta">
-                            {% if link.show_contacts %}с контактами{% else %}без контактов{% endif %}
-                            · {% if link.expires_at %}действует до {{ link.expires_at|date:'d.m.Y H:i' }}{% else %}без срока{% endif %}
-                            · {% if link.views %}просмотров: {{ link.views }}, последний {{ link.viewed_at|date:'d.m.Y H:i' }}{% else %}ещё не открывали{% endif %}
-                        </div>
-                    </div>
-                    <div class="form-link__actions">
-                        <button type="button" class="btn btn--secondary btn--sm" data-copy="share-link-{{ link.pk }}">Копировать</button>
-                        <form method="post" action="{% url 'reserve:share_disable' link.pk %}" style="margin: 0;"
-                              data-confirm="Отключить ссылку? Профиль по ней больше не откроется."
-                              data-confirm-ok="Отключить">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn--secondary btn--sm">Отключить</button>
-                        </form>
-                    </div>
-                </div>
-            {% endfor %}
+<div style="margin-top: var(--space-4)">
+{% ui_card title="Ссылки на профиль для работодателей" %}
+    <div class="gp-stack">
+    {% for link in share_links %}{% with lid=link.pk|stringformat:"s" %}
+        <div class="gp-stack gp-stack--sm">
+            {% if link.recipient %}<strong class="gp-small">{{ link.recipient }}</strong>{% endif %}
+            <div class="gp-copyline">
+                <a class="gp-copyline__url" id="share-link-{{ link.pk }}" href="{{ link.get_absolute_url }}" target="_blank" rel="noopener">{{ request.scheme }}://{{ request.get_host }}{{ link.get_absolute_url }}</a>
+                {% ui_button "Копировать" size="sm" icon_name="copy" data_gp_copy="share-link-"|add:lid %}
+                {% ui_button "Отключить" size="sm" variant="ghost" data_gp_open="disable-share-"|add:lid %}
+            </div>
+            <p class="gp-muted gp-small" style="margin:0">{% if link.show_contacts %}С контактами{% else %}Без контактов{% endif %} · {% if link.expires_at %}действует до {{ link.expires_at|date:'d.m.Y H:i' }}{% else %}без срока{% endif %} · {% if link.views %}просмотров: {{ link.views }}, последний {{ link.viewed_at|date:'d.m.Y H:i' }}{% else %}ещё не открывали{% endif %}</p>
         </div>
+    {% endwith %}{% endfor %}
     </div>
+{% end_ui_card %}
+</div>
+{% endif %}
+
+<nav class="gp-tabs" aria-label="Разделы карточки" style="margin: var(--space-5) 0 var(--space-4)">
+    <a href="?tab=general" class="gp-tabs__tab{% if tab == 'general' %} is-active{% endif %}"{% if tab == 'general' %} aria-current="page"{% endif %}>Общая</a>
+    <a href="?tab=professional" class="gp-tabs__tab{% if tab == 'professional' %} is-active{% endif %}"{% if tab == 'professional' %} aria-current="page"{% endif %}>Профессиональные</a>
+    <a href="?tab=skills" class="gp-tabs__tab{% if tab == 'skills' %} is-active{% endif %}"{% if tab == 'skills' %} aria-current="page"{% endif %}>Навыки</a>
+    <a href="?tab=experience" class="gp-tabs__tab{% if tab == 'experience' %} is-active{% endif %}"{% if tab == 'experience' %} aria-current="page"{% endif %}>Опыт</a>
+    <a href="?tab=projects" class="gp-tabs__tab{% if tab == 'projects' %} is-active{% endif %}"{% if tab == 'projects' %} aria-current="page"{% endif %}>Проекты GeeksPro</a>
+    <a href="?tab=evaluation" class="gp-tabs__tab{% if tab == 'evaluation' %} is-active{% endif %}"{% if tab == 'evaluation' %} aria-current="page"{% endif %}>Оценка</a>
+    <a href="?tab=recommendations" class="gp-tabs__tab{% if tab == 'recommendations' %} is-active{% endif %}"{% if tab == 'recommendations' %} aria-current="page"{% endif %}>Рекомендации</a>
+    <a href="?tab=history" class="gp-tabs__tab{% if tab == 'history' %} is-active{% endif %}"{% if tab == 'history' %} aria-current="page"{% endif %}>История</a>
+</nav>
+
+{% if tab == 'general' %}
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Общая информация" %}
+        <dl class="gp-metrics rs-metrics">
+            <div class="gp-metrics__row"><dt>Телефон</dt><dd>{% if candidate.phone %}<a class="gp-link" href="tel:{{ candidate.phone }}">{{ candidate.phone }}</a>{% else %}—{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Telegram</dt><dd>{{ candidate.telegram|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Email</dt><dd>{{ candidate.email|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Город</dt><dd>{{ candidate.city|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Дата рождения</dt><dd>{{ candidate.birth_date|date:'d.m.Y'|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Анкета заполнена</dt><dd>{{ candidate.submitted_at|date:'d.m.Y H:i'|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Согласие на передачу данных</dt><dd>{% if candidate.consent_given %}Да, {{ candidate.consent_at|date:'d.m.Y' }}{% else %}Нет{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Карточка стажёра</dt><dd>{% if candidate.intern %}<a class="gp-link" href="{{ candidate.intern.get_absolute_url }}">{{ candidate.intern.full_name }}</a>{% else %}—{% endif %}</dd></div>
+        </dl>
+    {% end_ui_card %}
+    {% ui_card title="Учебная информация" %}
+        <dl class="gp-metrics rs-metrics">
+            <div class="gp-metrics__row"><dt>Группа</dt><dd>{{ candidate.training_group|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Направление обучения</dt><dd>{{ candidate.study_specialization|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Преподаватель</dt><dd>{{ candidate.teacher|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Куратор</dt><dd>{{ candidate.curator|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Обучение</dt><dd>{{ candidate.study_start|date:'d.m.Y'|default:'—' }} — {{ candidate.study_end|date:'d.m.Y'|default:'—' }}</dd></div>
+        </dl>
+        {% if candidate.about %}<h3 class="gp-h3" style="margin-top: var(--space-5)">О себе</h3><p class="gp-text rs-prose">{{ candidate.about|linebreaksbr }}</p>{% endif %}
+    {% end_ui_card %}
+</div>
+{% elif tab == 'professional' %}
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Профессиональные данные" %}
+        <dl class="gp-metrics rs-metrics">
+            <div class="gp-metrics__row"><dt>Направление</dt><dd>{{ candidate.direction }}</dd></div>
+            <div class="gp-metrics__row"><dt>Желаемая должность</dt><dd>{{ candidate.desired_position|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Уровень (со слов кандидата)</dt><dd>{{ candidate.get_expected_level_display|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Уровень по оценке GeeksPro</dt><dd>{{ candidate.get_geekspro_level_display|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Английский</dt><dd>{{ candidate.english_level|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Другие языки</dt><dd>{{ candidate.other_languages|default:'—' }}</dd></div>
+        </dl>
+    {% end_ui_card %}
+    {% ui_card title="Поиск работы" %}
+        <dl class="gp-metrics rs-metrics">
+            <div class="gp-metrics__row"><dt>Ищет работу</dt><dd>{% if candidate.is_looking_for_job %}Да{% else %}Нет{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Формат</dt><dd>{{ candidate.get_work_format_display|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Занятость</dt><dd>{{ candidate.get_employment_type_display|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Готов(а) к стажировке</dt><dd>{% if candidate.ready_for_internship %}Да{% else %}Нет{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Готов(а) к переезду</dt><dd>{% if candidate.ready_to_relocate %}Да{% else %}Нет{% endif %}</dd></div>
+            <div class="gp-metrics__row"><dt>Готов(а) приступить</dt><dd>{{ candidate.available_from|date:'d.m.Y'|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Желаемая зарплата</dt><dd>{{ candidate.desired_salary|default:'—' }}</dd></div>
+        </dl>
+        {% if candidate.target_positions %}<h3 class="gp-h3" style="margin-top: var(--space-5)">Какие вакансии рассматривает</h3><p class="gp-text rs-prose">{{ candidate.target_positions|linebreaksbr }}</p>{% endif %}
+    {% end_ui_card %}
+</div>
+{% elif tab == 'skills' %}
+{% ui_card title="Навыки и технологии" %}
+    <div class="gp-cluster" style="gap: var(--space-2)">{% for skill in candidate.skills_list %}{% ui_badge skill %}{% empty %}<span class="gp-muted">Не заполнено.</span>{% endfor %}</div>
+    {% if candidate.courses %}<h3 class="gp-h3" style="margin-top: var(--space-5)">Пройденные курсы</h3><p class="gp-text rs-prose">{{ candidate.courses|linebreaksbr }}</p>{% endif %}
+    {% if candidate.education %}<h3 class="gp-h3" style="margin-top: var(--space-5)">Образование</h3><p class="gp-text rs-prose">{{ candidate.education|linebreaksbr }}</p>{% endif %}
+{% end_ui_card %}
+{% elif tab == 'experience' %}
+{% ui_card title="Опыт" %}
+    <h3 class="gp-h3">Опыт работы</h3>
+    <p class="gp-text rs-prose">{{ candidate.work_experience|linebreaksbr|default:'—' }}</p>
+    <h3 class="gp-h3" style="margin-top: var(--space-5)">Опыт стажировки</h3>
+    <p class="gp-text rs-prose">{{ candidate.internship_experience|linebreaksbr|default:'—' }}</p>
+    {% if candidate.project_links_list %}
+        <h3 class="gp-h3" style="margin-top: var(--space-5)">Ссылки на проекты</h3>
+        <ul class="gp-stack gp-stack--sm" style="margin:0; padding-left: var(--space-5)">{% for link in candidate.project_links_list %}<li style="overflow-wrap:anywhere"><a class="gp-link" href="{{ link }}" target="_blank" rel="noopener">{{ link }}</a></li>{% endfor %}</ul>
+    {% endif %}
+{% end_ui_card %}
+{% elif tab == 'projects' %}
+{% ui_card flush=True %}
+{% if memberships %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Проекты GeeksPro</caption>
+        <thead><tr><th scope="col">Проект</th><th scope="col">Роль</th><th scope="col">Период</th><th scope="col">PM</th><th scope="col">Team Lead</th><th scope="col">Комментарий</th></tr></thead>
+        <tbody>
+        {% for member in memberships %}
+            <tr>
+                <td class="is-primary" data-label="Проект">{% if member.project %}<a class="gp-link gp-table__primary" href="{{ member.project.get_absolute_url }}">{{ member.project.name }}</a>{% else %}—{% endif %}</td>
+                <td data-label="Роль">{{ member.get_role_display }}</td>
+                <td data-label="Период">{{ member.joined_at|date:'d.m.Y'|default:'—' }} — {{ member.left_at|date:'d.m.Y'|default:'сейчас' }}</td>
+                <td data-label="PM">{{ member.project.pm.full_name|default:'—' }}</td>
+                <td data-label="Team Lead">{% for lead in member.project.leads %}{{ lead.full_name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+                <td data-label="Комментарий"><span class="gp-muted">{{ member.comment|default:'—' }}</span></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% elif candidate.intern %}<div style="padding: var(--space-6)">{% ui_empty "Проектов в GeeksPro пока нет" icon_name="folder" %}</div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Кандидат не привязан к карточке стажёра" "Привяжите её в редактировании, и проекты подтянутся сами." icon_name="folder" %}</div>{% endif %}
+{% end_ui_card %}
+{% elif tab == 'evaluation' %}
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% ui_card title="Внутренняя оценка" %}
+        {% if can_edit %}{% ui_slot "actions" %}{% url 'reserve:evaluate' candidate.pk as evaluate_url %}{% ui_button "Изменить оценку" size="sm" href=evaluate_url icon_name="pencil" %}{% end_ui_slot %}{% endif %}
+        <dl class="gp-metrics rs-metrics">
+            {% for label, value in candidate.scores %}<div class="gp-metrics__row"><dt>{{ label }}</dt><dd>{% if value %}{{ value }}{% else %}<span class="gp-muted">—</span>{% endif %}</dd></div>{% endfor %}
+            <div class="gp-metrics__row"><dt><strong>Общий рейтинг</strong></dt><dd style="font-size: var(--text-lg)">{% if candidate.rating %}{{ candidate.rating }} / 10{% else %}—{% endif %}</dd></div>
+        </dl>
+        <dl class="gp-metrics rs-metrics" style="margin-top: var(--space-5)">
+            <div class="gp-metrics__row"><dt>Уровень по оценке GeeksPro</dt><dd>{{ candidate.get_geekspro_level_display|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Рекомендуемая должность</dt><dd>{{ candidate.recommended_position|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Решение</dt><dd>{{ candidate.get_decision_display|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Причина / комментарий</dt><dd>{{ candidate.decision_comment|default:'—' }}</dd></div>
+        </dl>
+    {% end_ui_card %}
+    {% ui_card title="Сильные стороны и комментарии" %}
+        <h3 class="gp-h3">Сильные стороны</h3>
+        <p class="gp-text rs-prose">{{ candidate.strengths|linebreaksbr|default:'—' }}</p>
+        <h3 class="gp-h3" style="margin-top: var(--space-5)">Что необходимо улучшить</h3>
+        <p class="gp-text rs-prose">{{ candidate.improvements|linebreaksbr|default:'—' }}</p>
+        <h3 class="gp-h3" style="margin-top: var(--space-5)">Комментарии</h3>
+        <dl class="gp-metrics rs-metrics">
+            <div class="gp-metrics__row"><dt>Преподаватель</dt><dd>{{ candidate.comment_teacher|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>PM</dt><dd>{{ candidate.comment_pm|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Team Lead</dt><dd>{{ candidate.comment_lead|default:'—' }}</dd></div>
+            <div class="gp-metrics__row"><dt>Куратор</dt><dd>{{ candidate.comment_curator|default:'—' }}</dd></div>
+        </dl>
+    {% end_ui_card %}
+</div>
+{% elif tab == 'recommendations' %}
+{% ui_card flush=True %}
+{% if recommendations %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Рекомендации компаниям</caption>
+        <thead><tr><th scope="col">Компания</th><th scope="col">Вакансия</th><th scope="col">Дата</th><th scope="col">Кто рекомендовал</th><th scope="col">Статус</th><th scope="col">Комментарий</th>{% if can_edit %}<th scope="col">Результат</th>{% endif %}</tr></thead>
+        <tbody>
+        {% for rec in recommendations %}
+            <tr>
+                <td class="is-primary" data-label="Компания"><span class="gp-table__primary">{{ rec.company_title }}</span></td>
+                <td data-label="Вакансия">{{ rec.vacancy|default:'—' }}</td>
+                <td data-label="Дата">{{ rec.sent_on|date:'d.m.Y' }}</td>
+                <td data-label="Кто рекомендовал">{{ rec.created_by.display_name|default:'—' }}</td>
+                <td data-label="Статус">{% include "reserve/partials/tone_badge.html" with text=rec.get_status_display tone=rec.status_tone %}</td>
+                <td data-label="Комментарий"><span class="gp-muted">{{ rec.comment|default:'—' }}</span></td>
+                {% if can_edit %}
+                <td data-label="Результат">
+                    <form method="post" action="{% url 'reserve:recommendation_status' rec.pk %}" class="gp-cluster" style="gap: var(--space-2); margin:0; flex-wrap: nowrap">
+                        {% csrf_token %}
+                        <select class="gp-select" name="status" aria-label="Результат рекомендации" style="min-width: 150px">{% for value, label in rec_statuses %}<option value="{{ value }}"{% if rec.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        {% ui_button "ОК" size="sm" type="submit" %}
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Кандидата ещё никому не рекомендовали" icon_name="briefcase" %}</div>{% endif %}
+{% end_ui_card %}
+{% else %}
+{% ui_card title="История" %}
+    {% if events %}
+    <ul class="gp-timeline">
+        {% for event in events %}
+        <li class="gp-timeline__item"><span class="gp-timeline__icon">{% ui_icon "clock" %}</span><div style="min-width:0"><p class="gp-timeline__title">{{ event.title }}</p>{% if event.detail %}<p class="gp-timeline__meta">{{ event.detail }}</p>{% endif %}<p class="gp-timeline__meta">{{ event.get_kind_display }}{% if event.user %} · {{ event.user.display_name }}{% endif %}</p></div><span class="gp-timeline__date">{{ event.created_at|date:'d.m.Y H:i' }}</span></li>
+        {% endfor %}
+    </ul>
+    {% else %}{% ui_empty "История пока пуста" icon_name="clock" %}{% endif %}
+{% end_ui_card %}
 {% endif %}
 
 {% if can_edit %}
-    <script>
-        document.querySelectorAll('[data-copy]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                navigator.clipboard.writeText(document.getElementById(button.dataset.copy).href).then(function () {
-                    button.textContent = 'Скопировано';
-                    setTimeout(function () { button.textContent = 'Копировать'; }, 1500);
-                });
-            });
-        });
-    </script>
-{% endif %}
+{% ui_modal id="status-modal" title="Изменить статус" %}
+    <form method="post" action="{% url 'reserve:status' candidate.pk %}" class="gp-stack" id="status-form">
+        {% csrf_token %}
+        <div class="gp-field"><label class="gp-label" for="st-status">Статус</label><select class="gp-select" id="st-status" name="status">{% for value, label in status_form.fields.status.choices %}<option value="{{ value }}"{% if candidate.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="gp-field"><label class="gp-label" for="st-comment">Комментарий (в историю)</label><input class="gp-input" type="text" id="st-comment" name="comment"></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Сохранить" variant="primary" type="submit" form="status-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
 
-<div class="tabs">
-    <a href="?tab=general" class="{% if tab == 'general' %}is-active{% endif %}">Общая</a>
-    <a href="?tab=professional" class="{% if tab == 'professional' %}is-active{% endif %}">Профессиональные</a>
-    <a href="?tab=skills" class="{% if tab == 'skills' %}is-active{% endif %}">Навыки</a>
-    <a href="?tab=experience" class="{% if tab == 'experience' %}is-active{% endif %}">Опыт</a>
-    <a href="?tab=projects" class="{% if tab == 'projects' %}is-active{% endif %}">Проекты GeeksPro</a>
-    <a href="?tab=evaluation" class="{% if tab == 'evaluation' %}is-active{% endif %}">Оценка</a>
-    <a href="?tab=recommendations" class="{% if tab == 'recommendations' %}is-active{% endif %}">Рекомендации</a>
-    <a href="?tab=history" class="{% if tab == 'history' %}is-active{% endif %}">История</a>
-</div>
+{% ui_modal id="edit-link-modal" title="Ссылка для редактирования анкеты" %}
+    <form method="post" action="{% url 'reserve:edit_link' candidate.pk %}" class="gp-stack" id="edit-link-form">
+        {% csrf_token %}
+        <p class="gp-text" style="margin:0">Кандидат откроет свою анкету с уже заполненными данными и сможет её поправить.</p>
+        <div class="gp-field"><label class="gp-label" for="el-ttl">Срок действия ссылки</label><select class="gp-select" id="el-ttl" name="ttl_days">{% for value, label in invite_form.fields.ttl_days.choices %}<option value="{{ value }}"{% if value == '7' %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Создать ссылку" variant="primary" type="submit" form="edit-link-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
 
-{% if tab == 'general' %}
-    <div class="panel">
-        <h2>Общая информация</h2>
-        <dl class="def-grid">
-            <div class="def"><dt>Телефон</dt><dd>{{ candidate.phone|default:'—' }}</dd></div>
-            <div class="def"><dt>Telegram</dt><dd>{{ candidate.telegram|default:'—' }}</dd></div>
-            <div class="def"><dt>Email</dt><dd>{{ candidate.email|default:'—' }}</dd></div>
-            <div class="def"><dt>Город</dt><dd>{{ candidate.city|default:'—' }}</dd></div>
-            <div class="def"><dt>Дата рождения</dt><dd>{{ candidate.birth_date|date:'d.m.Y'|default:'—' }}</dd></div>
-            <div class="def"><dt>Анкета заполнена</dt><dd>{{ candidate.submitted_at|date:'d.m.Y H:i'|default:'—' }}</dd></div>
-            <div class="def"><dt>Согласие на передачу данных</dt><dd>{% if candidate.consent_given %}Да, {{ candidate.consent_at|date:'d.m.Y' }}{% else %}Нет{% endif %}</dd></div>
-            <div class="def"><dt>Карточка стажёра</dt><dd>{% if candidate.intern %}<a href="{{ candidate.intern.get_absolute_url }}">{{ candidate.intern.full_name }}</a>{% else %}—{% endif %}</dd></div>
-        </dl>
-        <h2 style="margin-top: 18px;">Учебная информация</h2>
-        <dl class="def-grid">
-            <div class="def"><dt>Группа</dt><dd>{{ candidate.training_group|default:'—' }}</dd></div>
-            <div class="def"><dt>Направление обучения</dt><dd>{{ candidate.study_specialization|default:'—' }}</dd></div>
-            <div class="def"><dt>Преподаватель</dt><dd>{{ candidate.teacher|default:'—' }}</dd></div>
-            <div class="def"><dt>Куратор</dt><dd>{{ candidate.curator|default:'—' }}</dd></div>
-            <div class="def"><dt>Обучение</dt><dd>{{ candidate.study_start|date:'d.m.Y'|default:'—' }} — {{ candidate.study_end|date:'d.m.Y'|default:'—' }}</dd></div>
-        </dl>
-        {% if candidate.about %}
-            <h2 style="margin-top: 18px;">О себе</h2>
-            <p>{{ candidate.about|linebreaksbr }}</p>
-        {% endif %}
-    </div>
-{% elif tab == 'professional' %}
-    <div class="panel">
-        <h2>Профессиональные данные</h2>
-        <dl class="def-grid">
-            <div class="def"><dt>Направление</dt><dd>{{ candidate.direction }}</dd></div>
-            <div class="def"><dt>Желаемая должность</dt><dd>{{ candidate.desired_position|default:'—' }}</dd></div>
-            <div class="def"><dt>Уровень (со слов кандидата)</dt><dd>{{ candidate.get_expected_level_display|default:'—' }}</dd></div>
-            <div class="def"><dt>Уровень по оценке GeeksPro</dt><dd>{{ candidate.get_geekspro_level_display|default:'—' }}</dd></div>
-            <div class="def"><dt>Английский</dt><dd>{{ candidate.english_level|default:'—' }}</dd></div>
-            <div class="def"><dt>Другие языки</dt><dd>{{ candidate.other_languages|default:'—' }}</dd></div>
-        </dl>
-        <h2 style="margin-top: 18px;">Поиск работы</h2>
-        <dl class="def-grid">
-            <div class="def"><dt>Ищет работу</dt><dd>{% if candidate.is_looking_for_job %}Да{% else %}Нет{% endif %}</dd></div>
-            <div class="def"><dt>Формат</dt><dd>{{ candidate.get_work_format_display|default:'—' }}</dd></div>
-            <div class="def"><dt>Занятость</dt><dd>{{ candidate.get_employment_type_display|default:'—' }}</dd></div>
-            <div class="def"><dt>Готов(а) к стажировке</dt><dd>{% if candidate.ready_for_internship %}Да{% else %}Нет{% endif %}</dd></div>
-            <div class="def"><dt>Готов(а) к переезду</dt><dd>{% if candidate.ready_to_relocate %}Да{% else %}Нет{% endif %}</dd></div>
-            <div class="def"><dt>Готов(а) приступить</dt><dd>{{ candidate.available_from|date:'d.m.Y'|default:'—' }}</dd></div>
-            <div class="def"><dt>Желаемая зарплата</dt><dd>{{ candidate.desired_salary|default:'—' }}</dd></div>
-        </dl>
-        {% if candidate.target_positions %}
-            <h2 style="margin-top: 18px;">Какие вакансии рассматривает</h2>
-            <p>{{ candidate.target_positions|linebreaksbr }}</p>
-        {% endif %}
-    </div>
-{% elif tab == 'skills' %}
-    <div class="panel">
-        <h2>Навыки и технологии</h2>
-        <div class="reserve-skills">
-            {% for skill in candidate.skills_list %}<span class="chip">{{ skill }}</span>{% empty %}<span class="sub">Не заполнено.</span>{% endfor %}
-        </div>
-        {% if candidate.courses %}
-            <h2 style="margin-top: 18px;">Пройденные курсы</h2>
-            <p>{{ candidate.courses|linebreaksbr }}</p>
-        {% endif %}
-        {% if candidate.education %}
-            <h2 style="margin-top: 18px;">Образование</h2>
-            <p>{{ candidate.education|linebreaksbr }}</p>
-        {% endif %}
-    </div>
-{% elif tab == 'experience' %}
-    <div class="panel">
-        <h2>Опыт работы</h2>
-        <p>{{ candidate.work_experience|linebreaksbr|default:'—' }}</p>
-        <h2 style="margin-top: 18px;">Опыт стажировки</h2>
-        <p>{{ candidate.internship_experience|linebreaksbr|default:'—' }}</p>
-        {% if candidate.project_links_list %}
-            <h2 style="margin-top: 18px;">Ссылки на проекты</h2>
-            <ul>
-                {% for link in candidate.project_links_list %}
-                    <li><a href="{{ link }}" target="_blank" rel="noopener">{{ link }}</a></li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    </div>
-{% elif tab == 'projects' %}
-    <div class="panel" style="padding: 0;">
-        <div class="table-wrap">
-            <table class="data">
-                <thead>
-                    <tr><th>Проект</th><th>Роль</th><th>Период</th><th>PM</th><th>Team Lead</th><th>Комментарий</th></tr>
-                </thead>
-                <tbody>
-                    {% for member in memberships %}
-                        <tr>
-                            <td>{% if member.project %}<a href="{{ member.project.get_absolute_url }}">{{ member.project.name }}</a>{% else %}—{% endif %}</td>
-                            <td>{{ member.get_role_display }}</td>
-                            <td>{{ member.joined_at|date:'d.m.Y'|default:'—' }} — {{ member.left_at|date:'d.m.Y'|default:'сейчас' }}</td>
-                            <td>{{ member.project.pm.full_name|default:'—' }}</td>
-                            <td>{% for lead in member.project.leads %}{{ lead.full_name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
-                            <td class="sub">{{ member.comment|default:'—' }}</td>
-                        </tr>
-                    {% empty %}
-                        <tr><td colspan="6" class="empty" style="text-align:center; padding: 24px;">
-                            {% if candidate.intern %}Проектов в GeeksPro пока нет.{% else %}Кандидат не привязан к карточке стажёра — привяжите её в редактировании, и проекты подтянутся сами.{% endif %}
-                        </td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-{% elif tab == 'evaluation' %}
-    <div class="panel">
-        <div class="panel-head">
-            <h2>Внутренняя оценка</h2>
-            {% if can_edit %}<a href="{% url 'reserve:evaluate' candidate.pk %}" class="btn btn--secondary btn--sm">Изменить оценку</a>{% endif %}
-        </div>
-        <div class="reserve-scores">
-            {% for label, value in candidate.scores %}
-                <div class="reserve-score">
-                    <span class="reserve-score__label">{{ label }}</span>
-                    <span class="reserve-score__value">{% if value %}{{ value }}{% else %}—{% endif %}</span>
-                </div>
-            {% endfor %}
-            <div class="reserve-score reserve-score--total">
-                <span class="reserve-score__label">Общий рейтинг</span>
-                <span class="reserve-score__value">{% if candidate.rating %}{{ candidate.rating }} / 10{% else %}—{% endif %}</span>
-            </div>
-        </div>
-        <dl class="def-grid" style="margin-top: 18px;">
-            <div class="def"><dt>Уровень по оценке GeeksPro</dt><dd>{{ candidate.get_geekspro_level_display|default:'—' }}</dd></div>
-            <div class="def"><dt>Рекомендуемая должность</dt><dd>{{ candidate.recommended_position|default:'—' }}</dd></div>
-            <div class="def"><dt>Решение</dt><dd>{{ candidate.get_decision_display|default:'—' }}</dd></div>
-            <div class="def"><dt>Причина / комментарий</dt><dd>{{ candidate.decision_comment|default:'—' }}</dd></div>
-        </dl>
-    </div>
-    <div class="panel">
-        <h2>Сильные стороны</h2>
-        <p>{{ candidate.strengths|linebreaksbr|default:'—' }}</p>
-        <h2 style="margin-top: 18px;">Что необходимо улучшить</h2>
-        <p>{{ candidate.improvements|linebreaksbr|default:'—' }}</p>
-        <h2 style="margin-top: 18px;">Комментарии</h2>
-        <dl class="def-grid">
-            <div class="def"><dt>Преподаватель</dt><dd>{{ candidate.comment_teacher|default:'—' }}</dd></div>
-            <div class="def"><dt>PM</dt><dd>{{ candidate.comment_pm|default:'—' }}</dd></div>
-            <div class="def"><dt>Team Lead</dt><dd>{{ candidate.comment_lead|default:'—' }}</dd></div>
-            <div class="def"><dt>Куратор</dt><dd>{{ candidate.comment_curator|default:'—' }}</dd></div>
-        </dl>
-    </div>
-{% elif tab == 'recommendations' %}
-    <div class="panel" style="padding: 0;">
-        <div class="table-wrap">
-            <table class="data">
-                <thead>
-                    <tr><th>Компания</th><th>Вакансия</th><th>Дата</th><th>Кто рекомендовал</th><th>Статус</th><th>Комментарий</th>{% if can_edit %}<th>Результат</th>{% endif %}</tr>
-                </thead>
-                <tbody>
-                    {% for rec in recommendations %}
-                        <tr>
-                            <td><strong>{{ rec.company_title }}</strong></td>
-                            <td>{{ rec.vacancy|default:'—' }}</td>
-                            <td>{{ rec.sent_on|date:'d.m.Y' }}</td>
-                            <td>{{ rec.created_by.display_name|default:'—' }}</td>
-                            <td><span class="badge badge--{{ rec.status_tone }}">{{ rec.get_status_display }}</span></td>
-                            <td class="sub">{{ rec.comment|default:'—' }}</td>
-                            {% if can_edit %}
-                                <td>
-                                    <form method="post" action="{% url 'reserve:recommendation_status' rec.pk %}" style="display: flex; gap: 6px; margin: 0;">
-                                        {% csrf_token %}
-                                        <select name="status">
-                                            {% for value, label in rec_statuses %}
-                                                <option value="{{ value }}" {% if rec.status == value %}selected{% endif %}>{{ label }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <button type="submit" class="btn btn--secondary btn--sm">ОК</button>
-                                    </form>
-                                </td>
-                            {% endif %}
-                        </tr>
-                    {% empty %}
-                        <tr><td colspan="7" class="empty" style="text-align:center; padding: 24px;">Кандидата ещё никому не рекомендовали.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-{% else %}
-    <div class="panel">
-        <h2>История</h2>
-        <ul class="timeline">
-            {% for event in events %}
-                <li>
-                    <div class="timeline__time">{{ event.created_at|date:'d.m.Y H:i' }}</div>
-                    <div>
-                        <strong>{{ event.title }}</strong>
-                        {% if event.detail %}<div class="sub">{{ event.detail }}</div>{% endif %}
-                        <div class="sub">{{ event.get_kind_display }}{% if event.user %} · {{ event.user.display_name }}{% endif %}</div>
-                    </div>
-                </li>
-            {% empty %}
-                <li class="sub">История пока пуста.</li>
-            {% endfor %}
-        </ul>
-    </div>
+{% ui_modal id="share-modal" title="Ссылка на профиль для работодателя" %}
+    <form method="post" action="{% url 'reserve:share_create' candidate.pk %}" class="gp-stack" id="share-form">
+        {% csrf_token %}
+        <p class="gp-text" style="margin:0">Откроется без входа в систему. Внутренние комментарии, история и рекомендации другим компаниям не видны.</p>
+        <div class="gp-field"><label class="gp-label" for="sh-recipient">Для кого</label><input class="gp-input" type="text" id="sh-recipient" name="recipient" maxlength="255" placeholder="Компания, контакт"></div>
+        <div class="gp-field"><label class="gp-label" for="sh-ttl">Срок действия ссылки</label><select class="gp-select" id="sh-ttl" name="ttl_days">{% for value, label in share_form.fields.ttl_days.choices %}<option value="{{ value }}"{% if value == '30' %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        <label class="gp-check" for="sh-contacts"><input type="checkbox" id="sh-contacts" name="show_contacts"><span class="gp-check__text">Показывать контакты (телефон, Telegram, email)</span></label>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Создать ссылку" variant="primary" type="submit" form="share-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
+
+{% for link in edit_links %}{% with lid=link.pk|stringformat:"s" %}
+{% ui_modal id="disable-edit-"|add:lid title="Отключить ссылку?" %}
+    <p class="gp-text" style="margin:0">Кандидат больше не сможет править анкету.</p>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}<form method="post" action="{% url 'reserve:invite_disable' link.pk %}" style="margin:0">{% csrf_token %}{% ui_button "Отключить" variant="danger" type="submit" %}</form>{% end_ui_slot %}
+{% end_ui_modal %}
+{% endwith %}{% endfor %}
+{% for link in share_links %}{% with lid=link.pk|stringformat:"s" %}
+{% ui_modal id="disable-share-"|add:lid title="Отключить ссылку?" %}
+    <p class="gp-text" style="margin:0">Профиль по ней больше не откроется.</p>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}<form method="post" action="{% url 'reserve:share_disable' link.pk %}" style="margin:0">{% csrf_token %}{% ui_button "Отключить" variant="danger" type="submit" %}</form>{% end_ui_slot %}
+{% end_ui_modal %}
+{% endwith %}{% endfor %}
 {% endif %}
 {% endblock %}

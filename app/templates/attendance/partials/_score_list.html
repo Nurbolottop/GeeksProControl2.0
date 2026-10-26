@@ -1,0 +1,8 @@
+{% load ui %}<p class="gp-muted gp-small" style="margin:0; padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--color-border)">
+    Нажмите на шкалу — балл выставится сразу, повторное нажатие снимает.
+    <strong>0–4</strong> — не тянет, <strong>5–7</strong> — норма, <strong>8–10</strong> — сильно.
+    Неоценённые идут первыми; ✕ снимает балл.
+</p>
+{% if score_rows %}
+<ul class="gp-scores">{% for row in score_rows %}{% include 'attendance/partials/score_row.html' %}{% endfor %}</ul>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "В команде нет людей" icon_name="users" %}</div>{% endif %}

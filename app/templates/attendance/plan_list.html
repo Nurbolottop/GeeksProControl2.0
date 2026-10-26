@@ -1,97 +1,57 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
+{# Не подключён ни к одному адресу: планы собраний (MeetingPlan) удалены миграцией 0002. Оставлен в разметке 2.0. #}
 {% block title %}План собраний группы {{ group.code }} — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title="План собраний · группа "|add:group.code subtitle="Сколько собраний в неделю проводит команда и кто их ведёт" %}
+    {% url 'attendance:group_sheet' group.pk as sheet_url %}{% ui_button "К табелю" href=sheet_url icon_name="calendar" %}
+{% end_ui_page_header %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>План собраний · группа {{ group.code }}</h1>
-        <div class="sub">Сколько собраний в неделю проводит команда и кто их ведёт</div>
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">
+    {% with count=plans|length|stringformat:"s" %}{% ui_card title="Текущий план ("|add:count|add:")" flush=True %}
+    {% if plans %}
+    <div class="gp-table-wrap gp-table--stack" style="border:0">
+        <table class="gp-table">
+            <caption class="gp-sr-only">План собраний</caption>
+            <thead><tr><th scope="col">Вид собрания</th><th scope="col">В неделю</th><th scope="col">Дни</th><th scope="col">Проводит</th><th scope="col">Статус</th><th scope="col" class="is-actions"><span class="gp-sr-only">Действия</span></th></tr></thead>
+            <tbody>
+            {% for plan in plans %}
+                <tr>
+                    <td class="is-primary" data-label="Вид собрания"><span class="gp-table__primary">{{ plan.get_kind_display }}</span></td>
+                    <td data-label="В неделю">{{ plan.times_per_week }} раз</td>
+                    <td data-label="Дни">{{ plan.weekday_labels|default:'по умолчанию' }}</td>
+                    <td data-label="Проводит">{{ plan.host.full_name|default:'—' }}</td>
+                    <td data-label="Статус">{% if plan.is_active %}{% ui_badge "Действует" tone="success" %}{% else %}{% ui_badge "Отключён" %}{% endif %}</td>
+                    <td class="is-actions" data-label=""><button type="button" class="gp-btn gp-btn--ghost gp-btn--sm gp-btn--icon" data-gp-open="plan-delete-{{ plan.pk }}" aria-label="Удалить план" title="Удалить план">{% ui_icon "trash" size="sm" %}</button></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
     </div>
-    <div class="page-actions">
-        <a href="{% url 'attendance:group_sheet' group.pk %}" class="btn btn--secondary">← К табелю</a>
-    </div>
-</div>
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "Плана пока нет" "Добавьте первый — например, «PM со стажёрами, 2 раза в неделю»." icon_name="calendar" %}</div>{% endif %}
+    {% end_ui_card %}{% endwith %}
 
-<div class="detail-grid">
-    <div class="detail-grid__main">
-        <div class="panel" style="padding: 0;">
-            <h2 style="padding: 20px 24px 0">Текущий план ({{ plans|length }})</h2>
-            <div class="table-wrap">
-                <table class="data">
-                    <thead>
-                    <tr>
-                        <th>Вид собрания</th>
-                        <th>В неделю</th>
-                        <th>Дни</th>
-                        <th>Проводит</th>
-                        <th>Статус</th>
-                        <th></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for plan in plans %}
-                        <tr>
-                            <td><strong>{{ plan.get_kind_display }}</strong></td>
-                            <td>{{ plan.times_per_week }} раз</td>
-                            <td>{{ plan.weekday_labels|default:'по умолчанию' }}</td>
-                            <td>{{ plan.host.full_name|default:'—' }}</td>
-                            <td>
-                                {% if plan.is_active %}<span class="badge badge--green">Действует</span>
-                                {% else %}<span class="badge badge--gray">Отключён</span>{% endif %}
-                            </td>
-                            <td>
-                                <form method="post" action="{% url 'attendance:plan_delete' plan.pk %}" style="margin:0"
-                                      data-confirm="Удалить план «{{ plan.get_kind_display|escapejs }}»?">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn--secondary btn--sm">✕</button>
-                                </form>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr><td colspan="6" class="empty" style="text-align:center; padding: 24px;">
-                            Плана пока нет. Добавьте первый — например, «PM со стажёрами, 2 раза в неделю».
-                        </td></tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
+    {% ui_card title="Добавить в план" %}
+        <form method="post" class="gp-form">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+            <div class="gp-form-grid">
+                {% ui_field form.kind label="Вид собрания" %}
+                {% ui_field form.times_per_week label="Раз в неделю" %}
+                {% ui_field form.weekday_choices label="Дни недели" help_text="Если не выбрать — дни распределятся автоматически" %}
+                {% ui_field form.host label="Кто проводит" %}
             </div>
-        </div>
-    </div>
-
-    <div class="detail-grid__side">
-        <div class="panel">
-            <h2>Добавить в план</h2>
-            <form method="post">
-                {% csrf_token %}
-                {% if form.non_field_errors %}
-                    <div class="message message--error">{{ form.non_field_errors }}</div>
-                {% endif %}
-                <div class="form-stack">
-                    <div class="form-field">
-                        <label for="{{ form.kind.id_for_label }}">Вид собрания</label>
-                        {{ form.kind }}
-                    </div>
-                    <div class="form-field">
-                        <label for="{{ form.times_per_week.id_for_label }}">Раз в неделю</label>
-                        {{ form.times_per_week }}
-                        {% if form.times_per_week.errors %}<div class="form-errors">{{ form.times_per_week.errors.0 }}</div>{% endif %}
-                    </div>
-                    <div class="form-field">
-                        <label>Дни недели</label>
-                        <div class="weekday-picker">{{ form.weekday_choices }}</div>
-                        <div class="field-hint">Если не выбрать — дни распределятся автоматически</div>
-                    </div>
-                    <div class="form-field">
-                        <label for="{{ form.host.id_for_label }}">Кто проводит</label>
-                        {{ form.host }}
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn">Добавить</button>
-                </div>
-            </form>
-        </div>
-    </div>
+            <div class="gp-form-actions">{% ui_button "Добавить" variant="primary" type="submit" %}</div>
+        </form>
+    {% end_ui_card %}
 </div>
+
+{% for plan in plans %}
+{% with pk_s=plan.pk|stringformat:"s" %}{% with modal_id="plan-delete-"|add:pk_s form_id="plan-delete-form-"|add:pk_s %}
+{% ui_modal id=modal_id title="Удалить план?" %}
+    <form method="post" action="{% url 'attendance:plan_delete' plan.pk %}" id="{{ form_id }}">{% csrf_token %}<p class="gp-text" style="margin:0">План «{{ plan.get_kind_display }}» будет удалён.</p></form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Удалить" variant="danger" type="submit" form=form_id %}{% end_ui_slot %}
+{% end_ui_modal %}
+{% endwith %}{% endwith %}
+{% endfor %}
 {% endblock %}

@@ -1,46 +1,26 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}{{ title }} — GeeksPro Control{% endblock %}
-
-{% block content %}
-<div class="form-page">
-    <div class="page-head">
-        <div><h1>{{ title }}</h1></div>
-    </div>
-    <form method="post" class="panel">
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title=title %}{% end_ui_page_header %}
+<div style="max-width: 760px">
+{% ui_card %}
+    <form method="post" class="gp-form">
         {% csrf_token %}
-        {% if form.non_field_errors %}
-            <div class="message message--error">{{ form.non_field_errors }}</div>
-        {% endif %}
-        <div class="form-row">
-            <div class="form-field">
-                <label for="{{ form.number.id_for_label }}">Номер потока</label>
-                {{ form.number }}
-                {% if form.number.errors %}<div class="form-errors">{{ form.number.errors.0 }}</div>{% endif %}
-            </div>
-            <div class="form-field">
-                <label for="{{ form.status.id_for_label }}">Статус</label>
-                {{ form.status }}
-            </div>
+        {% if form.non_field_errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% ui_field form.number label="Номер потока" %}
+            {% ui_field form.status label="Статус" %}
+            {% ui_field form.start_date label="Начало стажировки" %}
+            {% ui_field form.end_date label="Окончание" %}
+            {% ui_field form.comment label="Комментарий" wide=True %}
         </div>
-        <div class="form-row" style="margin-top:16px">
-            <div class="form-field">
-                <label for="{{ form.start_date.id_for_label }}">Начало стажировки</label>
-                {{ form.start_date }}
-            </div>
-            <div class="form-field">
-                <label for="{{ form.end_date.id_for_label }}">Окончание</label>
-                {{ form.end_date }}
-            </div>
-        </div>
-        <div class="form-field" style="margin-top:16px">
-            <label for="{{ form.comment.id_for_label }}">Комментарий</label>
-            {{ form.comment }}
-        </div>
-        <div class="form-actions">
-            <button type="submit" class="btn">Сохранить</button>
-            <a href="{% if flow %}{{ flow.get_absolute_url }}{% else %}{% url 'flows:list' %}{% endif %}" class="btn btn--secondary">Отмена</a>
+        <div class="gp-form-actions">
+            {% ui_button "Сохранить" variant="primary" type="submit" %}
+            {% if flow %}{% ui_button "Отмена" variant="ghost" href=flow.get_absolute_url %}{% else %}{% url 'flows:list' as list_url %}{% ui_button "Отмена" variant="ghost" href=list_url %}{% endif %}
         </div>
     </form>
+{% end_ui_card %}
 </div>
 {% endblock %}

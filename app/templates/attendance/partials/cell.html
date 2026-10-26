@@ -2,18 +2,13 @@
     <button type="button"
             class="att-mark att-mark--{{ cell.status|default:'empty' }}"
             title="{{ cell.meeting.get_kind_display }} {{ cell.meeting.date|date:'d.m.Y' }}"
+            aria-label="{{ intern.full_name }}, {{ cell.meeting.date|date:'d.m.Y' }}: {% if cell.status == 'present' %}был{% elif cell.status == 'absent' %}не был{% elif cell.status == 'late' %}опоздал{% elif cell.status == 'excused' %}уважительная причина{% else %}нет отметки{% endif %}. Нажмите, чтобы сменить"
             hx-post="{% url 'attendance:toggle' cell.meeting.pk %}"
             hx-vals='{"intern": "{{ intern.pk }}"}'
             hx-target="closest td"
-            hx-swap="outerHTML">
-        {% if cell.status == 'present' %}✓
-        {% elif cell.status == 'absent' %}✕
-        {% elif cell.status == 'late' %}О
-        {% elif cell.status == 'excused' %}У
-        {% endif %}
-    </button>
+            hx-swap="outerHTML">{% if cell.status == 'present' %}✓{% elif cell.status == 'absent' %}✕{% elif cell.status == 'late' %}О{% elif cell.status == 'excused' %}У{% endif %}</button>
     {% if cell.score is not None %}
-        <div class="att-score att-score--{% if cell.score >= 8 %}high{% elif cell.score >= 5 %}mid{% else %}low{% endif %}"
-             title="Активность за период до {{ cell.meeting.date|date:'d.m.Y' }}">{{ cell.score }}</div>
+        <span class="att-score att-score--{% if cell.score >= 8 %}high{% elif cell.score >= 5 %}mid{% else %}low{% endif %}"
+             title="Активность за период до {{ cell.meeting.date|date:'d.m.Y' }}">{{ cell.score }}</span>
     {% endif %}
 </td>

@@ -1,172 +1,107 @@
-{% extends 'base.html' %}
-{% load static %}
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Резерв кадров по направлениям — GeeksPro Control{% endblock %}
+{% block page %}
+{% url 'reserve:list' as list_url %}
+{% ui_page_header title="Резерв кадров по направлениям" subtitle="Сколько кандидатов в каждом направлении и на какой они стадии. Нажмите на направление, чтобы увидеть людей." %}
+    {% ui_button "Все кандидаты" href=list_url icon_name="users" %}
+    {% if can_edit and totals.total %}
+        <button type="button" class="gp-btn gp-btn--secondary" data-gp-open="share-collection" x-data
+                @click="$dispatch('share-collection', { filters: '', title: 'Все направления', count: {{ totals.total }} })">{% ui_icon "external-link" %}<span>Поделиться всеми направлениями</span></button>
+    {% endif %}
+    {% if can_edit %}{% url 'reserve:create' as create_url %}{% ui_button "Новый кандидат" href=create_url variant="primary" icon_name="plus" %}{% endif %}
+{% end_ui_page_header %}
 
-{% block title %}Резерв кадров — GeeksPro Control{% endblock %}
-
-{% block content %}
-<div class="page-head" x-data>
-    <div>
-        <h1>Резерв кадров по направлениям</h1>
-        <div class="sub">
-            Сколько кандидатов в каждом направлении и на какой они стадии.
-            Нажмите на направление, чтобы увидеть людей.
-        </div>
+<section aria-label="Итоги" class="gp-grid" style="--grid-min: 170px; margin-bottom: var(--space-6)">
+    <a class="gp-stat gp-stat--accent" href="{{ list_url }}">
+        <span class="gp-stat__label">Всего кандидатов</span>
+        <span class="gp-stat__value">{{ totals.total }}</span>
+    </a>
+    <div class="gp-stat">
+        <span class="gp-stat__label">Ждут проверки</span>
+        <span class="gp-stat__value" style="color: var(--color-warning)">{{ totals.new }}</span>
     </div>
-    <div class="page-actions">
-        <a href="{% url 'reserve:list' %}" class="btn btn--secondary">Все кандидаты</a>
-        {% if can_edit and totals.total %}
-            <button type="button" class="btn btn--secondary"
-                    @click="$dispatch('share-collection', { filters: '', title: 'Все направления', count: {{ totals.total }} })">Поделиться всеми направлениями</button>
-        {% endif %}
-        {% if can_edit %}
-            <a href="{% url 'reserve:create' %}" class="btn">+ Новый кандидат</a>
-        {% endif %}
+    <div class="gp-stat">
+        <span class="gp-stat__label">В резерве</span>
+        <span class="gp-stat__value" style="color: var(--color-success)">{{ totals.available }}</span>
+        <span class="gp-stat__caption">можно предлагать</span>
     </div>
-</div>
-
-<div class="kpi-grid">
-    <div class="kpi-card kpi-card--info">
-        <div class="kpi-card__value">{{ totals.total }}</div>
-        <div class="kpi-card__label">Всего кандидатов</div>
+    <div class="gp-stat">
+        <span class="gp-stat__label">На собеседованиях</span>
+        <span class="gp-stat__value" style="color: var(--color-info)">{{ totals.in_progress }}</span>
     </div>
-    <div class="kpi-card kpi-card--yellow">
-        <div class="kpi-card__value">{{ totals.new }}</div>
-        <div class="kpi-card__label">Ждут проверки</div>
+    <div class="gp-stat">
+        <span class="gp-stat__label">Трудоустроены</span>
+        <span class="gp-stat__value">{{ totals.employed }}</span>
     </div>
-    <div class="kpi-card kpi-card--green">
-        <div class="kpi-card__value">{{ totals.available }}</div>
-        <div class="kpi-card__label">В резерве, можно предлагать</div>
-    </div>
-    <div class="kpi-card kpi-card--blue">
-        <div class="kpi-card__value">{{ totals.in_progress }}</div>
-        <div class="kpi-card__label">На собеседованиях</div>
-    </div>
-    <div class="kpi-card">
-        <div class="kpi-card__value">{{ totals.employed }}</div>
-        <div class="kpi-card__label">Трудоустроены</div>
-    </div>
-</div>
+</section>
 
 {% include 'reserve/partials/share_collections.html' %}
 
-<div class="panel" style="padding: 0;">
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
+{% ui_card flush=True %}
+{% if rows %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Резерв кадров по направлениям</caption>
+        <thead><tr>
+            <th scope="col">Направление</th>
+            <th scope="col" class="is-numeric">Всего кандидатов</th>
+            <th scope="col" class="is-numeric">Ждут проверки</th>
+            <th scope="col" class="is-numeric">В резерве</th>
+            <th scope="col" class="is-numeric">На собеседованиях</th>
+            <th scope="col" class="is-numeric">Трудоустроены</th>
+            {% if can_edit %}<th scope="col"><span class="gp-sr-only">Действия</span></th>{% endif %}
+        </tr></thead>
+        <tbody>
+        {% for row in rows %}
             <tr>
-                <th>Направление</th>
-                <th>Всего кандидатов</th>
-                <th>Ждут проверки</th>
-                <th>В резерве</th>
-                <th>На собеседованиях</th>
-                <th>Трудоустроены</th>
-                {% if can_edit %}<th></th>{% endif %}
-            </tr>
-            </thead>
-            <tbody>
-            {% for row in rows %}
-                <tr>
-                    <td>
-                        <a href="{% url 'reserve:list' %}?specialization={{ row.key }}">
-                            <strong>{{ row.specialization|default:'Без направления' }}</strong>
-                        </a>
-                    </td>
-                    <td>
-                        <a href="{% url 'reserve:list' %}?specialization={{ row.key }}">
-                            <strong style="font-size:15px">{{ row.total }}</strong>
-                        </a>
-                    </td>
-                    <td>
-                        {% if row.new %}
-                            <a href="{% url 'reserve:list' %}?specialization={{ row.key }}&status=review" class="badge badge--yellow">{{ row.new }}</a>
-                        {% else %}<span class="badge badge--gray">0</span>{% endif %}
-                    </td>
-                    <td>
-                        {% if row.available %}
-                            <a href="{% url 'reserve:list' %}?specialization={{ row.key }}&status=reserve" class="badge badge--green">{{ row.available }}</a>
-                        {% else %}<span class="badge badge--gray">0</span>{% endif %}
-                    </td>
-                    <td>
-                        {% if row.in_progress %}
-                            <a href="{% url 'reserve:list' %}?specialization={{ row.key }}&status=interview" class="badge badge--blue">{{ row.in_progress }}</a>
-                        {% else %}<span class="badge badge--gray">0</span>{% endif %}
-                    </td>
-                    <td>
-                        {% if row.employed %}
-                            <a href="{% url 'reserve:list' %}?specialization={{ row.key }}&status=employed" class="badge badge--gray">{{ row.employed }}</a>
-                        {% else %}<span class="badge badge--gray">0</span>{% endif %}
-                    </td>
-                    {% if can_edit %}
-                        <td style="text-align: right;" x-data>
-                            {% if row.total %}
-                                <button type="button" class="btn btn--secondary btn--sm"
-                                        @click="$dispatch('share-collection', { filters: 'specialization={{ row.key }}', title: '{{ row.specialization|default:'Без направления'|escapejs }}', count: {{ row.total }} })">Поделиться</button>
-                            {% endif %}
-                        </td>
+                <td class="is-primary" data-label="Направление"><a class="gp-link gp-table__primary" href="{{ list_url }}?specialization={{ row.key }}">{{ row.specialization|default:'Без направления' }}</a></td>
+                <td class="is-numeric" data-label="Всего кандидатов"><a class="gp-link" style="font-weight: var(--weight-semibold)" href="{{ list_url }}?specialization={{ row.key }}">{{ row.total }}</a></td>
+                <td class="is-numeric" data-label="Ждут проверки">{% if row.new %}<a href="{{ list_url }}?specialization={{ row.key }}&status=review">{% ui_badge row.new tone="warning" %}</a>{% else %}<span class="gp-muted">0</span>{% endif %}</td>
+                <td class="is-numeric" data-label="В резерве">{% if row.available %}<a href="{{ list_url }}?specialization={{ row.key }}&status=reserve">{% ui_badge row.available tone="success" %}</a>{% else %}<span class="gp-muted">0</span>{% endif %}</td>
+                <td class="is-numeric" data-label="На собеседованиях">{% if row.in_progress %}<a href="{{ list_url }}?specialization={{ row.key }}&status=interview">{% ui_badge row.in_progress tone="info" %}</a>{% else %}<span class="gp-muted">0</span>{% endif %}</td>
+                <td class="is-numeric" data-label="Трудоустроены">{% if row.employed %}<a href="{{ list_url }}?specialization={{ row.key }}&status=employed">{% ui_badge row.employed %}</a>{% else %}<span class="gp-muted">0</span>{% endif %}</td>
+                {% if can_edit %}
+                <td data-label="" style="text-align: right">
+                    {% if row.total %}
+                        <button type="button" class="gp-btn gp-btn--ghost gp-btn--sm" data-gp-open="share-collection" x-data
+                                @click="$dispatch('share-collection', { filters: 'specialization={{ row.key }}', title: '{{ row.specialization|default:'Без направления'|escapejs }}', count: {{ row.total }} })">{% ui_icon "external-link" "sm" %}<span>Поделиться</span></button>
                     {% endif %}
-                </tr>
-            {% empty %}
-                <tr><td colspan="{% if can_edit %}7{% else %}6{% endif %}" class="empty" style="text-align:center; padding: 24px;">Кандидатов пока нет.</td></tr>
-            {% endfor %}
-            </tbody>
-            {% if rows %}
-                <tfoot>
-                <tr>
-                    <td><strong>Итого</strong></td>
-                    <td><strong>{{ totals.total }}</strong></td>
-                    <td>{{ totals.new }}</td>
-                    <td>{{ totals.available }}</td>
-                    <td>{{ totals.in_progress }}</td>
-                    <td>{{ totals.employed }}</td>
-                    {% if can_edit %}<td></td>{% endif %}
-                </tr>
-                </tfoot>
-            {% endif %}
-        </table>
-    </div>
+                </td>
+                {% endif %}
+            </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td class="is-primary" data-label="Направление"><strong>Итого</strong></td>
+                <td class="is-numeric" data-label="Всего кандидатов"><strong>{{ totals.total }}</strong></td>
+                <td class="is-numeric" data-label="Ждут проверки">{{ totals.new }}</td>
+                <td class="is-numeric" data-label="В резерве">{{ totals.available }}</td>
+                <td class="is-numeric" data-label="На собеседованиях">{{ totals.in_progress }}</td>
+                <td class="is-numeric" data-label="Трудоустроены">{{ totals.employed }}</td>
+                {% if can_edit %}<td></td>{% endif %}
+            </tr>
+        </tfoot>
+    </table>
 </div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Кандидатов пока нет" icon_name="users" %}</div>{% endif %}
+{% end_ui_card %}
+
 {% if can_edit %}
-    <link rel="stylesheet" href="{% static 'css/reserve-share.css' %}">
-    <div class="cmodal" :class="{ 'is-open': open }"
-         x-data="{ open: false, filters: '', title: '', count: 0 }"
-         @share-collection.window="filters = $event.detail.filters; title = $event.detail.title; count = $event.detail.count; open = true"
-         @keydown.escape.window="open = false">
-        <div class="cmodal__overlay" @click="open = false"></div>
-        <form method="post" action="{% url 'reserve:share_collection_create' %}" class="cmodal__card reserve-share__modal">
-            {% csrf_token %}
-            <input type="hidden" name="filters" :value="filters">
-            <input type="hidden" name="next" value="overview">
-            <div class="cmodal__title">Ссылка на подборку: <span x-text="title"></span></div>
-            <p class="reserve-share__hint">
-                В подборку попадут все кандидаты — <strong x-text="count"></strong>.
-                Работодатель увидит список{% if rows|length > 1 %}, разбитый по направлениям,{% endif %} и откроет профиль каждого.
-                Внутренние комментарии и история не видны.
-            </p>
-            <input type="text" name="recipient" maxlength="255" placeholder="Для кого (компания, контакт)">
-            <select name="ttl_days" title="Срок действия ссылки">
-                {% for value, label in share_form.fields.ttl_days.choices %}
-                    <option value="{{ value }}" {% if value == '30' %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-            <label class="reserve-share__check">
-                <input type="checkbox" name="show_contacts">
-                <span>Показывать контакты (телефон, Telegram, email)</span>
-            </label>
-            <div class="reserve-share__buttons">
-                <button type="button" class="btn btn--secondary btn--sm" @click="open = false">Отмена</button>
-                <button type="submit" class="btn btn--sm">Создать ссылку</button>
-            </div>
-        </form>
-    </div>
-    <script>
-        document.querySelectorAll('[data-copy]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                navigator.clipboard.writeText(document.getElementById(button.dataset.copy).href).then(function () {
-                    button.textContent = 'Скопировано';
-                    setTimeout(function () { button.textContent = 'Копировать'; }, 1500);
-                });
-            });
-        });
-    </script>
+{% ui_modal id="share-collection" title="Ссылка на подборку" %}
+    <form method="post" action="{% url 'reserve:share_collection_create' %}" class="gp-stack" id="share-collection-form"
+          x-data="{ filters: '', title: '', count: 0 }"
+          @share-collection.window="filters = $event.detail.filters; title = $event.detail.title; count = $event.detail.count">
+        {% csrf_token %}
+        <input type="hidden" name="filters" :value="filters">
+        <input type="hidden" name="next" value="overview">
+        <p class="gp-text" style="margin:0"><strong x-text="title"></strong>: в подборку попадут все кандидаты — <strong x-text="count"></strong>. Работодатель увидит список{% if rows|length > 1 %}, разбитый по направлениям,{% endif %} и откроет профиль каждого. Внутренние комментарии и история не видны.</p>
+        <div class="gp-field"><label class="gp-label" for="sc-recipient">Для кого</label><input class="gp-input" type="text" id="sc-recipient" name="recipient" maxlength="255" placeholder="Компания, контакт"></div>
+        <div class="gp-field"><label class="gp-label" for="sc-ttl">Срок действия ссылки</label><select class="gp-select" id="sc-ttl" name="ttl_days">{% for value, label in share_form.fields.ttl_days.choices %}<option value="{{ value }}"{% if value == '30' %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        <label class="gp-check" for="sc-contacts"><input type="checkbox" id="sc-contacts" name="show_contacts"><span class="gp-check__text">Показывать контакты (телефон, Telegram, email)</span></label>
+    </form>
+    {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Создать ссылку" variant="primary" type="submit" form="share-collection-form" %}{% end_ui_slot %}
+{% end_ui_modal %}
 {% endif %}
 {% endblock %}

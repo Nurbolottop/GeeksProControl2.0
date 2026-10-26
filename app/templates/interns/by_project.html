@@ -1,114 +1,69 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Стажёры по проектам — GeeksPro Control{% endblock %}
+{% block page %}
+{% url 'interns:list' as list_url %}
+{% ui_page_header title="Стажёры по проектам" subtitle="Стажёры направлений по проектам: новые и старые (выпускники). ПМ и тимлиды — отдельно, в счёт не идут." %}
+    {% ui_button "Все стажёры" href=list_url icon_name="users" %}
+{% end_ui_page_header %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Стажёры по проектам</h1>
-        <div class="sub">Стажёры направлений по проектам: новые и старые (выпускники). ПМ и тимлиды — отдельно, в счёт не идут</div>
-    </div>
-    <div class="page-actions">
-        <a href="{% url 'interns:list' %}" class="btn btn--secondary">Все стажёры</a>
-    </div>
-</div>
+<section aria-label="Итоги" class="gp-grid" style="--grid-min: 150px; margin-bottom: var(--space-6)">
+    <div class="gp-stat gp-stat--accent"><span class="gp-stat__label">Стажёров на проектах</span><span class="gp-stat__value">{{ on_projects }}</span></div>
+    <div class="gp-stat"><span class="gp-stat__label">Новых</span><span class="gp-stat__value">{{ on_projects_new }}</span></div>
+    <div class="gp-stat"><span class="gp-stat__label">Старых</span><span class="gp-stat__value">{{ on_projects_old }}</span><span class="gp-stat__caption">выпускники</span></div>
+    <div class="gp-stat"><span class="gp-stat__label">ПМ</span><span class="gp-stat__value">{{ pm_count }}</span></div>
+    <div class="gp-stat"><span class="gp-stat__label">Проектов с командой</span><span class="gp-stat__value">{{ projects_count }}</span></div>
+    <a class="gp-stat" href="#free-interns"><span class="gp-stat__label">Свободных стажёров</span><span class="gp-stat__value" style="color: var(--color-success)">{{ free|length }}</span></a>
+</section>
 
-<div class="lead-summary">
-    <div class="lead-summary__item lead-summary__item--total">
-        <span class="lead-summary__value">{{ on_projects }}</span>
-        <span class="lead-summary__label">стажёров на проектах</span>
-    </div>
-    <div class="lead-summary__item">
-        <span class="lead-summary__value">{{ on_projects_new }}</span>
-        <span class="lead-summary__label">новых</span>
-    </div>
-    <div class="lead-summary__item">
-        <span class="lead-summary__value">{{ on_projects_old }}</span>
-        <span class="lead-summary__label">старых (выпускники)</span>
-    </div>
-    <div class="lead-summary__item">
-        <span class="lead-summary__value">{{ pm_count }}</span>
-        <span class="lead-summary__label">ПМ</span>
-    </div>
-    <div class="lead-summary__item">
-        <span class="lead-summary__value">{{ projects_count }}</span>
-        <span class="lead-summary__label">проектов с командой</span>
-    </div>
-    <div class="lead-summary__item">
-        <span class="lead-summary__value">{{ free|length }}</span>
-        <span class="lead-summary__label">свободных стажёров</span>
-    </div>
-</div>
-
-<div class="panel" style="padding: 0;">
-    <table class="data">
-        <thead>
-            <tr>
-                <th>Проект</th>
-                <th style="text-align: center;">Стажёров</th>
-                <th style="text-align: center;">Новых</th>
-                <th style="text-align: center;">Старых</th>
-                <th>По направлениям</th>
-                <th>PM</th>
-                <th>Тимлиды</th>
-            </tr>
-        </thead>
+{% ui_card flush=True %}
+{% if rows %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Стажёры по проектам</caption>
+        <thead><tr>
+            <th scope="col">Проект</th>
+            <th scope="col" class="is-numeric">Стажёров</th>
+            <th scope="col" class="is-numeric">Новых</th>
+            <th scope="col" class="is-numeric">Старых</th>
+            <th scope="col">По направлениям</th>
+            <th scope="col">PM</th>
+            <th scope="col">Тимлиды</th>
+        </tr></thead>
         <tbody>
-            {% for row in rows %}
-                <tr>
-                    <td>
-                        <a href="{{ row.project.get_absolute_url }}"><strong>{{ row.project.name }}</strong></a>
-                        <div class="sub">
-                            {% if row.project.client %}{{ row.project.client }}{% else %}Внутренний{% endif %}
-                            · {{ row.project.get_status_display }}
-                            {% if row.is_closed %}<span class="badge badge--red">проект закрыт, команда не снята</span>{% endif %}
-                        </div>
-                    </td>
-                    <td style="text-align: center;">
-                        {% if row.interns %}
-                            <strong style="font-size: 17px;">{{ row.interns|length }}</strong>
-                        {% else %}
-                            <span class="sub">—</span>
-                        {% endif %}
-                    </td>
-                    <td style="text-align: center;">{% if row.interns %}{{ row.new }}{% else %}<span class="sub">—</span>{% endif %}</td>
-                    <td style="text-align: center;">{% if row.interns %}{{ row.old }}{% else %}<span class="sub">—</span>{% endif %}</td>
-                    <td>
-                        {% for spec in row.specs %}
-                            <span class="badge badge--gray" title="новых {{ spec.new }}, старых {{ spec.old }}">{{ spec.name }} · {{ spec.total }}{% if spec.old %} ({{ spec.new }} нов. / {{ spec.old }} стар.){% endif %}</span>
-                        {% empty %}
-                            <span class="sub">нет стажёров на проекте</span>
-                        {% endfor %}
-                    </td>
-                    <td>
-                        {% for pm in row.pms %}{% if not forloop.first %}, {% endif %}{{ pm }}{% empty %}<span class="sub">—</span>{% endfor %}
-                    </td>
-                    <td>
-                        {% for lead in row.leads %}{% if not forloop.first %}, {% endif %}{{ lead.full_name }}{% empty %}<span class="sub">—</span>{% endfor %}
-                    </td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="7" class="sub" style="padding: 20px;">Активных проектов нет.</td></tr>
-            {% endfor %}
+        {% for row in rows %}
+            <tr>
+                <td class="is-primary" data-label="Проект">
+                    <a class="gp-link gp-table__primary" href="{{ row.project.get_absolute_url }}">{{ row.project.name }}</a>
+                    <span class="gp-table__secondary">{% if row.project.client %}{{ row.project.client }}{% else %}Внутренний{% endif %} · {{ row.project.get_status_display }}</span>
+                    {% if row.is_closed %}<div style="margin-top: var(--space-1)">{% ui_badge "проект закрыт, команда не снята" tone="danger" %}</div>{% endif %}
+                </td>
+                <td class="is-numeric" data-label="Стажёров">{% if row.interns %}<strong style="font-size: var(--text-lg)">{{ row.interns|length }}</strong>{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td class="is-numeric" data-label="Новых">{% if row.interns %}{{ row.new }}{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td class="is-numeric" data-label="Старых">{% if row.interns %}{{ row.old }}{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td data-label="По направлениям">
+                    <div class="gp-cluster" style="gap: var(--space-1)">
+                    {% for spec in row.specs %}<span class="gp-badge gp-badge--neutral" title="новых {{ spec.new }}, старых {{ spec.old }}">{{ spec.name }} · {{ spec.total }}{% if spec.old %} ({{ spec.new }} нов. / {{ spec.old }} стар.){% endif %}</span>{% empty %}<span class="gp-muted">нет стажёров на проекте</span>{% endfor %}
+                    </div>
+                </td>
+                <td data-label="PM">{% for pm in row.pms %}{% if not forloop.first %}, {% endif %}{{ pm }}{% empty %}<span class="gp-muted">—</span>{% endfor %}</td>
+                <td data-label="Тимлиды">{% for lead in row.leads %}{% if not forloop.first %}, {% endif %}{{ lead.full_name }}{% empty %}<span class="gp-muted">—</span>{% endfor %}</td>
+            </tr>
+        {% endfor %}
         </tbody>
     </table>
 </div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Активных проектов нет" icon_name="folder" %}</div>{% endif %}
+{% end_ui_card %}
 
-<div class="panel">
-    <div class="panel-head">
-        <h2>Свободные стажёры</h2>
-        <span class="panel-bar__note">{{ free|length }} чел.</span>
-    </div>
+<div id="free-interns" style="margin-top: var(--space-5)">
+{% ui_card title="Свободные стажёры" subtitle="Без активного участия в проектах" %}
+    {% ui_slot "actions" %}{% ui_badge free|length|stringformat:"s"|add:" чел." %}{% end_ui_slot %}
     {% if free %}
-        <div class="free-interns">
-            {% for intern in free %}
-                <a href="{{ intern.get_absolute_url }}" class="badge badge--gray">
-                    {{ intern.full_name }}{% if intern.specialization %} · {{ intern.specialization }}{% endif %}
-                </a>
-            {% endfor %}
+        <div class="gp-cluster" style="gap: var(--space-2)">
+            {% for intern in free %}<a class="gp-badge gp-badge--neutral" style="text-decoration:none" href="{{ intern.get_absolute_url }}">{{ intern.full_name }}{% if intern.specialization %} · {{ intern.specialization }}{% endif %}</a>{% endfor %}
         </div>
-    {% else %}
-        <div class="sub">Все стажёры распределены по проектам.</div>
-    {% endif %}
+    {% else %}<p class="gp-muted gp-small" style="margin:0">Все стажёры распределены по проектам.</p>{% endif %}
+{% end_ui_card %}
 </div>
 {% endblock %}

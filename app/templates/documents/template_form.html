@@ -1,23 +1,17 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}{{ title }} — GeeksPro Control{% endblock %}
-
-{% block content %}
-<div class="page-head">
-    <div><h1>{{ title }}</h1></div>
-</div>
-
-<form method="post" enctype="multipart/form-data" class="panel">
-    {% csrf_token %}
-    {% if form.non_field_errors %}
-        <div class="message message--error">{{ form.non_field_errors }}</div>
-    {% endif %}
-    <div class="form-grid">
-        {% include 'partials/form_fields.html' %}
-    </div>
-    <div class="form-actions">
-        <button type="submit" class="btn">Сохранить</button>
-        <a href="{% url 'documents:templates' %}" class="btn btn--secondary">Отмена</a>
-    </div>
-</form>
+{% block page %}
+{% ui_page_header title=title subtitle="Заготовка без привязки к проекту — ПМ скачивает её и берёт за основу." %}{% end_ui_page_header %}
+{% ui_card %}
+    <form method="post" enctype="multipart/form-data" class="gp-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% for field in form.visible_fields %}{% ui_field field wide=field.field.widget.attrs.rows %}{% endfor %}
+        </div>
+        {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+        <div class="gp-form-actions">{% ui_button "Сохранить" variant="primary" type="submit" %}{% url 'documents:templates' as cancel_url %}{% ui_button "Отмена" variant="ghost" href=cancel_url %}</div>
+    </form>
+{% end_ui_card %}
 {% endblock %}

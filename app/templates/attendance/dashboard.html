@@ -1,156 +1,97 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Табель — GeeksPro Control{% endblock %}
+{% block page %}
+{% ui_page_header title="Табель" subtitle="Собрания и посещаемость по всем командам" %}{% end_ui_page_header %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Табель</h1>
-        <div class="sub">Собрания и посещаемость по всем командам</div>
+<section aria-label="Итоги недели" class="gp-grid" style="--grid-min: 170px; margin-bottom: var(--space-6)">
+    <div class="gp-stat gp-stat--accent">
+        <span class="gp-stat__label">Собраний сегодня</span>
+        <span class="gp-stat__value">{{ today_meetings|length }}</span>
+        <span class="gp-stat__caption">{{ today|date:"d.m.Y" }}</span>
     </div>
-</div>
+    <div class="gp-stat">
+        <span class="gp-stat__label">Проведено за неделю</span>
+        <span class="gp-stat__value" style="color: var(--color-success)">{{ total_held }}</span>
+        <span class="gp-stat__caption">из назначенных {{ total_meetings }}</span>
+    </div>
+    <div class="gp-stat">
+        <span class="gp-stat__label">Назначено за неделю</span>
+        <span class="gp-stat__value">{{ total_meetings }}</span>
+        <span class="gp-stat__caption">{{ week_start|date:"d.m" }} — {{ week_end|date:"d.m.Y" }}</span>
+    </div>
+    <div class="gp-stat">
+        <span class="gp-stat__label">Средняя посещаемость</span>
+        <span class="gp-stat__value">{% if average_rate is not None %}{{ average_rate }}%{% else %}—{% endif %}</span>
+        <span class="gp-stat__caption">по командам с отметками</span>
+    </div>
+    <div class="gp-stat">
+        <span class="gp-stat__label">Средняя активность</span>
+        <span class="gp-stat__value">{% if average_activity is not None %}{{ average_activity }}{% else %}—{% endif %}</span>
+        <span class="gp-stat__caption">из 10</span>
+    </div>
+</section>
 
-<div class="kpi-grid">
-    <div class="kpi-card kpi-card--info">
-        <div class="kpi-card__value">{{ today_meetings|length }}</div>
-        <div class="kpi-card__label">Собраний сегодня</div>
-    </div>
-    <div class="kpi-card kpi-card--green">
-        <div class="kpi-card__value">{{ total_held }}</div>
-        <div class="kpi-card__label">Проведено за неделю</div>
-    </div>
-    <div class="kpi-card kpi-card--yellow">
-        <div class="kpi-card__value">{{ total_meetings }}</div>
-        <div class="kpi-card__label">Назначено за неделю</div>
-    </div>
-    <div class="kpi-card kpi-card--green">
-        <div class="kpi-card__value">{% if average_rate is not None %}{{ average_rate }}%{% else %}—{% endif %}</div>
-        <div class="kpi-card__label">Средняя посещаемость</div>
-    </div>
-    <div class="kpi-card kpi-card--info">
-        <div class="kpi-card__value">{% if average_activity is not None %}{{ average_activity }}{% else %}—{% endif %}</div>
-        <div class="kpi-card__label">Средняя активность из 10</div>
-    </div>
-</div>
+<div class="gp-stack gp-stack--lg">
+{% with today_label=today|date:"d.m.Y" %}{% ui_card title="Сегодня, "|add:today_label flush=True %}
+    {% if today_meetings %}
+    {% include "attendance/partials/_meeting_table.html" with meetings=today_meetings caption="Собрания сегодня" show_date=False primary_action=True %}
+    {% else %}<div style="padding: var(--space-6)">{% ui_empty "На сегодня собраний не назначено" icon_name="calendar" %}</div>{% endif %}
+{% end_ui_card %}{% endwith %}
 
-<div class="panel">
-    <h2>Сегодня, {{ today|date:'d.m.Y' }}</h2>
-    {% for meeting in today_meetings %}
-        <div class="today-meeting">
-            <div class="today-meeting__info">
-                <a href="{% url 'attendance:group_meetings' meeting.group.pk %}">
-                    <strong>Группа {{ meeting.group.code }}</strong>
-                </a>
-                <span>
-                    {{ meeting.get_kind_display }}
-                    {% if meeting.group.project %} · {{ meeting.group.project.name }}{% endif %}
-                    {% if meeting.host %} · ведёт {{ meeting.host.full_name }}{% endif %}
-                </span>
-            </div>
-            <div class="today-meeting__actions">
-                {% if meeting.status == 'held' %}
-                    <span class="badge badge--green">✓ Проведено{% if meeting.attendance_rate is not None %} · {{ meeting.attendance_rate }}%{% endif %}</span>
-                {% else %}
-                    <span class="badge badge--yellow">Не отмечено</span>
-                {% endif %}
-                <a href="{% url 'attendance:meeting_detail' meeting.pk %}"
-                   class="btn btn--sm">Отметить</a>
-            </div>
+<section aria-label="Неделя">
+    <div class="gp-cluster gp-cluster--between" style="margin-bottom: var(--space-4)">
+        <h2 class="gp-h3" style="margin:0">Неделя {{ week_start|date:"d.m" }} — {{ week_end|date:"d.m.Y" }}</h2>
+        <div class="gp-cluster">
+            {% with prev_iso=prev_week|date:"Y-m-d" next_iso=next_week|date:"Y-m-d" %}{% with prev="?week="|add:prev_iso next="?week="|add:next_iso %}
+            {% ui_button "‹ Прошлая неделя" size="sm" href=prev %}
+            {% if not is_current_week %}{% ui_button "Текущая неделя" size="sm" variant="ghost" href="?" %}{% endif %}
+            {% ui_button "Следующая неделя" size="sm" href=next icon_end="chevron-right" %}
+            {% endwith %}{% endwith %}
         </div>
-    {% empty %}
-        <div class="empty">На сегодня собраний не назначено.</div>
-    {% endfor %}
-</div>
-
-<div class="month-nav">
-    <a href="?week={{ prev_week|date:'Y-m-d' }}" class="btn btn--secondary btn--sm">‹ Прошлая неделя</a>
-    <strong style="min-width: 200px;">{{ week_start|date:'d.m' }} — {{ week_end|date:'d.m.Y' }}</strong>
-    <a href="?week={{ next_week|date:'Y-m-d' }}" class="btn btn--secondary btn--sm">Следующая неделя ›</a>
-    {% if not is_current_week %}
-        <a href="?" class="btn btn--secondary btn--sm">Текущая неделя</a>
-    {% endif %}
-</div>
-
-<div class="panel" style="padding: 0;">
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
-            <tr>
-                <th>Команда</th>
-                <th>Проект</th>
-                <th>Людей</th>
-                <th>Собраний</th>
-                <th>Проведено</th>
-                <th>Посещаемость</th>
-                <th>Активность</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for row in rows %}
-                <tr>
-                    <td><strong>{{ row.group.code }}</strong></td>
-                    <td>
-                        {% if row.group.project %}
-                            <a href="{{ row.group.project.get_absolute_url }}">{{ row.group.project.name }}</a>
-                        {% else %}—{% endif %}
-                    </td>
-                    <td>{{ row.people }}</td>
-                    <td>{{ row.meetings }}</td>
-                    <td>{{ row.held }}</td>
-                    <td>
-                        {% if row.rate is not None %}
-                            <span class="badge badge--{% if row.rate >= 80 %}green{% elif row.rate >= 60 %}yellow{% else %}red{% endif %}">{{ row.rate }}%</span>
-                        {% else %}
-                            <span class="badge badge--gray">нет отметок</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if row.activity is not None %}
-                            <span class="badge badge--{% if row.activity >= 8 %}green{% elif row.activity >= 5 %}yellow{% else %}red{% endif %}">{{ row.activity }} из 10</span>
-                        {% else %}
-                            <span class="badge badge--gray">нет оценок</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{% url 'attendance:group_meetings' row.group.pk %}"
-                           class="btn btn--secondary btn--sm">Открыть</a>
-                    </td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="8" class="empty" style="text-align:center; padding: 24px;">
-                    Команд пока нет — они появляются вместе с проектами.
-                </td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
     </div>
-</div>
 
-<div class="panel">
-    <h2>Собрания недели {{ week_start|date:'d.m' }} — {{ week_end|date:'d.m.Y' }}</h2>
-    {% for meeting in week_meetings %}
-        <div class="today-meeting">
-            <div class="today-meeting__info">
-                <strong>{{ meeting.date|date:'d.m, D' }}</strong>
-                <span>
-                    Группа {{ meeting.group.code }} · {{ meeting.get_kind_display }}
-                    {% if meeting.group.project %} · {{ meeting.group.project.name }}{% endif %}
-                    {% if meeting.host %} · ведёт {{ meeting.host.full_name }}{% endif %}
-                </span>
-            </div>
-            <div class="today-meeting__actions">
-                {% if meeting.status == 'held' %}
-                    <span class="badge badge--green">✓ Проведено{% if meeting.attendance_rate is not None %} · {{ meeting.attendance_rate }}%{% endif %}</span>
-                {% else %}
-                    <span class="badge badge--yellow">Не отмечено</span>
-                {% endif %}
-                <a href="{% url 'attendance:meeting_detail' meeting.pk %}"
-                   class="btn btn--secondary btn--sm">Открыть</a>
-            </div>
+    <div class="gp-stack">
+    {% ui_card title="Команды" subtitle="Посещаемость: зелёный — от 80%, жёлтый — от 60%. Активность: от 8 и от 5 из 10." flush=True %}
+        <div class="gp-table-wrap gp-table--stack" style="border:0">
+            <table class="gp-table">
+                <caption class="gp-sr-only">Команды за неделю</caption>
+                <thead><tr>
+                    <th scope="col">Команда</th>
+                    <th scope="col">Проект</th>
+                    <th scope="col" class="is-numeric">Людей</th>
+                    <th scope="col" class="is-numeric">Собраний</th>
+                    <th scope="col" class="is-numeric">Проведено</th>
+                    <th scope="col">Посещаемость</th>
+                    <th scope="col">Активность</th>
+                    <th scope="col" class="is-actions"><span class="gp-sr-only">Действия</span></th>
+                </tr></thead>
+                <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td class="is-primary" data-label="Команда"><a class="gp-link gp-table__primary" href="{% url 'attendance:group_meetings' row.group.pk %}">{{ row.group.code }}</a></td>
+                        <td data-label="Проект">{% if row.group.project %}<a class="gp-link" href="{{ row.group.project.get_absolute_url }}">{{ row.group.project.name }}</a>{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                        <td class="is-numeric" data-label="Людей">{{ row.people }}</td>
+                        <td class="is-numeric" data-label="Собраний">{{ row.meetings }}</td>
+                        <td class="is-numeric" data-label="Проведено">{{ row.held }}</td>
+                        <td data-label="Посещаемость">{% if row.rate is not None %}<span class="gp-badge gp-badge--{% if row.rate >= 80 %}success{% elif row.rate >= 60 %}warning{% else %}danger{% endif %}">{{ row.rate }}%</span>{% else %}{% ui_badge "нет отметок" %}{% endif %}</td>
+                        <td data-label="Активность">{% if row.activity is not None %}<span class="gp-badge gp-badge--{% if row.activity >= 8 %}success{% elif row.activity >= 5 %}warning{% else %}danger{% endif %}">{{ row.activity }} из 10</span>{% else %}{% ui_badge "нет оценок" %}{% endif %}</td>
+                        <td class="is-actions" data-label="">{% url 'attendance:group_meetings' row.group.pk as group_url %}{% ui_button "Открыть" size="sm" href=group_url %}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="8">{% ui_empty "Команд пока нет" "Они появляются вместе с проектами." icon_name="users" %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
-    {% empty %}
-        <div class="empty">На эту неделю собраний не назначено.</div>
-    {% endfor %}
+    {% end_ui_card %}
+
+    {% ui_card title="Собрания недели" flush=True %}
+        {% if week_meetings %}
+        {% include "attendance/partials/_meeting_table.html" with meetings=week_meetings caption="Собрания недели" show_date=True primary_action=False %}
+        {% else %}<div style="padding: var(--space-6)">{% ui_empty "На эту неделю собраний не назначено" icon_name="calendar" %}</div>{% endif %}
+    {% end_ui_card %}
+    </div>
+</section>
 </div>
 {% endblock %}

@@ -1,79 +1,52 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Задачи — GeeksPro Control{% endblock %}
+{% block page %}
+{% with count_s=page.paginator.count|stringformat:"s" %}{% ui_page_header title="Задачи" subtitle="Всего: "|add:count_s %}
+    {% url 'tasks:kanban' as kanban_url %}{% ui_button "Kanban" href=kanban_url icon_name="layout-grid" %}
+    {% url 'tasks:create' as create_url %}{% ui_button "Новая задача" variant="primary" href=create_url icon_name="plus" %}
+{% end_ui_page_header %}{% endwith %}
 
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Задачи</h1>
-        <div class="sub">Всего: {{ page.paginator.count }}</div>
-    </div>
-    <div class="page-actions">
-        <a href="{% url 'tasks:kanban' %}" class="btn btn--secondary">Kanban</a>
-        <a href="{% url 'tasks:create' %}" class="btn">+ Новая задача</a>
-    </div>
+{% url 'tasks:list' as list_url %}
+<div style="margin-bottom: var(--space-4)">
+<nav class="gp-tabs" aria-label="Срок задач">
+    <a href="{{ list_url }}" class="gp-tabs__tab{% if not view %} is-active{% endif %}"{% if not view %} aria-current="page"{% endif %}>Все</a>
+    <a href="?view=today" class="gp-tabs__tab{% if view == 'today' %} is-active{% endif %}"{% if view == 'today' %} aria-current="page"{% endif %}>Сегодня</a>
+    <a href="?view=week" class="gp-tabs__tab{% if view == 'week' %} is-active{% endif %}"{% if view == 'week' %} aria-current="page"{% endif %}>Неделя</a>
+    <a href="?view=overdue" class="gp-tabs__tab{% if view == 'overdue' %} is-active{% endif %}"{% if view == 'overdue' %} aria-current="page"{% endif %}>Просроченные</a>
+</nav>
 </div>
 
-<div class="tabs">
-    <a href="{% url 'tasks:list' %}" class="{% if not view %}is-active{% endif %}">Все</a>
-    <a href="?view=today" class="{% if view == 'today' %}is-active{% endif %}">Сегодня</a>
-    <a href="?view=week" class="{% if view == 'week' %}is-active{% endif %}">Неделя</a>
-    <a href="?view=overdue" class="{% if view == 'overdue' %}is-active{% endif %}">Просроченные</a>
-</div>
-
-<form method="get" class="filters">
-    {% if view %}<input type="hidden" name="view" value="{{ view }}">{% endif %}
-    <input type="text" name="q" placeholder="Поиск" value="{{ params.q|default:'' }}">
-    <select name="project">
-        <option value="">Проект: все</option>
-        {% for project in projects %}
-            <option value="{{ project.pk }}" {% if params.project == project.pk|stringformat:'s' %}selected{% endif %}>{{ project.name }}</option>
-        {% endfor %}
-    </select>
-    <select name="status">
-        <option value="">Статус: все</option>
-        {% for value, label in statuses %}
-            <option value="{{ value }}" {% if params.status == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-    </select>
-    <select name="priority">
-        <option value="">Приоритет: все</option>
-        {% for value, label in priorities %}
-            <option value="{{ value }}" {% if params.priority == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-    </select>
-    <button type="submit" class="btn btn--secondary btn--sm">Применить</button>
-    <a href="{% url 'tasks:list' %}" class="btn btn--secondary btn--sm">Сбросить</a>
+<form method="get" class="gp-card" style="margin-bottom: var(--space-4)" role="search" aria-label="Фильтры задач">
+    <div class="gp-card__body">
+        {% if view %}<input type="hidden" name="view" value="{{ view }}">{% endif %}
+        <div class="gp-filters">
+            <div class="gp-field gp-filters__wide"><label class="gp-label" for="t-q">Поиск</label><input class="gp-input" id="t-q" type="search" name="q" value="{{ params.q|default:'' }}" placeholder="Название задачи"></div>
+            <div class="gp-field"><label class="gp-label" for="t-project">Проект</label><select class="gp-select" id="t-project" name="project"><option value="">Все</option>{% for project in projects %}<option value="{{ project.pk }}"{% if params.project == project.pk|stringformat:'s' %} selected{% endif %}>{{ project.name }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="t-status">Статус</label><select class="gp-select" id="t-status" name="status"><option value="">Все</option>{% for value, label in statuses %}<option value="{{ value }}"{% if params.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+            <div class="gp-field"><label class="gp-label" for="t-priority">Приоритет</label><select class="gp-select" id="t-priority" name="priority"><option value="">Все</option>{% for value, label in priorities %}<option value="{{ value }}"{% if params.priority == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="gp-cluster" style="margin-top: var(--space-4)">
+            {% ui_button "Применить" variant="primary" type="submit" icon_name="filter" %}
+            {% ui_button "Сбросить" variant="ghost" href=list_url %}
+        </div>
+    </div>
 </form>
 
-<div class="panel" style="padding: 0;">
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
-            <tr>
-                <th>Задача</th>
-                <th>Приоритет</th>
-                <th>Deadline</th>
-                <th>Статус</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for task in page.object_list %}
-                {% include 'tasks/partials/task_row.html' %}
-            {% empty %}
-                <tr><td colspan="5" class="empty" style="text-align:center; padding: 24px;">Задач не найдено.</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+{% ui_card flush=True %}
+{% if page.object_list %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Задачи</caption>
+        <thead><tr><th scope="col">Задача</th><th scope="col">Приоритет</th><th scope="col">Deadline</th><th scope="col">Статус</th><th scope="col"><span class="gp-sr-only">Действия</span></th></tr></thead>
+        <tbody>
+        {% for task in page.object_list %}
+            {% include 'tasks/partials/task_row.html' %}
+        {% endfor %}
+        </tbody>
+    </table>
 </div>
-
-{% if page.paginator.num_pages > 1 %}
-    <div class="pagination">
-        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">‹</a>{% endif %}
-        <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
-        {% if page.has_next %}<a href="?page={{ page.next_page_number }}">›</a>{% endif %}
-    </div>
-{% endif %}
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "Задач не найдено" "Измените поиск или фильтры." icon_name="clipboard-check" %}</div>{% endif %}
+{% end_ui_card %}
+<div style="margin-top: var(--space-4)">{% ui_pagination page label="задач" %}</div>
 {% endblock %}

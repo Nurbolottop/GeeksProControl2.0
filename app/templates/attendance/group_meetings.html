@@ -1,96 +1,56 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Собрания команды {{ group.code }} — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% if group.project %}{% firstof group.project.name as page_title %}{% else %}{% firstof "Команда "|add:group.code as page_title %}{% endif %}
+{% ui_page_header title=page_title subtitle="Собрания команды: отсюда заходят отмечать посещаемость и оценивать работу" %}
+    {% ui_slot "eyebrow" %}
+        {% ui_badge "Команда "|add:group.code tone="primary" %}
+        <span class="gp-badge gp-badge--neutral">{{ people }} человек</span>
+    {% end_ui_slot %}
+    {% url 'attendance:group_sheet' group.pk as sheet_url %}{% ui_button "Посмотреть табель" href=sheet_url icon_name="calendar" %}
+    {% url 'attendance:meeting_create' group.pk as create_url %}{% ui_button "Создать собрание" variant="primary" href=create_url icon_name="plus" %}
+{% end_ui_page_header %}
 
-{% block content %}
-<nav class="crumbs">
-    <a href="{% url 'attendance:dashboard' %}">Табель</a>
-    {% if group.project %}
-        <span class="crumbs__sep">›</span>
-        <a href="{{ group.project.get_absolute_url }}">{{ group.project.name }}</a>
-    {% endif %}
-    <span class="crumbs__sep">›</span>
-    <span class="crumbs__current">Команда {{ group.code }}</span>
-</nav>
-
-<div class="page-head">
-    <div>
-        <h1>{% if group.project %}{{ group.project.name }}{% else %}Команда {{ group.code }}{% endif %}</h1>
-        <div class="sub" style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
-            <span class="badge badge--blue">Команда {{ group.code }}</span>
-            <span class="badge badge--gray">{{ people }} человек</span>
-        </div>
-    </div>
-    <div class="page-actions">
-        <a href="{% url 'attendance:group_sheet' group.pk %}" class="btn btn--secondary">Посмотреть табель</a>
-        <a href="{% url 'attendance:meeting_create' group.pk %}" class="btn">+ Создать собрание</a>
-    </div>
-</div>
-
-<div class="panel" style="padding: 0;">
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
+{% ui_card flush=True %}
+{% if meetings %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Собрания команды {{ group.code }}</caption>
+        <thead><tr>
+            <th scope="col">Дата</th>
+            <th scope="col">Вид собрания</th>
+            <th scope="col">Проводит</th>
+            <th scope="col">Статус</th>
+            <th scope="col">Отмечено</th>
+            <th scope="col">Средний балл</th>
+            <th scope="col" class="is-actions"><span class="gp-sr-only">Действия</span></th>
+        </tr></thead>
+        <tbody>
+        {% for meeting in meetings %}
             <tr>
-                <th>Дата</th>
-                <th>Вид собрания</th>
-                <th>Проводит</th>
-                <th>Статус</th>
-                <th>Отмечено</th>
-                <th>Средний балл</th>
-                <th></th>
+                <td class="is-primary" data-label="Дата"><a class="gp-link gp-table__primary" href="{% url 'attendance:meeting_detail' meeting.pk %}">{{ meeting.date|date:"d.m.Y" }}</a><span class="gp-table__secondary">{{ meeting.date|date:"l" }}</span></td>
+                <td data-label="Вид собрания">{{ meeting.get_kind_display }}<span class="gp-table__secondary">{{ meeting.direction_label }}</span></td>
+                <td data-label="Проводит">{{ meeting.host.full_name|default:"—" }}</td>
+                <td data-label="Статус">{% if meeting.status == 'held' %}{% ui_badge "Проведено" tone="success" %}{% elif meeting.date < today %}{% ui_badge "Не отмечено" tone="danger" %}{% else %}{% ui_badge "Запланировано" tone="warning" %}{% endif %}</td>
+                <td data-label="Отмечено">{% if meeting.marked_count %}{{ meeting.attended_count }} из {{ meeting.marked_count }}{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td data-label="Средний балл">{% if meeting.avg_score is not None %}<span class="gp-badge gp-badge--{% if meeting.avg_score >= 8 %}success{% elif meeting.avg_score >= 5 %}warning{% else %}danger{% endif %}">{{ meeting.avg_score }}</span> <span class="gp-muted gp-small">({{ meeting.score_count }})</span>{% else %}<span class="gp-muted">—</span>{% endif %}</td>
+                <td class="is-actions" data-label="">
+                    <div class="gp-cluster" style="justify-content: flex-end; flex-wrap: nowrap">
+                        {% url 'attendance:meeting_detail' meeting.pk as meeting_url %}{% ui_button "Отметить" size="sm" variant="primary" href=meeting_url %}
+                        <button type="button" class="gp-btn gp-btn--ghost gp-btn--sm gp-btn--icon" data-gp-open="meeting-delete-{{ meeting.pk }}" aria-label="Удалить собрание {{ meeting.date|date:'d.m.Y' }}" title="Удалить собрание">{% ui_icon "trash" size="sm" %}</button>
+                    </div>
+                </td>
             </tr>
-            </thead>
-            <tbody>
-            {% for meeting in meetings %}
-                <tr>
-                    <td>
-                        <strong>{{ meeting.date|date:'d.m.Y' }}</strong>
-                        <div style="font-size:11.5px; color: var(--text-muted)">{{ meeting.date|date:'l' }}</div>
-                    </td>
-                    <td>
-                        {{ meeting.get_kind_display }}
-                        <div style="font-size:11.5px; color: var(--text-muted)">{{ meeting.direction_label }}</div>
-                    </td>
-                    <td>{{ meeting.host.full_name|default:'—' }}</td>
-                    <td>
-                        {% if meeting.status == 'held' %}
-                            <span class="badge badge--green">✓ Проведено</span>
-                        {% elif meeting.date < today %}
-                            <span class="badge badge--red">Не отмечено</span>
-                        {% else %}
-                            <span class="badge badge--yellow">Запланировано</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if meeting.marked_count %}
-                            {{ meeting.attended_count }} из {{ meeting.marked_count }}
-                        {% else %}—{% endif %}
-                    </td>
-                    <td>
-                        {% if meeting.avg_score is not None %}
-                            <span class="badge badge--{% if meeting.avg_score >= 8 %}green{% elif meeting.avg_score >= 5 %}yellow{% else %}red{% endif %}">
-                                {{ meeting.avg_score }}
-                            </span>
-                            <span style="font-size:11.5px; color: var(--text-muted)">({{ meeting.score_count }})</span>
-                        {% else %}—{% endif %}
-                    </td>
-                    <td style="white-space: nowrap; text-align: right">
-                        <a href="{% url 'attendance:meeting_detail' meeting.pk %}" class="btn btn--sm">Отметить</a>
-                        <form method="post" action="{% url 'attendance:meeting_delete' meeting.pk %}" style="display:inline"
-                              data-confirm="Удалить собрание {{ meeting.date|date:'d.m.Y' }}?">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn--secondary btn--sm">✕</button>
-                        </form>
-                    </td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="7" class="empty" style="text-align:center; padding: 30px;">
-                    Собраний пока нет — нажмите «+ Создать собрание».
-                </td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+        {% endfor %}
+        </tbody>
+    </table>
 </div>
+{% else %}<div style="padding: var(--space-6)">{% url 'attendance:meeting_create' group.pk as create_url %}{% ui_empty "Собраний пока нет" "Нажмите «Создать собрание» — выберите вид и даты." icon_name="calendar" action_label="Создать собрание" action_href=create_url %}</div>{% endif %}
+{% end_ui_card %}
+
+{% for meeting in meetings %}
+{% include "attendance/partials/_meeting_delete_modal.html" with text="Собрание вместе с отметками и оценками будет удалено." %}
+{% endfor %}
 {% endblock %}

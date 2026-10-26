@@ -1,124 +1,40 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Собрание {{ meeting.date|date:'d.m.Y' }} — GeeksPro Control{% endblock %}
-
-{% block content %}
-<nav class="crumbs">
-    <a href="{% url 'attendance:dashboard' %}">Табель</a>
-    {% if group.project %}
-        <span class="crumbs__sep">›</span>
-        <a href="{{ group.project.get_absolute_url }}">{{ group.project.name }}</a>
-    {% endif %}
-    <span class="crumbs__sep">›</span>
-    <a href="{% url 'attendance:group_meetings' group.pk %}">Собрания команды</a>
-    <span class="crumbs__sep">›</span>
-    <span class="crumbs__current">{{ meeting.date|date:'d.m.Y' }}</span>
-</nav>
-
-<div class="page-head">
-    <div>
-        <h1>{{ meeting.get_kind_display }} · {{ meeting.date|date:'d.m.Y' }}</h1>
-        <div class="sub" style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
-            {% if group.project %}<span class="badge badge--blue">{{ group.project.name }}</span>{% endif %}
-            <span class="badge badge--gray">{{ meeting.direction_label }}</span>
-            {% if meeting.host %}<span class="badge badge--gray">ведёт {{ meeting.host.full_name }}</span>{% endif %}
-            {% if rate is not None %}
-                <span class="badge badge--{% if rate >= 80 %}green{% elif rate >= 60 %}yellow{% else %}red{% endif %}">
-                    Посещаемость: {{ rate }}%
-                </span>
-            {% endif %}
-            {% if average_score is not None %}
-                <span class="badge badge--{% if average_score >= 8 %}green{% elif average_score >= 5 %}yellow{% else %}red{% endif %}">
-                    Средний балл: {{ average_score }}
-                </span>
-            {% endif %}
-        </div>
-    </div>
-    <div class="page-actions">
-        <form method="post" action="{% url 'attendance:mark_all' meeting.pk %}" style="margin:0">
-            {% csrf_token %}
-            <button type="submit" class="btn">✓ Отметить всех</button>
-        </form>
-    </div>
-</div>
+{% block extra_head %}{% include "attendance/partials/_sheet_styles.html" %}{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% with day=meeting.date|date:"d.m.Y" %}
+{% ui_page_header title=meeting.get_kind_display|add:" · "|add:day subtitle=meeting.topic %}
+    {% ui_slot "eyebrow" %}
+        {% if group.project %}{% ui_badge group.project.name tone="primary" %}{% endif %}
+        {% ui_badge meeting.direction_label %}
+        {% if meeting.host %}{% ui_badge "ведёт "|add:meeting.host.full_name %}{% endif %}
+        {% if rate is not None %}<span class="gp-badge gp-badge--{% if rate >= 80 %}success{% elif rate >= 60 %}warning{% else %}danger{% endif %}">Посещаемость: {{ rate }}%</span>{% endif %}
+        {% if average_score is not None %}<span class="gp-badge gp-badge--{% if average_score >= 8 %}success{% elif average_score >= 5 %}warning{% else %}danger{% endif %}">Средний балл: {{ average_score }}</span>{% endif %}
+    {% end_ui_slot %}
+    <form method="post" action="{% url 'attendance:mark_all' meeting.pk %}" style="margin:0">{% csrf_token %}{% ui_button "Отметить всех" variant="primary" type="submit" icon_name="check" %}</form>
+{% end_ui_page_header %}
+{% endwith %}
 
 <div x-data="{ tab: '{{ tab }}' }">
-    <div class="tabs">
-        <a href="#" @click.prevent="tab='marks'" :class="tab === 'marks' && 'is-active'">
-            Посещаемость <span class="tab-count">{{ marked }}/{{ rows|length }}</span>
-        </a>
-        <a href="#" @click.prevent="tab='scores'" :class="tab === 'scores' && 'is-active'">
-            Оценка работы <span class="tab-count">{{ scored }}/{{ rows|length }}</span>
-        </a>
+    <nav class="gp-tabs" aria-label="Собрание">
+        <a href="?tab=marks" class="gp-tabs__tab{% if tab == 'marks' %} is-active{% endif %}" :class="tab === 'marks' && 'is-active'" @click.prevent="tab='marks'">Посещаемость<span class="gp-tabs__count">{{ marked }}/{{ rows|length }}</span></a>
+        <a href="?tab=scores" class="gp-tabs__tab{% if tab == 'scores' %} is-active{% endif %}" :class="tab === 'scores' && 'is-active'" @click.prevent="tab='scores'">Оценка работы<span class="gp-tabs__count">{{ scored }}/{{ rows|length }}</span></a>
+    </nav>
+
+    <div x-show="tab === 'marks'" {% if tab != 'marks' %}x-cloak{% endif %} style="margin-top: var(--space-4)">
+        {% ui_card title="Кто был на собрании" flush=True %}
+            {% ui_slot "actions" %}<span class="gp-muted gp-small">Отмечено {{ marked }} из {{ rows|length }} · присутствовали {{ attended }}</span>{% end_ui_slot %}
+            {% if rows %}
+            <ul class="att-people">{% for row in rows %}{% include 'attendance/partials/person_row.html' %}{% endfor %}</ul>
+            {% else %}<div style="padding: var(--space-6)">{% ui_empty "В команде нет людей" icon_name="users" %}</div>{% endif %}
+        {% end_ui_card %}
     </div>
 
-    <div x-show="tab === 'marks'" x-cloak>
-        <div class="panel" style="padding: 0;">
-            <div class="panel-bar">
-                <h2 style="margin:0">Кто был на собрании</h2>
-                <span class="panel-bar__note">Отмечено {{ marked }} из {{ rows|length }} · присутствовали {{ attended }}</span>
-            </div>
-            <div class="table-wrap">
-                <table class="data">
-                    <thead>
-                    <tr>
-                        <th>Человек</th>
-                        <th>Отметка</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for row in rows %}
-                        {% include 'attendance/partials/person_row.html' %}
-                    {% empty %}
-                        <tr><td colspan="2" class="empty" style="text-align:center; padding: 24px;">
-                            В команде нет людей.
-                        </td></tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div x-show="tab === 'scores'" x-cloak>
-        <div class="panel" style="padding: 0;">
-            <div class="panel-bar">
-                <h2 style="margin:0">Как работал за период</h2>
-                <span class="panel-bar__note">
-                    {% if period_start %}
-                        с {{ period_start|date:'d.m.Y' }} по {{ meeting.date|date:'d.m.Y' }} · {{ period_days }} дн.
-                    {% else %}
-                        первое собрание этого вида — с начала работы по {{ meeting.date|date:'d.m.Y' }}
-                    {% endif %}
-                </span>
-            </div>
-            <div class="score-hint">
-                Кликните по шкале — балл выставится сразу.
-                <strong>0–4</strong> — не тянет, <strong>5–7</strong> — норма, <strong>8–10</strong> — сильно.
-                Неоценённые идут первыми; ✕ снимает балл.
-            </div>
-            <div class="table-wrap">
-                <table class="data">
-                    <thead>
-                    <tr>
-                        <th>Человек</th>
-                        <th>Активность за период</th>
-                        <th>Прошлый раз</th>
-                        <th>Комментарий</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for row in score_rows %}
-                        {% include 'attendance/partials/score_row.html' %}
-                    {% empty %}
-                        <tr><td colspan="4" class="empty" style="text-align:center; padding: 24px;">
-                            В команде нет людей.
-                        </td></tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div x-show="tab === 'scores'" {% if tab != 'scores' %}x-cloak{% endif %} style="margin-top: var(--space-4)">
+        {% if period_start %}{% with ps=period_start|date:"d.m.Y" md=meeting.date|date:"d.m.Y" dd=period_days|stringformat:"s" %}{% firstof "с "|add:ps|add:" по "|add:md|add:" · "|add:dd|add:" дн." as period_note %}{% ui_card title="Как работал за период" subtitle=period_note flush=True %}{% include "attendance/partials/_score_list.html" %}{% end_ui_card %}{% endwith %}
+        {% else %}{% with md=meeting.date|date:"d.m.Y" %}{% firstof "первое собрание этого вида — с начала работы по "|add:md as period_note %}{% ui_card title="Как работал за период" subtitle=period_note flush=True %}{% include "attendance/partials/_score_list.html" %}{% end_ui_card %}{% endwith %}{% endif %}
     </div>
 </div>
 {% endblock %}

@@ -1,0 +1,5 @@
+{# Полоса готовности проекта: value (0–100) #}
+<div class="gp-cluster" style="flex-wrap: nowrap; gap: var(--space-2); min-width: 120px">
+    <div class="gp-segments" style="flex: 1; min-width: 60px" role="img" aria-label="Готовность {{ value }}%">{% if value %}<span class="gp-tone-2" style="width: {{ value }}%"></span>{% endif %}</div>
+    <span class="gp-small" style="font-variant-numeric: tabular-nums; min-width: 3ch; text-align: right">{{ value }}%</span>
+</div>

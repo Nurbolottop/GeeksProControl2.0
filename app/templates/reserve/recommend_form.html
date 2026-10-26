@@ -1,29 +1,21 @@
-{% extends 'base.html' %}
-
+{% extends "layouts/app.html" %}
+{% load ui %}
 {% block title %}Рекомендация: {{ candidate.full_name }} — GeeksPro Control{% endblock %}
-
-{% block content %}
-<div class="page-head">
-    <div>
-        <h1>Рекомендовать компании</h1>
-        <div class="sub">{{ candidate.full_name }} · {{ candidate.direction }}{% if candidate.geekspro_level %} · {{ candidate.get_geekspro_level_display }}{% endif %}{% if candidate.rating %} · рейтинг {{ candidate.rating }} / 10{% endif %}</div>
-    </div>
-    <div class="page-actions">
-        <a href="{{ candidate.get_absolute_url }}?tab=recommendations" class="btn btn--secondary">К карточке</a>
-    </div>
-</div>
-
-<form method="post" class="panel">
-    {% csrf_token %}
-    {% if form.non_field_errors %}
-        <div class="message message--error">{{ form.non_field_errors }}</div>
-    {% endif %}
-    <div class="form-grid">
-        {% include 'partials/form_fields.html' %}
-    </div>
-    <div class="form-actions">
-        <button type="submit" class="btn">Сохранить рекомендацию</button>
-        <a href="{{ candidate.get_absolute_url }}" class="btn btn--secondary">Отмена</a>
-    </div>
-</form>
+{% block page %}
+{% url 'reserve:detail' candidate.pk as card_url %}
+{% ui_page_header title="Рекомендовать компании" subtitle=candidate.full_name|add:" · "|add:candidate.direction %}
+    {% ui_slot "eyebrow" %}{% if candidate.geekspro_level %}{% ui_badge candidate.get_geekspro_level_display tone="info" %}{% endif %}{% if candidate.rating %}<span class="gp-badge gp-badge--primary">Рейтинг {{ candidate.rating }} / 10</span>{% endif %}{% end_ui_slot %}
+    {% ui_button "К карточке" href=card_url|add:"?tab=recommendations" variant="ghost" %}
+{% end_ui_page_header %}
+{% ui_card %}
+    <form method="post" class="gp-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="gp-form-errors">{% ui_alert form.non_field_errors|join:" " level="danger" %}</div>{% endif %}
+        <div class="gp-form-grid gp-form-grid--2">
+            {% for field in form.visible_fields %}{% ui_field field wide=field.field.widget.attrs.rows %}{% endfor %}
+        </div>
+        {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+        <div class="gp-form-actions">{% ui_button "Сохранить рекомендацию" variant="primary" type="submit" %}{% ui_button "Отмена" variant="ghost" href=card_url %}</div>
+    </form>
+{% end_ui_card %}
 {% endblock %}
