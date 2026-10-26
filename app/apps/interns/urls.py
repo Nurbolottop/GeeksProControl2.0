@@ -40,6 +40,7 @@ urlpatterns = [
     ),
     path('graduates/', views.graduates_list, name='graduates'),
     path('waiting/', views.waiting_list, name='waiting'),
+    path('registrations/', views.registrations, name='registrations'),
     path('freeze-requests/', views.internship_requests, name='internship_requests'),
     path('freeze-requests/<int:pk>/<str:decision>/', views.internship_request_decide, name='internship_request_decide'),
     path('discipline/<int:pk>/<str:decision>/', views.discipline_decide, name='discipline_decide'),

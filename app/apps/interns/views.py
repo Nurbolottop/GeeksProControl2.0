@@ -526,6 +526,20 @@ def internship_requests(request):
     })
 
 
+@login_required
+def registrations(request):
+    """«Регистрации» (11F): воронка регистрации в Telegram-боте и где сейчас каждый новый."""
+    from apps.accounts.access import has_full_access
+    from apps.interns import registrations as reg
+
+    if not has_full_access(request.user):
+        raise PermissionDenied
+    context = reg.report(request.GET.get('period') or '7')
+    context['crumbs'] = [{'label': 'Главная', 'href': reverse('dashboard')}, {'label': 'Стажёры', 'href': reverse('interns:list')},
+                         {'label': 'Регистрации', 'href': ''}]
+    return render(request, 'interns/registrations.html', context)
+
+
 def _flash_error(request, error):
     messages.error(request, ' '.join(getattr(error, 'messages', None) or [str(error)]))
 

@@ -1809,3 +1809,27 @@ class BotStartedLabelTests(TestCase):
         self.assertEqual(ids('no'), {legacy.pk, none.pk})
         self.assertFalse(people.card(legacy)['bot_started'])
         self.assertTrue(people.card(started)['bot_started'])
+
+
+class RegistrationsPageTests(TestCase):
+    """11F: «Регистрации» — воронка бота и шаг каждого нового."""
+
+    def test_funnel_and_people(self):
+        from apps.accounts.models import User
+        from apps.interns.models import InternshipRequest
+        from apps.tgbot.models import TelegramUpdate
+
+        head = User.objects.create_user(username='head-reg', password='x', role=User.Role.HEAD)
+        for n, outcome in enumerate(['reg:start', 'reg:name', 'reg:start', 'reg:name', 'reg:phone', 'reg:city', 'reg:done']):
+            TelegramUpdate.objects.create(update_id=10_000 + n, chat_id=111 if n < 2 else 222, outcome=outcome)
+        person = Intern.objects.create(full_name='Новый Регистр', telegram_chat_id=222, status='waiting')
+        InternshipRequest.objects.create(intern=person, kind=InternshipRequest.Kind.ENROLL, reason='бот',
+                                         sales_status=InternshipRequest.Sales.PENDING)
+        self.client.force_login(head)
+        page = self.client.get(reverse('interns:registrations'))
+        self.assertEqual(page.status_code, 200)
+        steps = {s['label']: s['count'] for s in page.context['steps']}
+        self.assertEqual((steps['Начали регистрацию'], steps['Завершили регистрацию']), (2, 1))
+        self.assertContains(page, 'Новый Регистр')
+        self.assertContains(page, 'Ждёт подтверждения продаж')
+        self.assertEqual([s['chat_id'] for s in page.context['stuck']], [111])  # начал и бросил на ФИО

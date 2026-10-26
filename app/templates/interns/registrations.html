@@ -1,0 +1,81 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Регистрации — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Регистрации" subtitle="Сколько человек проходит регистрацию в Telegram-боте, где застревают и на каком шаге сейчас каждый новый стажёр." %}
+    {% url 'projects:recruitment_board' as board_url %}{% ui_button "Наборы" href=board_url icon_name="folder" %}
+    {% url 'tgbot:reconcile' as bot_url %}{% ui_button "Telegram-бот" href=bot_url icon_name="bot" %}
+{% end_ui_page_header %}
+
+<nav class="gp-cluster" style="margin-bottom: var(--space-4); gap: var(--space-2)" aria-label="Период">
+    {% for key, label in periods %}{% if key == period %}{% ui_badge label tone="primary" %}{% else %}<a class="gp-link gp-small" style="padding: 2px var(--space-2)" href="?period={{ key }}">{{ label }}</a>{% endif %}{% endfor %}
+</nav>
+
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-4); align-items: start; margin-bottom: var(--space-5)">
+    {% ui_card title="Регистрация в боте" subtitle="Уникальные люди за период; % — от начавших" %}
+        <dl class="gp-metrics" style="margin: 0">
+        {% for step in steps %}
+            <div class="gp-metrics__row" style="flex-wrap: wrap"><dt>{{ step.label }}</dt><dd>{{ step.count }}{% if not forloop.first %} <span class="gp-muted" style="font-weight: 400">· {{ step.pct }}%</span>{% endif %}</dd>
+                <div class="gp-segments" style="width: 100%; height: 6px; margin-top: var(--space-1)"><span class="gp-tone-2" style="width: {% if forloop.first %}100{% else %}{{ step.pct }}{% endif %}%"></span></div></div>
+        {% endfor %}
+        </dl>
+    {% end_ui_card %}
+    {% ui_card title="После регистрации" subtitle="По заявкам «Новая стажировка» за период" %}
+        <dl class="gp-metrics" style="margin: 0">
+        {% for step in after %}
+            <div class="gp-metrics__row" style="flex-wrap: wrap"><dt>{{ step.label }}</dt><dd>{{ step.count }} <span class="gp-muted" style="font-weight: 400">· {{ step.pct }}%</span></dd>
+                <div class="gp-segments" style="width: 100%; height: 6px; margin-top: var(--space-1)"><span class="gp-tone-4" style="width: {{ step.pct }}%"></span></div></div>
+        {% endfor %}
+        </dl>
+    {% end_ui_card %}
+</div>
+
+{% ui_card title="Новые стажёры за период" subtitle="Где сейчас каждый, кто завершил регистрацию" flush=True %}
+{% if requests %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <caption class="gp-sr-only">Новые стажёры</caption>
+        <thead><tr><th scope="col">ФИО</th><th scope="col">Направление · город</th><th scope="col">Контакты</th><th scope="col">Регистрация</th><th scope="col">Сейчас</th></tr></thead>
+        <tbody>
+        {% for r in requests %}
+            <tr>
+                <td class="is-primary" data-label="ФИО"><a class="gp-link gp-table__primary" href="{{ r.intern.get_absolute_url }}">{{ r.intern.full_name }}</a></td>
+                <td data-label="Направление · город">{{ r.intern.specialization|default:"—" }}<span class="gp-table__secondary">{{ r.intern.city|default:r.intern.branch|default:"—" }}</span></td>
+                <td data-label="Контакты">{{ r.intern.phone|default:"—" }}{% if r.intern.telegram %}<span class="gp-table__secondary">{{ r.intern.telegram }}</span>{% endif %}</td>
+                <td data-label="Регистрация">{{ r.created_at|date:"d.m.Y H:i" }}</td>
+                <td data-label="Сейчас">{% ui_badge r.ui_stage tone=r.ui_tone %}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}<div style="padding: var(--space-6)">{% ui_empty "За период регистраций нет" "Выберите другой период." icon_name="users" %}</div>{% endif %}
+{% end_ui_card %}
+
+{% if stuck %}
+<div style="margin-top: var(--space-5)">
+{% ui_card title="Начали, но не закончили" subtitle="Профиль не создан — человек остановился на шаге регистрации" flush=True %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <thead><tr><th scope="col">Telegram ID</th><th scope="col">Последний шаг</th><th scope="col">Когда</th></tr></thead>
+        <tbody>{% for s in stuck %}<tr><td data-label="Telegram ID">{{ s.chat_id }}</td><td data-label="Последний шаг">{{ s.step }}</td><td data-label="Когда">{{ s.at|date:"d.m.Y H:i"|default:"—" }}</td></tr>{% endfor %}</tbody>
+    </table>
+</div>
+{% end_ui_card %}
+</div>
+{% endif %}
+
+{% if daily %}
+<div style="margin-top: var(--space-5)">
+{% ui_card title="По дням" flush=True %}
+<div class="gp-table-wrap gp-table--stack" style="border:0">
+    <table class="gp-table">
+        <thead><tr><th scope="col">День</th><th scope="col" class="is-numeric">Начали</th><th scope="col" class="is-numeric">Завершили</th><th scope="col" class="is-numeric">Подтверждены</th><th scope="col" class="is-numeric">Выбрали проект</th></tr></thead>
+        <tbody>{% for d in daily %}<tr><td data-label="День">{{ d.day|date:"d.m.Y, D" }}</td><td class="is-numeric" data-label="Начали">{{ d.started }}</td><td class="is-numeric" data-label="Завершили">{{ d.done }}</td><td class="is-numeric" data-label="Подтверждены">{{ d.confirmed }}</td><td class="is-numeric" data-label="Выбрали проект">{{ d.chosen }}</td></tr>{% endfor %}</tbody>
+    </table>
+</div>
+{% end_ui_card %}
+</div>
+{% endif %}
+{% endblock %}

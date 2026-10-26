@@ -132,6 +132,8 @@ def _head_menu(request) -> list:
                   views=('teams:pm_list', 'teams:pm_add', 'teams:pm_remove'),
                   exclude=('interns:resume_bank',), children=[
                 Link('Все стажёры', 'interns:list'),
+                # 11F: сколько человек проходит регистрацию в боте и где застревают
+                Link('Регистрации', 'interns:registrations'),
                 Link('По направлениям', 'resources:forecast'),
                 Link('По проектам', 'interns:by_project'),
                 Link('По филиалам', 'interns:by_branch'),
