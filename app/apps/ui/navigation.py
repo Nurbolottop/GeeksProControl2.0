@@ -113,10 +113,9 @@ def _head_menu(request) -> list:
                   # состав команды проекта (добавить участника и т. п.) — часть проекта, не раздел «Тимлиды»
                   views=('teams:overview', 'teams:member_add', 'teams:member_add_group', 'teams:member_edit',
                          'teams:member_delete', 'teams:team_clear'), children=[
-                Link('Все проекты', 'projects:list'),
-                Link('В процессе', 'projects:list_in_progress'),
-                Link('Завершён', 'projects:list_completed'),
-                Link('Отклонён', 'projects:list_rejected'),
+                # 11F: «В процессе / Завершён / Отклонён» — вкладки на странице проектов, не пункты меню
+                Link('Все проекты', 'projects:list',
+                     views=('projects:list_in_progress', 'projects:list_completed', 'projects:list_rejected')),
                 Link('Отчёты по проектам', 'projects:reports'),
                 Link('Заказчики', 'clients:list', namespaces=('clients',)),
                 Link('Заявки с брифа', 'documents:brief_requests'),
