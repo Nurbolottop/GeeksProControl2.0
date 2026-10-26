@@ -48,7 +48,7 @@ class HeadNavigationTests(TestCase):
     def test_head_sees_all_sections(self):
         response = self.client.get(reverse('dashboard'))
         labels = nav_labels(response)
-        for expected in ('Главная', 'Работа', 'Проекты и заказчики', 'Telegram-бот', 'Наборы', 'Люди', 'Стажёры', 'Тимлиды', 'Контроль', 'Уведомления'):
+        for expected in ('Главная', 'Работа', 'Проекты и заказчики', 'Telegram-бот', 'Люди', 'Стажёры', 'Тимлиды', 'Контроль', 'Уведомления'):
             self.assertIn(expected, labels)
         for gone in ('IT-академия', 'Резерв'):
             self.assertNotIn(gone, labels)
@@ -82,6 +82,11 @@ class HeadNavigationTests(TestCase):
         group = {i['label']: i for i in items if i.get('type') == 'group'}
         self.assertTrue(group['Проекты и заказчики']['active'])
         self.assertFalse(group['Тимлиды']['active'])
+
+    def test_recruitment_board_is_inside_projects(self):
+        response = self.client.get(reverse('projects:recruitment_board'))
+        group = next(i for i in response.context['ui_nav']['items'] if i.get('label') == 'Проекты и заказчики')
+        self.assertEqual([c['label'] for c in group['children'] if c['active']], ['Наборы'])
 
     def test_brief_requests_do_not_highlight_documents(self):
         response = self.client.get(reverse('documents:brief_requests'))
