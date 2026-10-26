@@ -229,7 +229,8 @@ def recruitment_board(request):
     members = list(TeamMember.objects.filter(project__in=projects, status=TeamMember.Status.ACTIVE)
                    .select_related('intern'))
     graduates = compute([m.intern_id for m in members if m.intern_id]).ids
-    rows = {p.pk: {'project': p, 'interns': set(), 'new': 0, 'old': 0, 'roles': {}, 'leads': 0, 'pms': []}
+    rows = {p.pk: {'project': p, 'interns': set(), 'new': 0, 'old': 0, 'roles': {}, 'new_roles': {}, 'old_roles': {},
+                   'leads': 0, 'pms': []}
             for p in projects}
     for m in members:
         row = rows[m.project_id]
@@ -239,12 +240,16 @@ def recruitment_board(request):
             row['leads'] += 1
         elif m.role in DIRECTION_ROLES and m.intern_id and m.intern_id not in row['interns']:
             row['interns'].add(m.intern_id)
-            row['old' if m.intern_id in graduates else 'new'] += 1
+            kind = 'old' if m.intern_id in graduates else 'new'
+            row[kind] += 1
             row['roles'][m.role] = row['roles'].get(m.role, 0) + 1
+            row[f'{kind}_roles'][m.role] = row[f'{kind}_roles'].get(m.role, 0) + 1
+    order = {role: i for i, role in enumerate(DIRECTION_ROLES)}
     for row in rows.values():
         row['count'] = len(row['interns'])
-        row['roles'] = [{'label': ROLE_LABELS.get(r, r), 'count': n}
-                        for r, n in sorted(row['roles'].items(), key=lambda item: -item[1])]
+        for key in ('roles', 'new_roles', 'old_roles'):
+            row[key] = [{'label': ROLE_LABELS.get(r, r), 'count': n}
+                        for r, n in sorted(row[key].items(), key=lambda item: order.get(item[0], 99))]
     ordered = sorted(rows.values(), key=lambda r: (not r['project'].recruitment_open, r['project'].name.lower()))
     return render(request, 'projects/recruitment.html', {
         'rows': ordered,

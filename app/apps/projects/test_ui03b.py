@@ -133,6 +133,13 @@ class ClosedRecruitmentTests(TestCase):
         page = self.client.get(board)
         self.assertContains(page, 'Закрытый')
         self.assertContains(page, 'Открыть набор')
+        member(self.project, self.novice, TeamRole.UXUI)
+        member(self.project, graduate('Старый Дизайнер', self.backend), TeamRole.BACKEND)
+        page = self.client.get(board)
+        self.assertContains(page, 'Новые стажёры: 1')
+        self.assertContains(page, 'Старые стажёры: 1')
+        self.assertContains(page, 'UX/UI: 1')
+        self.assertContains(page, 'Backend: 1')
         response = self.client.post(reverse('projects:recruitment_set', args=[self.project.pk]),
                                     {'open': '1', 'roles': ['backend'], 'kind': 'new', 'back': 'board'})
         self.assertRedirects(response, f'{board}#project-{self.project.pk}', fetch_redirect_response=False)

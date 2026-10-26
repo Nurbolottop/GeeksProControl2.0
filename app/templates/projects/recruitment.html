@@ -23,12 +23,17 @@
             </div>
             <div class="gp-cluster" style="gap: var(--space-2); margin-bottom: var(--space-2)">
                 {% ui_badge row.count|stringformat:"s"|add:" стажёров" tone="primary" %}
-                {% ui_badge row.new|stringformat:"s"|add:" новых" %}
-                {% ui_badge row.old|stringformat:"s"|add:" старых" %}
                 {% if row.leads %}{% ui_badge row.leads|stringformat:"s"|add:" тимлид." tone="info" %}{% else %}{% ui_badge "нет тимлидов" tone="warning" %}{% endif %}
                 {% if row.pms %}{% ui_badge "ПМ: "|add:row.pms.0 %}{% else %}{% ui_badge "нет ПМ" tone="warning" %}{% endif %}
             </div>
-            <p class="gp-muted gp-small" style="margin: 0 0 var(--space-4)">{% for role in row.roles %}{{ role.label }} {{ role.count }}{% if not forloop.last %} · {% endif %}{% empty %}В команде пока нет стажёров.{% endfor %}</p>
+            {% if row.count %}
+            <dl class="gp-metrics" style="margin: 0 0 var(--space-4)">
+                <div class="gp-metrics__row" style="flex-wrap: wrap"><dt><strong style="color: var(--color-text)">Новые стажёры: {{ row.new }}</strong></dt>
+                    <dd style="white-space: normal; text-align: left; font-weight: var(--weight-regular)">{% for role in row.new_roles %}{{ role.label }}: {{ role.count }}{% if not forloop.last %}&nbsp;&nbsp; {% endif %}{% empty %}<span class="gp-muted">—</span>{% endfor %}</dd></div>
+                <div class="gp-metrics__row" style="flex-wrap: wrap"><dt><strong style="color: var(--color-text)">Старые стажёры: {{ row.old }}</strong></dt>
+                    <dd style="white-space: normal; text-align: left; font-weight: var(--weight-regular)">{% for role in row.old_roles %}{{ role.label }}: {{ role.count }}{% if not forloop.last %}&nbsp;&nbsp; {% endif %}{% empty %}<span class="gp-muted">—</span>{% endfor %}</dd></div>
+            </dl>
+            {% else %}<p class="gp-muted gp-small" style="margin: 0 0 var(--space-4)">В команде пока нет стажёров.</p>{% endif %}
             {% include "projects/card/_recruitment_form.html" with back="board" %}
         </div>
     </section>
