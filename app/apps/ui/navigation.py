@@ -109,7 +109,10 @@ def _head_menu(request) -> list:
             # 11F: главный рабочий раздел после запуска бота — наверху, а не в «Резерве»
             Link('Telegram-бот', 'tgbot:reconcile', icon='bot', namespaces=('tgbot',)),
             # 11F: всё про проекты и клиентов — одним пунктом
-            Group('Проекты и заказчики', 'folder', namespaces=('projects', 'clients', 'documents'), children=[
+            Group('Проекты и заказчики', 'folder', namespaces=('projects', 'clients', 'documents'),
+                  # состав команды проекта (добавить участника и т. п.) — часть проекта, не раздел «Тимлиды»
+                  views=('teams:overview', 'teams:member_add', 'teams:member_add_group', 'teams:member_edit',
+                         'teams:member_delete', 'teams:team_clear'), children=[
                 Link('Все проекты', 'projects:list'),
                 Link('В процессе', 'projects:list_in_progress'),
                 Link('Завершён', 'projects:list_completed'),
@@ -136,8 +139,9 @@ def _head_menu(request) -> list:
                 Link('Решения по стажёрам', 'interns:internship_requests'),
                 Link('Выпускники', 'interns:graduates'),
             ]),
-            Group('Тимлиды', 'users', namespaces=('teams', 'reserve'), views=('interns:resume_bank',),
-                  exclude=('teams:pm_list', 'teams:pm_add', 'teams:pm_remove'), children=[
+            Group('Тимлиды', 'users', namespaces=('reserve',),
+                  views=('interns:resume_bank', 'teams:lead_list', 'teams:lead_add', 'teams:lead_remove',
+                         'teams:staff_detail', 'teams:dismiss', 'teams:replace'), children=[
                 Link('Все тимлиды', 'teams:lead_list',
                      views=('teams:lead_add', 'teams:lead_remove', 'teams:staff_detail', 'teams:dismiss')),
                 Link('Кадровый резерв', 'reserve:board', namespaces=('reserve',)),

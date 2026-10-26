@@ -74,6 +74,15 @@ class HeadNavigationTests(TestCase):
         self.assertTrue(group['Тимлиды']['active'])
         self.assertFalse(group['Стажёры']['active'])
 
+    def test_team_member_form_is_under_projects(self):
+        from apps.projects.models import Project
+
+        project = Project.objects.create(name='Команда')
+        items = self.client.get(reverse('teams:member_add', args=[project.pk])).context['ui_nav']['items']
+        group = {i['label']: i for i in items if i.get('type') == 'group'}
+        self.assertTrue(group['Проекты и заказчики']['active'])
+        self.assertFalse(group['Тимлиды']['active'])
+
     def test_brief_requests_do_not_highlight_documents(self):
         response = self.client.get(reverse('documents:brief_requests'))
         group = next(i for i in response.context['ui_nav']['items'] if i.get('label') == 'Проекты и заказчики')
