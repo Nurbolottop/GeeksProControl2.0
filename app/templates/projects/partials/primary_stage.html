@@ -1,32 +1,31 @@
 {% load ui %}
-{# Основной этап проекта (2.0): выбирают вручную руководитель или ПМ проекта. Полный редизайн — UI-03. #}
-<section class="gp-card" style="margin-bottom: var(--space-5)" aria-labelledby="primary-stage-title">
-    <div class="gp-card__body gp-stack">
-        <div>
-            <h3 class="gp-card__title" id="primary-stage-title">Основной этап</h3>
-            <p class="gp-card__subtitle">Этапы могут идти параллельно. Основной — тот, по которому проект считается в статистике; сам он не переключается.</p>
-        </div>
+{# Этап проекта (11F): один, выбирают вручную руководитель или ПМ проекта. #}
+{% ui_card title="Этап проекта" subtitle="У проекта один этап. Его выбирают руководитель или ПМ; сам он не переключается." %}
+    {% if stages_confirm_url %}{% ui_slot "actions" %}{% if stage_check_needed %}<form method="post" action="{{ stages_confirm_url }}" style="margin:0">{% csrf_token %}{% ui_button "Этап актуален" size="sm" type="submit" icon_name="check" %}</form>{% else %}{% ui_badge "Сегодня сверено" tone="success" dot=True %}{% endif %}{% end_ui_slot %}{% endif %}
+    <div class="gp-stack">
         {% if project.primary_stage %}
             {% with by=project.primary_stage_set_by %}
-                {% ui_alert "" level="success" title="Выбран: "|add:project.primary_stage.get_key_display %}
-                <p class="gp-muted gp-small" style="margin:0">{% if by %}{{ by.display_name }}, {% endif %}{{ project.primary_stage_set_at|date:"d.m.Y H:i" }}</p>
+                {% ui_alert "" level="success" title="Этап: "|add:project.primary_stage.get_key_display %}
+                <p class="gp-muted gp-small" style="margin:0">Выбрал{% if by %} {{ by.display_name }},{% endif %} {{ project.primary_stage_set_at|date:"d.m.Y H:i" }} · готовность {{ project.progress }}%</p>
             {% endwith %}
         {% else %}
-            {% ui_alert "Подсказка по прогрессу этапов: «"|add:project.get_current_stage_display|add:"» — это не подтверждённый выбор." level="warning" title="Основной этап не выбран" %}
+            {% ui_alert "Выберите текущий этап проекта." level="warning" title="Этап не выбран" %}
         {% endif %}
         {% if can_set_primary_stage %}
             <form method="post" action="{{ primary_stage_action }}" class="gp-cluster" style="--cluster-gap: var(--space-3); align-items: flex-end">
                 {% csrf_token %}
                 <div class="gp-field" style="flex: 1 1 240px">
-                    <label class="gp-label" for="primary-stage-select">Сделать основным</label>
+                    <label class="gp-label" for="primary-stage-select">Этап</label>
                     <select class="gp-select" id="primary-stage-select" name="stage" required>
-                        {% for stage in project.stages.all %}
-                            <option value="{{ stage.pk }}"{% if stage.pk == project.primary_stage_id or not project.primary_stage_id and stage.key == project.current_stage %} selected{% endif %}>{{ stage.get_key_display }} · {{ stage.get_status_display|lower }}</option>
-                        {% endfor %}
+                        {% if not project.primary_stage_id %}<option value="" selected disabled>Выберите этап</option>{% endif %}
+                        {% for stage in project.stages.all %}{% if stage.key != 'completed' %}
+                            <option value="{{ stage.pk }}"{% if stage.pk == project.primary_stage_id %} selected{% endif %}>{{ stage.get_key_display }}</option>
+                        {% endif %}{% endfor %}
                     </select>
                 </div>
-                {% ui_button "Сохранить основной этап" variant="primary" type="submit" icon_name="check" %}
+                {% ui_button "Сохранить этап" variant="primary" type="submit" icon_name="check" %}
             </form>
+            <p class="gp-muted gp-small" style="margin:0">Этапы до выбранного отмечаются завершёнными. «Продакшен» — всё сделано, готовность 100%. Закрывает проект руководитель.</p>
         {% endif %}
     </div>
-</section>
+{% end_ui_card %}

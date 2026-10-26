@@ -6,7 +6,7 @@
         <thead><tr>
             <th scope="col">{% ui_sort "Проект" "name" hx_target="#project-list" %}</th>
             <th scope="col">{% ui_sort "Статус" "status" hx_target="#project-list" %}</th>
-            <th scope="col">Основной этап</th>
+            <th scope="col">Этап</th>
             <th scope="col">ПМ</th>
             <th scope="col" class="is-numeric">{% ui_sort "Участники" "members" hx_target="#project-list" %}</th>
             <th scope="col">{% ui_sort "Начало" "start" hx_target="#project-list" %}</th>
@@ -21,7 +21,7 @@
                     {% if project.pending_meeting %}{% ui_badge "Табель не закрыт" tone="warning" dot=True %}{% endif %}
                 </td>
                 <td data-label="Статус">{% ui_badge project.get_status_display tone=project.ui_status_tone %}</td>
-                <td data-label="Основной этап">{{ project.ui_stage }}{% if not project.ui_stage_confirmed %} {% ui_badge "не подтверждён" tone="warning" %}{% endif %}</td>
+                <td data-label="Этап">{% if project.ui_stage_confirmed %}{{ project.ui_stage }}{% else %}<span class="gp-muted">{{ project.ui_stage }}</span>{% endif %}</td>
                 <td data-label="ПМ">{% if project.ui_pm %}{{ project.ui_pm.full_name }}{% else %}<span class="gp-muted">не назначен</span>{% endif %}</td>
                 <td class="is-numeric" data-label="Участники">{{ project.members_count }}</td>
                 <td data-label="Начало">{{ project.start_date|date:"d.m.Y"|default:"—" }}</td>

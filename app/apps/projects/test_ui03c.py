@@ -389,7 +389,7 @@ class PortalCardTests(TestCase):
                 self.assertNotContains(response, 'gp-legacy')
                 self.assertNotContains(response, 'Завершить проект')
                 self.assertNotContains(response, reverse('projects:recruitment_set', args=[self.project.pk]))
-        self.assertContains(self.client.get(base, {'tab': 'stages'}), 'Сохранить основной этап')
+        self.assertContains(self.client.get(base, {'tab': 'stages'}), 'Сохранить этап')
         self.assertEqual(self.client.get(reverse('pm_portal:project_detail', args=[self.other.pk])).status_code, 404)
 
     def test_lead_tabs_render_in_new_ui(self):

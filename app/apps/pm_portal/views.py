@@ -342,7 +342,7 @@ def client_edit(request, pk):
 
 @login_required
 def primary_stage_set(request, pk):
-    """ПМ выбирает основной этап своего проекта. Чужой проект — 404."""
+    """ПМ выбирает этап своего проекта. Чужой проект — 404."""
     from django.http import HttpResponseNotAllowed
 
     from apps.projects import services as project_services
@@ -352,5 +352,5 @@ def primary_stage_set(request, pk):
     project = services.pm_project_or_404(request.user, pk)
     stage = get_object_or_404(ProjectStage, pk=request.POST.get('stage') or 0, project=project)
     project_services.set_primary_stage(project, stage, request.user)
-    messages.success(request, f'Основной этап: {stage.get_key_display()}.')
+    messages.success(request, f'Этап: {stage.get_key_display()}.')
     return redirect(f"{reverse('pm_portal:project_detail', args=[project.pk])}?tab=stages")

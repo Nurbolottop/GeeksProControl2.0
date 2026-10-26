@@ -150,13 +150,13 @@ class PrimaryStageTests(TestCase):
         self.project.refresh_from_db()
         self.assertEqual((self.project.primary_stage, self.project.primary_stage_set_by), (self.backend, self.head))
         self.assertIsNotNone(self.project.primary_stage_set_at)
-        self.assertTrue(ProjectStatusHistory.objects.filter(project=self.project, field='Основной этап', new_value='Backend').exists())
-        self.assertContains(self.client.get(self.project.get_absolute_url() + '?tab=stages'), 'Выбран: Backend')
+        self.assertTrue(ProjectStatusHistory.objects.filter(project=self.project, field='Этап', new_value='Backend').exists())
+        self.assertContains(self.client.get(self.project.get_absolute_url() + '?tab=stages'), 'Этап: Backend')
 
     def test_pm_of_project_sets_primary_stage(self):
         pm = self.portal_user('ps-pm', User.Role.PROJECT_MANAGER, TeamRole.PROJECT_MANAGER, self.project)
         self.client.force_login(pm)
-        self.assertContains(self.client.get(reverse('pm_portal:project_detail', args=[self.project.pk]) + '?tab=stages'), 'Основной этап')
+        self.assertContains(self.client.get(reverse('pm_portal:project_detail', args=[self.project.pk]) + '?tab=stages'), 'Этап проекта')
         self.client.post(reverse('pm_portal:primary_stage_set', args=[self.project.pk]), {'stage': self.design.pk})
         self.project.refresh_from_db()
         self.assertEqual(self.project.primary_stage, self.design)

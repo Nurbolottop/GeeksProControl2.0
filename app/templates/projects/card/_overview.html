@@ -10,7 +10,7 @@
                 <div class="gp-metrics__row"><dt>Дата начала</dt><dd>{{ project.start_date|date:"d.m.Y"|default:"—" }}</dd></div>
                 <div class="gp-metrics__row"><dt>Ориентир сдачи<span class="gp-metrics__note">около двух месяцев, не жёсткий дедлайн</span></dt><dd>{{ project.planned_end_date|date:"d.m.Y"|default:"—" }}</dd></div>
                 <div class="gp-metrics__row"><dt>Статус</dt><dd>{% ui_badge project.get_status_display tone=status_tone %}</dd></div>
-                <div class="gp-metrics__row"><dt>Основной этап</dt><dd>{{ stage_label }}{% if not stage_confirmed %} {% ui_badge "не подтверждён" tone="warning" %}{% endif %}</dd></div>
+                <div class="gp-metrics__row"><dt>Этап</dt><dd>{% if stage_confirmed %}{{ stage_label }}{% else %}<span class="gp-muted">{{ stage_label }}</span>{% endif %}</dd></div>
                 <div class="gp-metrics__row"><dt>Готовность<span class="gp-metrics__note">{{ overview.stages.done }} из {{ overview.stages.total }} этапов завершено</span></dt><dd>{{ overview.stages.progress }}%</dd></div>
             </dl>
         {% end_ui_card %}

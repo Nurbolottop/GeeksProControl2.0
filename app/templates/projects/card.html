@@ -8,7 +8,7 @@
 {% ui_page_header title=project.name subtitle=subtitle %}
     {% ui_slot "eyebrow" %}
         {% ui_badge project.get_status_display tone=status_tone %}
-        {% if stage_confirmed %}{% ui_badge "Этап: "|add:stage_label tone="primary" %}{% else %}{% ui_badge "Этап не подтверждён" tone="warning" dot=True %}{% endif %}
+        {% if stage_confirmed %}{% ui_badge "Этап: "|add:stage_label tone="primary" %}{% else %}{% ui_badge "Этап не выбран" tone="warning" dot=True %}{% endif %}
         {% if project.recruitment_open %}{% ui_badge "Набор открыт" tone="success" dot=True %}{% else %}{% ui_badge "Набор закрыт" %}{% endif %}
     {% end_ui_slot %}
     {% if is_head %}

@@ -47,7 +47,7 @@ def list_queryset(base=None):
 
 
 def apply_filters(qs, params):
-    """Фильтры списка: поиск, статус, основной этап, тип, ПМ, тимлид."""
+    """Фильтры списка: поиск, статус, этап, тип, ПМ, тимлид."""
     search = (params.get('q') or '').strip()
     if search:
         qs = qs.filter(Q(name__icontains=search) | Q(code__icontains=search)
@@ -91,7 +91,7 @@ def filter_options(scope_qs):
 
 
 def decorate(projects):
-    """Подписи для строк: ПМ, тимлиды, основной этап (подтверждён или подсказка)."""
+    """Подписи для строк: ПМ, тимлиды, этап (выбран или нет)."""
     for project in projects:
         project.ui_pm = project.pm
         project.ui_leads = project.leads
@@ -101,9 +101,10 @@ def decorate(projects):
 
 
 def stage_label(project) -> tuple[str, bool]:
+    """Этап проекта — один, выбранный вручную; не выбран — «Не выбран»."""
     if project.primary_stage_id:
         return project.primary_stage.get_key_display(), True
-    return project.get_current_stage_display(), False
+    return 'Не выбран', False
 
 
 # ================================================================ карточка

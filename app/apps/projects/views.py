@@ -670,9 +670,9 @@ def report_delete(request, pk):
 @login_required
 @require_POST
 def primary_stage_set(request, pk):
-    """Руководитель выбирает основной этап проекта (вкладка «Этапы»)."""
+    """Руководитель выбирает этап проекта (вкладка «Этапы»)."""
     project = get_object_or_404(Project.objects.active(), pk=pk)
     stage = get_object_or_404(ProjectStage, pk=request.POST.get('stage') or 0, project=project)
     services.set_primary_stage(project, stage, request.user)
-    messages.success(request, f'Основной этап: {stage.get_key_display()}.')
+    messages.success(request, f'Этап: {stage.get_key_display()}.')
     return redirect(f'{project.get_absolute_url()}?tab=stages')

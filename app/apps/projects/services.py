@@ -488,9 +488,13 @@ def _touch_project(project: Project) -> None:
     project.save(update_fields=['last_activity_at', 'updated_at'])
 
 
-# --- Основной этап проекта (2.0) ----------------------------------------
-# Этапы идут параллельно; основной выбирают вручную. Автоматически он не
-# переключается и не «завершается» — в отличие от current_stage.
+# --- Этап проекта (2.0, 11F) -------------------------------------------
+# У проекта один этап — его вручную выбирают руководитель или ПМ проекта.
+# Поле осталось primary_stage (история миграций), но «основного» и
+# «параллельных» этапов больше нет: при выборе этапы до него отмечаются
+# завершёнными, выбранный — в работе, после него — не начаты. Так готовность
+# (project.progress) и current_stage для старых экранов совпадают с выбором.
+# «Продакшен» — последний рабочий этап: выбран — значит, всё сделано (100%).
 
 def can_set_primary_stage(user, project: Project) -> bool:
     """Руководитель / администратор или ПМ, назначенный на этот проект."""
@@ -508,23 +512,53 @@ def can_set_primary_stage(user, project: Project) -> bool:
     ).exists()
 
 
+def _sync_stages_to(project: Project, chosen: ProjectStage) -> None:
+    """Статусы этапов по выбранному: до него — завершены, он — в работе."""
+    today = timezone.localdate()
+    working = list(project.stages.exclude(key=ProjectStageKey.COMPLETED).order_by('order'))
+    final = chosen.key == ProjectStageKey.PRODUCTION
+    for stage in working:
+        if stage.order < chosen.order or (final and stage.pk == chosen.pk):
+            status = ProjectStage.Status.DONE
+        elif stage.pk == chosen.pk:
+            status = ProjectStage.Status.IN_PROGRESS
+        else:
+            status = ProjectStage.Status.NOT_STARTED
+        if stage.status == status:
+            continue
+        stage.status = status
+        if status == ProjectStage.Status.NOT_STARTED:
+            stage.start_date = stage.end_date = None
+        else:
+            stage.start_date = stage.start_date or today
+            stage.end_date = (stage.end_date or today) if status == ProjectStage.Status.DONE else None
+        stage.save()
+    project.current_stage = chosen.key
+    project.save(update_fields=['current_stage', 'updated_at'])
+    _resync_progress(project)
+
+
 @transaction.atomic
 def set_primary_stage(project: Project, stage: ProjectStage, user) -> Project:
-    """Выбрать основной этап. Проверяет права и что этап — этого проекта."""
+    """Выбрать этап проекта. Проверяет права и что этап — этого проекта."""
     from django.core.exceptions import PermissionDenied, ValidationError
 
     if stage.project_id != project.pk:
         raise ValidationError('Этап принадлежит другому проекту.')
     if not can_set_primary_stage(user, project):
-        raise PermissionDenied('Основной этап меняют руководитель или ПМ этого проекта.')
+        raise PermissionDenied('Этап меняют руководитель или ПМ этого проекта.')
     old = project.primary_stage
     project.primary_stage = stage
     project.primary_stage_set_by = user
     project.primary_stage_set_at = timezone.now()
-    project.save(update_fields=['primary_stage', 'primary_stage_set_by', 'primary_stage_set_at', 'updated_at'])
+    project.stages_checked_at = project.primary_stage_set_at
+    project.last_activity_at = project.primary_stage_set_at
+    project.save(update_fields=['primary_stage', 'primary_stage_set_by', 'primary_stage_set_at',
+                                'stages_checked_at', 'last_activity_at', 'updated_at'])
+    _sync_stages_to(project, stage)
     if old != stage:
         ProjectStatusHistory.objects.create(
-            project=project, field='Основной этап',
+            project=project, field='Этап',
             old_value=old.get_key_display() if old else '',
             new_value=stage.get_key_display(), user=user,
         )

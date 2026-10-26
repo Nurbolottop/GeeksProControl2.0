@@ -62,7 +62,7 @@ def _project_items(items):
 
     unset = [p for p in active if not p.primary_stage_id]
     if unset:
-        items.append(_item('info', 'Этапы', f'Основной этап не выбран: {len(unset)} пр.',
+        items.append(_item('info', 'Этапы', f'Этап не выбран: {len(unset)} пр.',
                            reverse('projects:list') + '?primary_stage=unset', 'Выбрать'))
 
     # Обязательные документы — у проектов на передаче заказчику (одним запросом)

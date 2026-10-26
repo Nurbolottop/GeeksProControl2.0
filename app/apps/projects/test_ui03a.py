@@ -139,7 +139,7 @@ class OverviewTests(TestCase):
         self.assertEqual(data['links'], [('Staging', 'https://stage.example.com')])
         self.assertContains(response, 'Отчётов по проекту ещё нет')
         self.assertContains(response, 'не назначены')  # тимлидов нет
-        self.assertContains(response, 'Этап не подтверждён')
+        self.assertContains(response, 'Этап не выбран')
 
 
 class StagesTests(TestCase):
@@ -157,22 +157,29 @@ class StagesTests(TestCase):
         data = card.stage_rows(self.project)
         self.assertEqual((data['done'], data['in_progress'], data['total'], data['progress']), (1, 2, 4, 25))  # «Завершён» не в счёт
 
-    def test_status_change_keeps_primary_stage_and_history(self):
+    def test_choosing_stage_aligns_statuses_progress_and_history(self):
         services.set_primary_stage(self.project, self.stages[ProjectStageKey.BACKEND], self.head)
-        self.client.post(reverse('projects:stage_status_set', args=[self.stages[ProjectStageKey.BACKEND].pk]), {'status': 'done'})
-        self.client.post(reverse('projects:stage_status_set', args=[self.stages[ProjectStageKey.FRONTEND].pk]), {'status': 'in_progress'})
         self.project.refresh_from_db()
-        self.assertEqual(self.project.primary_stage, self.stages[ProjectStageKey.BACKEND])
-        self.assertEqual(ProjectStage.objects.get(pk=self.stages[ProjectStageKey.BACKEND].pk).status, 'done')
-        self.assertTrue(ProjectStatusHistory.objects.filter(project=self.project, field='Основной этап').exists())
+        status = {s.key: s.status for s in self.project.stages.all()}
+        self.assertEqual(status[ProjectStageKey.DESIGN], 'done')
+        self.assertEqual(status[ProjectStageKey.BACKEND], 'in_progress')
+        self.assertEqual(status[ProjectStageKey.FRONTEND], 'not_started')
+        self.assertEqual(self.project.current_stage, ProjectStageKey.BACKEND)
+        self.assertTrue(ProjectStatusHistory.objects.filter(project=self.project, field='Этап', new_value='Backend').exists())
         response = self.client.get(self.project.get_absolute_url(), {'tab': 'stages'})
-        self.assertContains(response, 'Выбран: Backend')
-        self.assertContains(response, 'основной')
+        self.assertContains(response, 'Этап: Backend')
+        self.assertNotContains(response, 'основной')
+        # «Продакшен» — всё сделано: готовность 100%
+        production = self.project.stages.filter(key=ProjectStageKey.PRODUCTION).first()
+        if production:
+            services.set_primary_stage(self.project, production, self.head)
+            self.project.refresh_from_db()
+            self.assertEqual(self.project.progress, 100)
 
     def test_unconfirmed_stage_shows_warning_and_action(self):
         response = self.client.get(self.project.get_absolute_url(), {'tab': 'stages'})
-        self.assertContains(response, 'Основной этап не выбран')
-        self.assertContains(response, 'Сохранить основной этап')
+        self.assertContains(response, 'Этап не выбран')
+        self.assertContains(response, 'Сохранить этап')
 
 
 class TeamRulesTests(TestCase):

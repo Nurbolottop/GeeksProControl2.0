@@ -170,11 +170,10 @@ class Project(TimeStampedModel, ArchivableModel):
     stages_checked_at = models.DateTimeField(
         'ПМ сверил этапы', null=True, blank=True,
     )
-    # Основной текущий этап (2.0). Этапы идут параллельно, но для статистики
-    # у проекта один основной — его ВРУЧНУЮ выбирает руководитель или ПМ
-    # проекта (apps.projects.services.set_primary_stage). Автоматически не
-    # меняется. Пусто — ещё не выбран (Dashboard покажет подсказку как
-    # «не подтверждено»). Не путать с current_stage: тот считается сам.
+    # Этап проекта (11F: этап один). Его ВРУЧНУЮ выбирает руководитель или ПМ
+    # проекта (apps.projects.services.set_primary_stage); при выборе статусы
+    # этапов, current_stage и progress выравниваются по нему. Автоматически не
+    # меняется. Пусто — этап ещё не выбран. Имя поля — из истории миграций.
     primary_stage = models.ForeignKey(
         'projects.ProjectStage', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='+', verbose_name='Основной этап',

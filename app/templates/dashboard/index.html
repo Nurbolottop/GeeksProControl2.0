@@ -98,15 +98,15 @@
                 {% for category in by_stage.categories %}
                     <div class="gp-metrics__row">
                         <dt class="gp-cluster" style="--cluster-gap: var(--space-2)"><span class="gp-swatch gp-tone-{{ forloop.counter }}"></span>{{ category.label }}
-                            {% if category.stages %}<span class="gp-metrics__note" style="width:100%; padding-left: 18px">{% for stage in category.stages %}{{ stage.label }} — {{ stage.count }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if category.unconfirmed %} · <span class="gp-muted">не подтверждено: {{ category.unconfirmed }}</span>{% endif %}</span>{% endif %}
+                            {% if category.stages %}<span class="gp-metrics__note" style="width:100%; padding-left: 18px">{% for stage in category.stages %}{{ stage.label }} — {{ stage.count }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if category.unconfirmed %} · <span class="gp-muted">этап не выбран: {{ category.unconfirmed }}</span>{% endif %}</span>{% endif %}
                         </dt>
                         <dd>{{ category.count }} <span class="gp-muted" style="font-weight:400">· {{ category.share|floatformat:0 }}%</span></dd>
                     </div>
                 {% endfor %}
             </dl>
             {% if by_stage.unconfirmed %}
-                <div style="margin-top: var(--space-4)">{% url 'projects:list' as list_url %}{% ui_alert "Учтены по подсказке системы, а не по выбору руководителя или ПМ. Выберите основной этап во вкладке «Этапы» проекта." level="warning" title="Основной этап не выбран у "|add:by_stage.unconfirmed_label %}</div>
-                <p style="margin: var(--space-2) 0 0"><a class="gp-link gp-small" href="{% url 'projects:list' %}?primary_stage=unset">Показать проекты без основного этапа →</a></p>
+                <div style="margin-top: var(--space-4)">{% url 'projects:list' as list_url %}{% ui_alert "Пока этап не выбран, проект учтён по прогрессу этапов. Выберите этап во вкладке «Этапы» проекта." level="warning" title="Этап не выбран у "|add:by_stage.unconfirmed_label %}</div>
+                <p style="margin: var(--space-2) 0 0"><a class="gp-link gp-small" href="{% url 'projects:list' %}?primary_stage=unset">Показать проекты без этапа →</a></p>
             {% endif %}
             {% if by_stage.stopped %}<p class="gp-muted gp-small" style="margin: var(--space-3) 0 0">Не в распределении: прекращено {{ by_stage.stopped }} (отменён или отказ заказчика).</p>{% endif %}
         {% else %}
