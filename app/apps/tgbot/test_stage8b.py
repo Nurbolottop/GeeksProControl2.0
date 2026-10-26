@@ -252,6 +252,10 @@ class InviteLinkTests(Base):
                                                        text__contains='https://t.me/+abc').exists())
         self.assertTrue(OutboundMessage.objects.filter(kind='team_change', chat_id=LEAD_CHAT,
                                                        text__contains='отправил ему личную ссылку').exists())
+        # 11F: первый фронтендер после привязки — у группы появляется тема Frontend
+        self.member('Фронт После Привязки', role=TeamRole.FRONTEND, chat=INTERN_CHAT + 1)
+        self.assertIn(groups.topic_title(TelegramGroup.objects.get(chat_id=GROUP), 'frontend'),
+                      [name for _, name in self.bot.topics])
 
     def test_without_rights_lead_invites(self):
         self.bot.create_chat_invite_link = mock.Mock(side_effect=RuntimeError('no rights'))

@@ -333,6 +333,10 @@ def invite(member_id) -> bool:
     if access is None or access.status != GroupMembership.Status.TO_INVITE or access.member.status != 'active':
         return False
     member, intern, group = access.member, access.member.intern, access.group
+    try:  # первый человек нового направления — у направления появляется своя тема
+        sync_topics(group)
+    except Exception as exc:
+        logger.warning('Темы группы %s не обновлены: %s', group.pk, type(exc).__name__)
     if not intern.telegram_chat_id:
         _tell_leads_new_member(member)
         return False
