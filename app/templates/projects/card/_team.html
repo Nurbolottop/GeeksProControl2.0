@@ -1,18 +1,36 @@
 {% load ui %}
 {% if scope == 'lead' %}{% include "projects/card/_profile_link.html" %}{% endif %}
 <div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-4); margin-bottom: var(--space-5); align-items: start">
-    {% ui_card title="Набор стажёров" subtitle="Закрытый набор — проект не показывается в Telegram-боте среди доступных." %}
+    {% ui_card title="Набор стажёров" subtitle="Открытый набор — проект виден в Telegram-боте. Можно открыть только нужные направления." %}
         <div class="gp-cluster gp-cluster--between">
-            <div>{% if project.recruitment_open %}{% ui_badge "Открыт" tone="success" dot=True %}{% else %}{% ui_badge "Закрыт" dot=True %}{% endif %}
-                {% if project.recruitment_changed_at %}<span class="gp-muted gp-small">{{ project.recruitment_changed_by.display_name|default:"" }} · {{ project.recruitment_changed_at|date:"d.m.Y H:i" }}</span>{% endif %}</div>
-            {% if can_recruit %}
+            <div>
+                {% if project.recruitment_open %}{% ui_badge "Открыт" tone="success" dot=True %}
+                    <strong class="gp-small">{% if project.recruitment_roles %}{{ project.recruitment_roles_labels|join:", " }}{% else %}все направления{% endif %}</strong>
+                {% else %}{% ui_badge "Закрыт" dot=True %}{% endif %}
+                {% if project.recruitment_changed_at %}<div class="gp-muted gp-small" style="margin-top: var(--space-1)">{{ project.recruitment_changed_by.display_name|default:"" }} · {{ project.recruitment_changed_at|date:"d.m.Y H:i" }}</div>{% endif %}
+            </div>
+            {% if can_recruit and project.recruitment_open %}
             <form method="post" action="{% url 'projects:recruitment_set' project.pk %}">
-                {% csrf_token %}<input type="hidden" name="tab" value="team">
-                {% if project.recruitment_open %}<input type="hidden" name="open" value="0">{% ui_button "Закрыть набор" type="submit" %}
-                {% else %}<input type="hidden" name="open" value="1">{% ui_button "Открыть набор" variant="primary" type="submit" %}{% endif %}
+                {% csrf_token %}<input type="hidden" name="tab" value="team"><input type="hidden" name="open" value="0">
+                {% ui_button "Закрыть набор" type="submit" %}
             </form>
             {% endif %}
         </div>
+        {% if can_recruit %}
+        <form method="post" action="{% url 'projects:recruitment_set' project.pk %}" style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-border)">
+            {% csrf_token %}<input type="hidden" name="tab" value="team"><input type="hidden" name="open" value="1">
+            <fieldset style="border: 0; margin: 0; padding: 0">
+                <legend class="gp-label" style="margin-bottom: var(--space-2)">Направления набора</legend>
+                <div class="gp-cluster" style="gap: var(--space-2) var(--space-5)">
+                    {% for option in project.recruitment_options %}
+                        <label class="gp-check"><input type="checkbox" name="roles" value="{{ option.key }}"{% if option.checked %} checked{% endif %}> {{ option.label }}</label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+            <p class="gp-muted gp-small" style="margin: var(--space-2) 0 var(--space-3)">Ничего не отмечено — набор на все направления. ПМ проекту назначает руководитель.</p>
+            {% if project.recruitment_open %}{% ui_button "Сохранить направления" type="submit" variant="primary" %}{% else %}{% ui_button "Открыть набор" variant="primary" type="submit" %}{% endif %}
+        </form>
+        {% endif %}
     {% end_ui_card %}
     {% ui_card title="Состав" subtitle="Уникальные люди" %}
         <div class="gp-grid gp-grid--3" style="--grid-gap: var(--space-3)">

@@ -69,6 +69,9 @@ def recruitment_error(intern, project, role) -> str | None:
         return f'Проект «{project.name}» не идёт ({project.get_status_display().lower()}) — новых участников не добавляем.'
     if not project.recruitment_open:
         return f'Набор в проект «{project.name}» закрыт — новых участников не добавляем, пока руководитель не откроет набор.'
+    if not project.recruits(role):
+        return (f'Набор в проект «{project.name}» на направление {TeamRole(role).label} закрыт — '
+                f'открыт только на {", ".join(project.recruitment_roles_labels)}.')
     return None
 
 

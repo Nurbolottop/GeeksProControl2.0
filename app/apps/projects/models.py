@@ -193,6 +193,9 @@ class Project(TimeStampedModel, ArchivableModel):
         related_name='+', verbose_name='Набор изменил',
     )
     recruitment_changed_at = models.DateTimeField('Набор изменён', null=True, blank=True)
+    # 11F: набор по направлениям. Пусто при открытом наборе — открыты все
+    # направления; иначе вступить можно только на перечисленные (TeamRole).
+    recruitment_roles = models.JSONField('Направления набора', default=list, blank=True)
     # Готовность к закрытию (UI-03B): три условия фиксирует руководитель —
     # ссылка на production сама по себе не доказывает ни публикацию, ни приёмку.
     dev_completed_at = models.DateTimeField('Разработка завершена', null=True, blank=True)
@@ -244,6 +247,31 @@ class Project(TimeStampedModel, ArchivableModel):
         # Проверяем на любом пути сохранения, а не только в формах
         self._check_primary_stage()
         super().save(*args, **kwargs)
+
+    def recruits(self, role) -> bool:
+        """Набор открыт на это направление (пустой список — на все)."""
+        return self.recruitment_open and (not self.recruitment_roles or role in self.recruitment_roles)
+
+    @property
+    def recruitment_roles_labels(self) -> list[str]:
+        from apps.teams.models import TeamRole
+
+        labels = dict(TeamRole.choices)
+        return [labels.get(role, role) for role in self.recruitment_roles or []]
+
+    @property
+    def recruitment_roles_labels_text(self) -> str:
+        return ', '.join(self.recruitment_roles_labels)
+
+    @property
+    def recruitment_options(self) -> list[dict]:
+        """Галочки направлений для формы набора в карточке проекта."""
+        from apps.teams.models import TeamRole
+        from apps.teams.rules import DIRECTION_ROLES
+
+        chosen = set(self.recruitment_roles or [])
+        return [{'key': role, 'label': TeamRole(role).label, 'checked': role in chosen}
+                for role in DIRECTION_ROLES if role != TeamRole.OTHER]
 
     @property
     def accepts_new_members(self) -> bool:

@@ -567,37 +567,59 @@ def set_primary_stage(project: Project, stage: ProjectStage, user) -> Project:
 
 # --- Набор стажёров (2.0) --------------------------------------------------
 
+def _recruitment_text(is_open: bool, roles) -> str:
+    if not is_open:
+        return 'закрыт'
+    from apps.teams.models import TeamRole
+
+    labels = dict(TeamRole.choices)
+    return f'открыт: {", ".join(labels.get(r, r) for r in roles)}' if roles else 'открыт (все направления)'
+
+
 @transaction.atomic
-def set_recruitment(project: Project, is_open: bool, user) -> Project:
-    """Открыть / закрыть набор. Только руководитель (полный доступ)."""
-    from django.core.exceptions import PermissionDenied
+def set_recruitment(project: Project, is_open: bool, user, roles=None) -> Project:
+    """Открыть / закрыть набор. Только руководитель (полный доступ).
+
+    roles (11F) — направления, на которые открыт набор; пусто — на все.
+    При открытом наборе повторный вызов меняет только направления.
+    """
+    from django.core.exceptions import PermissionDenied, ValidationError
 
     from apps.accounts.access import has_full_access
+    from apps.teams.models import TeamRole
+    from apps.teams.rules import DIRECTION_ROLES
 
     if not has_full_access(user):
         raise PermissionDenied('Набор открывает и закрывает руководитель.')
+    allowed = [r for r in DIRECTION_ROLES if r != TeamRole.OTHER]
+    unknown = [r for r in roles or [] if r not in allowed]
+    if unknown:
+        raise ValidationError(f'Неизвестное направление: {", ".join(unknown)}.')
+    # порядок — как в списке направлений, без повторов
+    roles = [r for r in allowed if r in set(roles or [])] if is_open else []
     with transaction.atomic():
         # Та же блокировка, что у вступления (teams.rules.lock_and_recheck)
         locked = Project.objects.select_for_update().get(pk=project.pk)
-        if locked.recruitment_open == is_open:
-            project.recruitment_open = is_open
+        if locked.recruitment_open == is_open and list(locked.recruitment_roles or []) == roles:
+            project.recruitment_open, project.recruitment_roles = is_open, roles
             return project
         if is_open and locked.status != ProjectStatus.ACTIVE:
-            from django.core.exceptions import ValidationError
-
             raise ValidationError('Набор открывается только в идущем проекте.')
-        _write_recruitment(project, is_open, user)
+        old = _recruitment_text(locked.recruitment_open, locked.recruitment_roles or [])
+        _write_recruitment(project, is_open, user, roles, old)
     return project
 
 
-def _write_recruitment(project, is_open, user):
+def _write_recruitment(project, is_open, user, roles=(), old=None):
     project.recruitment_open = is_open
+    project.recruitment_roles = list(roles)
     project.recruitment_changed_by = user
     project.recruitment_changed_at = timezone.now()
-    project.save(update_fields=['recruitment_open', 'recruitment_changed_by', 'recruitment_changed_at', 'updated_at'])
+    project.save(update_fields=['recruitment_open', 'recruitment_roles', 'recruitment_changed_by',
+                                'recruitment_changed_at', 'updated_at'])
     ProjectStatusHistory.objects.create(
         project=project, field='Набор',
-        old_value='закрыт' if is_open else 'открыт', new_value='открыт' if is_open else 'закрыт', user=user,
+        old_value=old or ('закрыт' if is_open else 'открыт'), new_value=_recruitment_text(is_open, roles), user=user,
     )
     return project
 
