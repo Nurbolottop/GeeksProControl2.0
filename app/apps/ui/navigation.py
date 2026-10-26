@@ -108,8 +108,11 @@ def _head_menu(request) -> list:
             Link('Табель', 'attendance:dashboard', icon='clipboard-check', namespaces=('attendance', 'flows')),
             # 11F: главный рабочий раздел после запуска бота — наверху, а не в «Резерве»
             Link('Telegram-бот', 'tgbot:reconcile', icon='bot', namespaces=('tgbot',)),
+            # 11F: набор стажёров по всем проектам — одна страница
+            Link('Наборы', 'projects:recruitment_board', icon='graduation-cap'),
             # 11F: всё про проекты и клиентов — одним пунктом
             Group('Проекты и заказчики', 'folder', namespaces=('projects', 'clients', 'documents'),
+                  exclude=('projects:recruitment_board',),
                   # состав команды проекта (добавить участника и т. п.) — часть проекта, не раздел «Тимлиды»
                   views=('teams:overview', 'teams:member_add', 'teams:member_add_group', 'teams:member_edit',
                          'teams:member_delete', 'teams:team_clear'), children=[

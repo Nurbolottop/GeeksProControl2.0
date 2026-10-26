@@ -48,7 +48,7 @@ class HeadNavigationTests(TestCase):
     def test_head_sees_all_sections(self):
         response = self.client.get(reverse('dashboard'))
         labels = nav_labels(response)
-        for expected in ('Главная', 'Работа', 'Проекты и заказчики', 'Telegram-бот', 'Люди', 'Стажёры', 'Тимлиды', 'Контроль', 'Уведомления'):
+        for expected in ('Главная', 'Работа', 'Проекты и заказчики', 'Telegram-бот', 'Наборы', 'Люди', 'Стажёры', 'Тимлиды', 'Контроль', 'Уведомления'):
             self.assertIn(expected, labels)
         for gone in ('IT-академия', 'Резерв'):
             self.assertNotIn(gone, labels)

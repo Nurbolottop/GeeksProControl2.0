@@ -1,0 +1,38 @@
+{% load ui %}
+{# Форма набора проекта: карточка проекта (вкладка «Команда») и страница «Наборы». Контекст: project, back ("team"|"board") #}
+<div class="gp-cluster gp-cluster--between">
+    <div>
+        {% if project.recruitment_open %}{% ui_badge "Открыт" tone="success" dot=True %}
+            <strong class="gp-small">{{ project.recruitment_summary }}</strong>
+        {% else %}{% ui_badge "Закрыт" dot=True %}{% endif %}
+        {% if project.recruitment_changed_at %}<div class="gp-muted gp-small" style="margin-top: var(--space-1)">{{ project.recruitment_changed_by.display_name|default:"" }} · {{ project.recruitment_changed_at|date:"d.m.Y H:i" }}</div>{% endif %}
+    </div>
+    {% if project.recruitment_open %}
+    <form method="post" action="{% url 'projects:recruitment_set' project.pk %}">
+        {% csrf_token %}<input type="hidden" name="tab" value="team"><input type="hidden" name="back" value="{{ back }}"><input type="hidden" name="open" value="0">
+        {% ui_button "Закрыть набор" type="submit" %}
+    </form>
+    {% endif %}
+</div>
+<form method="post" action="{% url 'projects:recruitment_set' project.pk %}" style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-border)">
+    {% csrf_token %}<input type="hidden" name="tab" value="team"><input type="hidden" name="back" value="{{ back }}"><input type="hidden" name="open" value="1">
+    <fieldset style="border: 0; margin: 0; padding: 0">
+        <legend class="gp-label" style="margin-bottom: var(--space-2)">Направления набора</legend>
+        <div class="gp-cluster" style="gap: var(--space-2) var(--space-5)">
+            {% for option in project.recruitment_options %}
+                <label class="gp-check"><input type="checkbox" name="roles" value="{{ option.key }}"{% if option.checked %} checked{% endif %}> {{ option.label }}</label>
+            {% endfor %}
+        </div>
+    </fieldset>
+    <p class="gp-muted gp-small" style="margin: var(--space-2) 0 var(--space-3)">Ничего не отмечено — набор на все направления. ПМ проекту назначает руководитель.</p>
+    <fieldset style="border: 0; margin: 0 0 var(--space-3); padding: 0">
+        <legend class="gp-label" style="margin-bottom: var(--space-2)">Кого берём</legend>
+        <div class="gp-cluster" style="gap: var(--space-2) var(--space-5)">
+            {% for value, label in project.recruitment_kind_choices %}
+                <label class="gp-check"><input type="radio" name="kind" value="{{ value }}"{% if project.recruitment_kind == value %} checked{% endif %}> {{ label }}</label>
+            {% endfor %}
+        </div>
+        <p class="gp-muted gp-small" style="margin: var(--space-2) 0 0">Старый — уже выпускался с прошлого проекта, новый — первая стажировка.</p>
+    </fieldset>
+    {% if project.recruitment_open %}{% ui_button "Сохранить набор" type="submit" variant="primary" %}{% else %}{% ui_button "Открыть набор" variant="primary" type="submit" %}{% endif %}
+</form>

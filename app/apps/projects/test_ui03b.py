@@ -124,7 +124,23 @@ class ClosedRecruitmentTests(TestCase):
         page = self.client.get(reverse('projects:detail', args=[self.project.pk]), {'tab': 'team'})
         self.assertContains(page, 'Mobile, QA · только новые')
         self.assertContains(page, 'Кого берём')
-        self.assertContains(page, 'Сохранить направления')
+        self.assertContains(page, 'Сохранить набор')
+
+    def test_recruitment_board(self):
+        """11F: страница «Наборы» — все идущие проекты, форма возвращает на неё."""
+        self.client.force_login(self.head)
+        board = reverse('projects:recruitment_board')
+        page = self.client.get(board)
+        self.assertContains(page, 'Закрытый')
+        self.assertContains(page, 'Открыть набор')
+        response = self.client.post(reverse('projects:recruitment_set', args=[self.project.pk]),
+                                    {'open': '1', 'roles': ['backend'], 'kind': 'new', 'back': 'board'})
+        self.assertRedirects(response, f'{board}#project-{self.project.pk}', fetch_redirect_response=False)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.recruitment_summary, 'Backend · только новые')
+        pm_user, _ = portal('pm-board', User.Role.PROJECT_MANAGER, TeamRole.PROJECT_MANAGER, self.project)
+        self.client.force_login(pm_user)
+        self.assertNotEqual(self.client.get(board).status_code, 200)
 
     def test_head_form_is_blocked(self):
         self.client.force_login(self.head)

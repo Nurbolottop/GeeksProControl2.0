@@ -1,0 +1,39 @@
+{% extends "layouts/app.html" %}
+{% load ui %}
+{% block title %}Наборы — GeeksPro Control{% endblock %}
+{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
+{% block page %}
+{% ui_page_header title="Наборы" subtitle="Набор стажёров во все идущие проекты на одной странице. Открытый набор — проект виден стажёрам в Telegram-боте; можно открыть только нужные направления и выбрать, кого берём." %}
+    {% url 'projects:list' as projects_url %}{% ui_button "Все проекты" href=projects_url icon_name="folder" %}
+{% end_ui_page_header %}
+
+<p class="gp-muted gp-small" style="margin: 0 0 var(--space-4)">Открыто: <strong>{{ open_count }}</strong> из {{ rows|length }} проектов. Сначала — проекты с открытым набором.</p>
+
+{% if rows %}
+<div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-4); align-items: start">
+    {% for row in rows %}
+    {% with project=row.project %}
+    <section id="project-{{ project.pk }}" class="gp-card" aria-labelledby="rec-title-{{ project.pk }}" style="scroll-margin-top: var(--space-8){% if project.recruitment_open %}; border-color: color-mix(in srgb, var(--color-success) 40%, var(--color-border)){% endif %}">
+        <div class="gp-card__body">
+            <div class="gp-cluster gp-cluster--between" style="align-items: flex-start; margin-bottom: var(--space-3)">
+                <div style="min-width: 0">
+                    <h2 class="gp-section-title" id="rec-title-{{ project.pk }}" style="margin: 0"><a class="gp-link" href="{{ project.get_absolute_url }}?tab=team">{{ project.name }}</a></h2>
+                    <div class="gp-muted gp-small">{{ project.display_code }}{% if project.client %} · {{ project.client }}{% endif %}{% if project.primary_stage %} · этап «{{ project.primary_stage.get_key_display }}»{% endif %} · {{ project.progress }}%</div>
+                </div>
+            </div>
+            <div class="gp-cluster" style="gap: var(--space-2); margin-bottom: var(--space-2)">
+                {% ui_badge row.count|stringformat:"s"|add:" стажёров" tone="primary" %}
+                {% ui_badge row.new|stringformat:"s"|add:" новых" %}
+                {% ui_badge row.old|stringformat:"s"|add:" старых" %}
+                {% if row.leads %}{% ui_badge row.leads|stringformat:"s"|add:" тимлид." tone="info" %}{% else %}{% ui_badge "нет тимлидов" tone="warning" %}{% endif %}
+                {% if row.pms %}{% ui_badge "ПМ: "|add:row.pms.0 %}{% else %}{% ui_badge "нет ПМ" tone="warning" %}{% endif %}
+            </div>
+            <p class="gp-muted gp-small" style="margin: 0 0 var(--space-4)">{% for role in row.roles %}{{ role.label }} {{ role.count }}{% if not forloop.last %} · {% endif %}{% empty %}В команде пока нет стажёров.{% endfor %}</p>
+            {% include "projects/card/_recruitment_form.html" with back="board" %}
+        </div>
+    </section>
+    {% endwith %}
+    {% endfor %}
+</div>
+{% else %}{% ui_card %}{% ui_empty "Идущих проектов нет" "Набор открывается только в идущем проекте." icon_name="folder" %}{% end_ui_card %}{% endif %}
+{% endblock %}

@@ -207,8 +207,50 @@ def recruitment_set(request, pk):
         if not is_open:
             messages.success(request, 'Набор закрыт.')
         else:
-            messages.success(request, f'Набор открыт: {project.recruitment_summary}.')
+            messages.success(request, f'«{project.name}»: набор открыт — {project.recruitment_summary}.')
+    if request.POST.get('back') == 'board':
+        return redirect(f'{reverse("projects:recruitment_board")}#project-{project.pk}')
     return redirect(f'{project.get_absolute_url()}?tab={request.POST.get("tab") or "team"}')
+
+
+@login_required
+def recruitment_board(request):
+    """«Наборы» (11F): все идущие проекты и их набор на одной странице — только руководитель."""
+    from apps.accounts.access import has_full_access
+    from apps.dashboard.graduation import compute
+    from apps.projects.card import ROLE_LABELS
+    from apps.teams.models import TeamMember
+    from apps.teams.rules import DIRECTION_ROLES
+
+    if not has_full_access(request.user):
+        raise PermissionDenied
+    projects = list(Project.objects.active().filter(status=ProjectStatus.ACTIVE)
+                    .select_related('client', 'primary_stage', 'recruitment_changed_by'))
+    members = list(TeamMember.objects.filter(project__in=projects, status=TeamMember.Status.ACTIVE)
+                   .select_related('intern'))
+    graduates = compute([m.intern_id for m in members if m.intern_id]).ids
+    rows = {p.pk: {'project': p, 'interns': set(), 'new': 0, 'old': 0, 'roles': {}, 'leads': 0, 'pms': []}
+            for p in projects}
+    for m in members:
+        row = rows[m.project_id]
+        if m.role == TeamRole.PROJECT_MANAGER:
+            row['pms'].append(m.person_name)
+        elif m.role == TeamRole.TEAM_LEAD:
+            row['leads'] += 1
+        elif m.role in DIRECTION_ROLES and m.intern_id and m.intern_id not in row['interns']:
+            row['interns'].add(m.intern_id)
+            row['old' if m.intern_id in graduates else 'new'] += 1
+            row['roles'][m.role] = row['roles'].get(m.role, 0) + 1
+    for row in rows.values():
+        row['count'] = len(row['interns'])
+        row['roles'] = [{'label': ROLE_LABELS.get(r, r), 'count': n}
+                        for r, n in sorted(row['roles'].items(), key=lambda item: -item[1])]
+    ordered = sorted(rows.values(), key=lambda r: (not r['project'].recruitment_open, r['project'].name.lower()))
+    return render(request, 'projects/recruitment.html', {
+        'rows': ordered,
+        'open_count': sum(1 for r in ordered if r['project'].recruitment_open),
+        'crumbs': [{'label': 'Главная', 'href': reverse('dashboard')}, {'label': 'Наборы', 'href': ''}],
+    })
 
 
 @login_required
