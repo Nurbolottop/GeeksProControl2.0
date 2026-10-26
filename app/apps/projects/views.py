@@ -154,7 +154,8 @@ def project_move_stage(request, pk):
 
 CARD_TABS = [('overview', 'Обзор'), ('stages', 'Этапы'), ('team', 'Команда'),
              ('tasks', 'Задачи'), ('documents', 'Документы'), ('report', 'Отчёты')]
-EXTRA_TABS = [('access', 'Доступы'), ('graphics', 'Графика'), ('history', 'История')]
+# 11F: вкладка «Доступы» убрана (записи в базе остались)
+EXTRA_TABS = [('graphics', 'Графика'), ('history', 'История')]
 LEGACY_TABS = {'access', 'graphics', 'history'}
 
 

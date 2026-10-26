@@ -10,7 +10,7 @@
     {% end_ui_slot %}
     {% url 'attendance:group_sheet' group.pk as sheet_url %}{% ui_button "Табель" href=sheet_url icon_name="clipboard-check" %}
     {% url 'flows:group_update' group.pk as edit_url %}{% ui_button "Редактировать" href=edit_url icon_name="pencil" %}
-    {% if group.project %}{% url 'teams:member_add_group' group.pk as add_url %}{% ui_button "Участник" variant="primary" href=add_url icon_name="plus" %}{% endif %}
+    
 {% end_ui_page_header %}
 
 <div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">

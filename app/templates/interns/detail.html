@@ -21,7 +21,7 @@
         {% elif intern.status == 'active' or intern.status == 'ready' or intern.status == 'waiting' %}{% ui_button "Заморозить" data_gp_open="freeze-modal" icon_name="clock" %}{% endif %}
     {% endif %}
     {% ui_dropdown label="Ещё" icon="more-horizontal" %}
-        {% if not intern.is_archived %}{% url 'interns:project_add' intern.pk as add_url %}{% ui_menu_item "Добавить в проект" href=add_url icon_name="plus" %}{% endif %}
+        
         {% url 'interns:evaluate' intern.pk as eval_url %}{% ui_menu_item "Оценить" href=eval_url icon_name="check" %}
         {% if is_pm %}{% url 'interns:grant_access' intern.pk as access_url %}{% ui_menu_item access_label href=access_url icon_name="user" %}{% endif %}
         {% if is_lead %}{% url 'interns:grant_lead_access' intern.pk as lead_access_url %}{% ui_menu_item lead_access_label href=lead_access_url icon_name="user" %}{% endif %}

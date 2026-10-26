@@ -98,11 +98,16 @@ class CardAccessTests(TestCase):
 
     def test_head_sees_all_tabs(self):
         self.client.force_login(head_user())
-        for tab in ('overview', 'stages', 'team', 'tasks', 'documents', 'report', 'access', 'graphics', 'history'):
+        for tab in ('overview', 'stages', 'team', 'tasks', 'documents', 'report', 'graphics', 'history'):
             with self.subTest(tab=tab):
                 response = self.client.get(self.project.get_absolute_url(), {'tab': tab})
                 self.assertEqual(response.status_code, 200)
-                self.assertNotContains(response, 'gp-legacy')  # доступы, графика, история — тоже 2.0
+                self.assertNotContains(response, 'gp-legacy')  # графика и история — тоже 2.0
+        # 11F: вкладки «Доступы» нет, ручного добавления в команду — тоже
+        response = self.client.get(self.project.get_absolute_url(), {'tab': 'access'})
+        self.assertNotContains(response, 'Доступы проекта')
+        response = self.client.get(self.project.get_absolute_url(), {'tab': 'team'})
+        self.assertNotContains(response, 'Добавить вручную')
 
     def test_others_cannot_open_or_post(self):
         intern = UserModel.objects.create_user(username='u3-intern', password='x', role=User.Role.INTERN)

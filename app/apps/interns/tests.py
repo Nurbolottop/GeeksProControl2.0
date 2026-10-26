@@ -318,9 +318,10 @@ class InternProjectAddRemoveTests(TestCase):
         self.assertEqual(member.status, TeamMember.Status.ACTIVE)
         self.assertRedirects(response, self.intern.get_absolute_url())
 
-    def test_detail_page_has_add_button(self):
+    def test_detail_page_has_no_manual_add(self):
+        # 11F: в проект — только через Telegram-бот, ручного «Добавить в проект» в карточке нет
         response = self.client.get(self.intern.get_absolute_url())
-        self.assertContains(
+        self.assertNotContains(
             response, reverse("interns:project_add", args=[self.intern.pk]),
         )
 

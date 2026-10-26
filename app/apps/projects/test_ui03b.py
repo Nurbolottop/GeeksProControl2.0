@@ -123,8 +123,12 @@ class ClosedRecruitmentTests(TestCase):
                          (True, ['mobile', 'qa'], 'new'))
         page = self.client.get(reverse('projects:detail', args=[self.project.pk]), {'tab': 'team'})
         self.assertContains(page, 'Mobile, QA · только новые')
-        self.assertContains(page, 'Кого берём')
-        self.assertContains(page, 'Сохранить набор')
+        # 11F: в карточке — только состояние набора и ссылка; настройка — на странице «Наборы»
+        self.assertNotContains(page, 'Кого берём')
+        self.assertContains(page, reverse('projects:recruitment_board'))
+        board = self.client.get(reverse('projects:recruitment_board'))
+        self.assertContains(board, 'Кого берём')
+        self.assertContains(board, 'Сохранить набор')
 
     def test_recruitment_board(self):
         """11F: страница «Наборы» — все идущие проекты, форма возвращает на неё."""

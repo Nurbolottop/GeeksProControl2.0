@@ -102,8 +102,6 @@ def informational(project: Project) -> list[dict]:
         {'label': 'Домен', 'ok': bool(project.domain), 'value': project.domain or 'не указан'},
         {'label': 'GitHub', 'ok': bool(project.github_url or project.frontend_repo_url),
          'value': 'указан' if (project.github_url or project.frontend_repo_url) else 'не указан'},
-        {'label': 'Доступы', 'ok': project.accesses.exists(),
-         'value': 'загружены' if project.accesses.exists() else 'не загружены'},
         {'label': 'Открытые задачи', 'ok': open_tasks == 0, 'value': str(open_tasks)},
         {'label': 'Критичные баги', 'ok': critical == 0, 'value': str(critical)},
         {'label': 'Прогресс', 'ok': project.progress >= 100, 'value': f'{project.progress}%'},

@@ -131,10 +131,8 @@ def _team(request, project, scope):
         for member in section['members']:
             member.ui_url, member.ui_edit_url = _member_urls(project, scope, member, own_role)
     data = {'team': team, 'team_sections': team['sections'], 'can_recruit': scope == 'head'}
-    data['team_add_url'] = (reverse('teams:member_add', args=[project.pk]) if scope == 'head' else
-                            reverse('pm_portal:member_add', args=[project.pk]) if scope == 'pm' else '')
-    if project.status != ProjectStatus.ACTIVE and scope != 'head':
-        data['team_add_url'] = ''
+    # 11F: стажёры попадают в проект только через Telegram-бот (набор) — ручного добавления нет
+    data['team_add_url'] = ''
     if scope == 'lead':
         from apps.interns.services import active_profile_form_link
         from apps.interns.views import PROFILE_LINK_TTL_CHOICES

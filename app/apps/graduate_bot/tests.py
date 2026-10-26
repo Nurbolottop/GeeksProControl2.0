@@ -667,7 +667,8 @@ class AssignmentFromPlatformTests(TestCase):
 
         response = self.client.get(reverse("interns:waiting"))
         self.assertContains(response, "Ждавший Места")
-        self.assertContains(response, reverse("interns:project_add", args=[self.person.pk]))
+        # 11F: стажёры попадают в проект только через бота — кнопки ручного распределения нет
+        self.assertNotContains(response, reverse("interns:project_add", args=[self.person.pk]))
 
     def test_assignment_notifies_and_clears_status(self):
         from django.urls import reverse
