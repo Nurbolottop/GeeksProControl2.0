@@ -13,7 +13,7 @@
     <div class="gp-stat"><span class="gp-stat__label">Старых</span><span class="gp-stat__value">{{ on_projects_old }}</span><span class="gp-stat__caption">выпускники</span></div>
     <div class="gp-stat"><span class="gp-stat__label">ПМ</span><span class="gp-stat__value">{{ pm_count }}</span></div>
     <div class="gp-stat"><span class="gp-stat__label">Проектов с командой</span><span class="gp-stat__value">{{ projects_count }}</span></div>
-    <a class="gp-stat" href="#free-interns"><span class="gp-stat__label">Свободных стажёров</span><span class="gp-stat__value" style="color: var(--color-success)">{{ free|length }}</span></a>
+    <a class="gp-stat" href="#free-interns"><span class="gp-stat__label">Без проекта</span><span class="gp-stat__value">{{ free|length }}</span><span class="gp-stat__caption">вместе с заморозкой и выпускниками</span></a>
 </section>
 
 {% ui_card flush=True %}
@@ -57,7 +57,7 @@
 {% end_ui_card %}
 
 <div id="free-interns" style="margin-top: var(--space-5)">
-{% ui_card title="Свободные стажёры" subtitle="Без активного участия в проектах" %}
+{% ui_card title="Без проекта" subtitle="Нет активного участия в проектах — сюда входят и замороженные, и выпускники. Кого можно поставить прямо сейчас — «Свободные» в «По направлениям»." %}
     {% ui_slot "actions" %}{% ui_badge free|length|stringformat:"s"|add:" чел." %}{% end_ui_slot %}
     {% if free %}
         <div class="gp-cluster" style="gap: var(--space-2)">

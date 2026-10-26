@@ -3,7 +3,6 @@
 {% block title %}{{ title }} — GeeksPro Control{% endblock %}
 {% block page %}
 {% ui_page_header title="Проекты" subtitle=title %}
-    {% url 'projects:kanban' as kanban_url %}{% ui_button "Pipeline" href=kanban_url icon_name="layout-grid" %}
     {% if can_create %}{% url 'projects:create' as create_url %}{% ui_button "Новый проект" variant="primary" href=create_url icon_name="plus" %}{% endif %}
 {% end_ui_page_header %}
 {% ui_tabs category_tabs active=category label="Категории проектов" %}
