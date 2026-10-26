@@ -498,6 +498,7 @@ def internship_requests(request):
     from apps.interns.models import DisciplineCase, InternshipRequest
 
     from apps.interns.models import SalesConfirmation
+    from apps.interns.sales import SALES_KINDS
 
     base = InternshipRequest.objects.select_related('intern__specialization', 'decided_by', 'chosen_project', 'sales_by',
                                                     'project')
@@ -512,9 +513,10 @@ def internship_requests(request):
         case.ui_keep, case.ui_expel = f'case-keep-{case.pk}', f'case-expel-{case.pk}'
     return render(request, 'interns/internship_requests.html', {
         'cases': cases,
-        'sales_queue': [r for r in pending if r.kind == InternshipRequest.Kind.REENROLL
+        # 11F: регистрация в боте (ENROLL) тоже ждёт продаж — кнопки «Одобрить» у руководителя для неё нет
+        'sales_queue': [r for r in pending if r.kind in SALES_KINDS
                         and r.sales_status == InternshipRequest.Sales.PENDING],
-        'pending': [r for r in pending if not (r.kind == InternshipRequest.Kind.REENROLL
+        'pending': [r for r in pending if not (r.kind in SALES_KINDS
                                                and r.sales_status == InternshipRequest.Sales.PENDING)],
         'decided': base.exclude(status=InternshipRequest.Status.PENDING).order_by('-decided_at')[:50],
         'sales_events': SalesConfirmation.objects.exclude(status=SalesConfirmation.Status.APPLIED)[:20],
