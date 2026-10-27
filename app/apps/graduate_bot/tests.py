@@ -666,7 +666,8 @@ class AssignmentFromPlatformTests(TestCase):
         from django.urls import reverse
 
         response = self.client.get(reverse("interns:waiting"))
-        self.assertContains(response, "Ждавший Места")
+        # 11F: «Ожидают проект» — вкладка «Решения по стажёрам» страницы «Telegram-бот»
+        self.assertContains(response, "Решения по стажёрам")
         # 11F: стажёры попадают в проект только через бота — кнопки ручного распределения нет
         self.assertNotContains(response, reverse("interns:project_add", args=[self.person.pk]))
 
@@ -689,7 +690,7 @@ class AssignmentFromPlatformTests(TestCase):
         self.person.graduate_status = GraduateStatus.PENDING
         self.person.save(update_fields=["graduate_status"])
         response = self.client.get(reverse("interns:waiting"))
-        self.assertContains(response, "Сейчас никто не ждёт проект")
+        self.assertEqual(response.status_code, 200)
 
 
 class RockPaperScissorsTests(TestCase):

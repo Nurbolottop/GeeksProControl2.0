@@ -46,9 +46,8 @@ def remind_graduates() -> dict:
         elif person.graduate_status == GraduateStatus.WAITING and waited >= WAITING_SILENCE_DAYS:
             waiting.append(person)
             sent += _nudge(person, (
-                f'{person.full_name}, вы всё ещё в базе ожидания проекта. '
-                'Как только появится место, мы напишем сюда — ждать ничего '
-                'не нужно. Если планы изменились, скажите руководителю GeeksPro.'
+                f'{person.full_name}, ваша заявка на продолжение стажировки у руководителя. '
+                'Как одобрит — здесь появится выбор проекта. Если планы изменились, скажите руководителю GeeksPro.'
             ))
 
     _tell_the_head(pending, waiting)
@@ -102,6 +101,6 @@ def _tell_the_head(pending, waiting) -> None:
                 f'Дольше {WAITING_SILENCE_DAYS} дней в базе ожидания: {names}'
                 + ('…' if len(waiting) > 5 else '')
             ),
-            url=reverse('interns:waiting'),
+            url=reverse('interns:internship_requests'),
             dedup_key=f'graduates-waiting-long:{today}',
         )

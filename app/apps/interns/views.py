@@ -841,13 +841,11 @@ def waiting_list(request):
     Отсюда руководитель ставит человека на проект: после назначения бот
     сам пишет ему, что место нашлось (apps.interns.views.intern_project_add).
     """
-    people = [
-        person for person in services.graduated_interns()
-        if person.graduate_status == GraduateStatus.WAITING
-    ]
-    return render(request, 'interns/waiting_list.html', {
-        'people': people, 'title': 'Ожидают проект',
-    })
+    # 11F: «Ожидают проект» больше нет — выпускник подаёт заявку на продолжение,
+    # руководитель одобряет её во вкладке «Решения по стажёрам», проект выбирают в боте
+    from apps.tgbot.views import reconcile_page
+
+    return reconcile_page(request, tab='decisions')
 
 
 def resume_bank_apply(request):

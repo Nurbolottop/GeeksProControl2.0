@@ -356,16 +356,20 @@ def show_projects(message, sender, state, intern):
 
 
 def graduate_continue(message, sender, state, intern):
-    """«Продолжить стажировку» (из бота-выпускника): база ожидания, проект
-    назначают руководитель и тимлид по правилам состава."""
-    from apps.graduate_bot import services as graduate
+    """«Продолжить стажировку»: заявка руководителю (11F); после одобрения — выбор проекта в боте."""
+    from apps.interns import freeze
 
     chat_id = message['chat']['id']
-    added = graduate.request_next_internship(intern, chat_id)
+    try:
+        req = freeze.request_continue(intern)
+    except freeze.FreezeError as error:
+        _reply(chat_id, _errors(error), intern=intern)
+        return 'graduate:refused'
     intern.refresh_from_db()
-    _reply(chat_id, ('Готово! Вы в базе ожидания следующего проекта. Как появится место — напишем сюда.'
-                     if added else 'Вы уже в базе ожидания следующего проекта.'), intern=intern)
-    return 'graduate:continue' if added else 'graduate:already_waiting'
+    _reply(chat_id, ('Заявка на продолжение стажировки отправлена руководителю. Как одобрит — напишем сюда, '
+                     'и вы сами выберете проект кнопкой «Доступные проекты».' if req else
+                     'Ваша заявка на продолжение уже у руководителя — напишем сюда, как только он решит.'), intern=intern)
+    return 'graduate:continue' if req else 'graduate:already_waiting'
 
 
 def graduate_finish(message, sender, state, intern):
@@ -514,6 +518,10 @@ def show_available(message, sender, state, intern):
     if freeze.is_pm_direction(intern):
         _reply(chat_id, 'Для направления PM проект назначает руководитель.', intern=intern)
         return 'projects:pm'
+    if intern.internship_requests.filter(kind='continue', status='pending').exists():
+        _reply(chat_id, 'Ваша заявка на продолжение стажировки у руководителя. Как одобрит — '
+                        'здесь появится выбор проекта.', intern=intern)
+        return 'projects:continue_pending'
     if not freeze.can_choose(intern):
         from apps.projects.services import projects_open_for_recruitment
 

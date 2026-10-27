@@ -108,7 +108,7 @@ def _head_menu(request) -> list:
             Link('Табель', 'attendance:dashboard', icon='clipboard-check', namespaces=('attendance', 'flows')),
             # 11F: главный рабочий раздел после запуска бота — наверху, а не в «Резерве»
             # 11F: «Решения по стажёрам» — вкладка этой страницы
-            Link('Telegram-бот', 'tgbot:reconcile', icon='bot', namespaces=('tgbot',), views=('interns:internship_requests',)),
+            Link('Telegram-бот', 'tgbot:reconcile', icon='bot', namespaces=('tgbot',), views=('interns:internship_requests', 'interns:waiting')),
             # 11F: всё про проекты и клиентов — одним пунктом
             Group('Проекты и заказчики', 'folder', namespaces=('projects', 'clients', 'documents'),
                   # состав команды проекта (добавить участника и т. п.) — часть проекта, не раздел «Тимлиды»
@@ -131,7 +131,7 @@ def _head_menu(request) -> list:
         Section('Люди', [
             Group('Стажёры', 'graduation-cap', namespaces=('interns', 'resources'),
                   views=('teams:pm_list', 'teams:pm_add', 'teams:pm_remove'),
-                  exclude=('interns:resume_bank', 'interns:internship_requests'), children=[
+                  exclude=('interns:resume_bank', 'interns:internship_requests', 'interns:waiting'), children=[
                 Link('Все стажёры', 'interns:list'),
                 # 11F: сколько человек проходит регистрацию в боте и где застревают
                 Link('Регистрации', 'interns:registrations'),
@@ -139,7 +139,6 @@ def _head_menu(request) -> list:
                 Link('По проектам', 'interns:by_project'),
                 Link('По филиалам', 'interns:by_branch'),
                 Link('ПМ', 'teams:pm_list', views=('teams:pm_add', 'teams:pm_remove')),
-                Link('Ожидают проект', 'interns:waiting'),
                 Link('Выпускники', 'interns:graduates'),
             ]),
             Group('Тимлиды', 'users', namespaces=('reserve',),

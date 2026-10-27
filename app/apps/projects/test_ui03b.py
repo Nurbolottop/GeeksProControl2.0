@@ -115,12 +115,20 @@ class ClosedRecruitmentTests(TestCase):
             set_recruitment(self.project, True, self.head, kind='vip')
 
     def test_waiting_graduate_chooses_in_bot(self):
-        """11F: выпускник «Продолжить стажировку» выбирает проект сам — по правилам старых."""
+        """11F: выпускник «Продолжить стажировку» → заявка → руководитель одобряет → выбор в боте."""
         from apps.interns import freeze
+        from apps.interns.models import InternshipRequest
 
         veteran = graduate('Ждёт Проект', self.backend)
-        veteran.graduate_status = GraduateStatus.WAITING
-        veteran.save()
+        req = freeze.request_continue(veteran)
+        self.assertIsNone(freeze.request_continue(veteran))  # повтор — та же заявка
+        veteran.refresh_from_db()
+        self.assertEqual(veteran.graduate_status, GraduateStatus.WAITING)
+        set_recruitment(self.project, True, self.head)
+        self.assertEqual(freeze.available_projects(veteran), [])  # без одобрения выбора нет
+        freeze.approve(req, self.head)
+        self.assertEqual(req.kind, InternshipRequest.Kind.CONTINUE)
+        set_recruitment(self.project, False, self.head)
         self.assertEqual(freeze.available_projects(veteran), [])  # набор закрыт
         set_recruitment(self.project, True, self.head, kind='new')
         self.assertEqual(freeze.available_projects(veteran), [])  # только новые
@@ -130,7 +138,7 @@ class ClosedRecruitmentTests(TestCase):
         veteran.refresh_from_db()
         self.assertEqual((veteran.status, veteran.graduate_status), (InternStatus.ACTIVE, ''))
         self.assertTrue(TeamMember.objects.filter(project=self.project, intern=veteran, status='active').exists())
-        self.assertFalse(freeze.graduate_can_choose(veteran))  # один раз
+        self.assertFalse(freeze.can_choose(veteran))  # один раз
 
     def test_recruitment_form_on_card(self):
         self.client.force_login(self.head)

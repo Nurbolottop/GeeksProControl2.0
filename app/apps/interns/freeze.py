@@ -87,6 +87,23 @@ def request_freeze(intern: Intern, reason: str, *, source=InternshipRequest.Sour
     return req
 
 
+def request_continue(intern: Intern, *, source=InternshipRequest.Source.BOT, user=None) -> InternshipRequest | None:
+    """11F: выпускник хочет продолжить стажировку — заявка руководителю. После одобрения
+    стажёр сам выбирает проект в боте (как новый после продаж). None — заявка уже ждёт решения."""
+    from apps.interns.models import GraduateStatus
+
+    if intern.is_archived or intern.status == InternStatus.PAUSED:
+        raise FreezeError('Продолжить можно только незамороженную стажировку.')
+    if intern.internship_requests.filter(kind=Kind.CONTINUE, status=Status.PENDING).exists():
+        return None
+    req = _create(intern, Kind.CONTINUE, 'Выпускник: хочу продолжить стажировку', source, user)
+    if intern.graduate_status != GraduateStatus.WAITING:
+        intern.graduate_status = GraduateStatus.WAITING
+        intern.save(update_fields=['graduate_status', 'updated_at'])
+    transaction.on_commit(lambda: _notify_head(req))
+    return req
+
+
 def request_return(intern: Intern, reason: str, *, source=InternshipRequest.Source.BOT, user=None):
     if intern.is_archived or intern.status != InternStatus.PAUSED:
         raise FreezeError('Вернуться можно только из заморозки.')
@@ -205,6 +222,9 @@ def approve(req: InternshipRequest, user, comment: str = '') -> InternshipReques
             from apps.interns import discipline
 
             discipline.apply_reenroll(req, intern, user)
+        elif req.kind == Kind.CONTINUE:
+            audit_log(intern, 'Продолжение стажировки одобрено', reason=req.reason, user=user,
+                      new_value='проект — выбор в боте')
         elif req.kind == Kind.LEAVE_PROJECT:
             from apps.interns import discipline
 
@@ -266,7 +286,7 @@ def open_return(intern: Intern) -> InternshipRequest | None:
     """Одобренное возвращение (или подтверждённая продажами новая стажировка,
     этап 8A), по которому проект ещё не выбран."""
     return intern.internship_requests.filter(
-        kind__in=[Kind.RETURN, Kind.ENROLL], status=Status.APPROVED, chosen_project__isnull=True,
+        kind__in=[Kind.RETURN, Kind.ENROLL, Kind.CONTINUE], status=Status.APPROVED, chosen_project__isnull=True,
     ).order_by('-decided_at').first()
 
 
@@ -278,17 +298,9 @@ def _role(intern):
     return ROLE_BY_SPECIALIZATION.get(spec.name if spec else '', TeamRole.OTHER)
 
 
-def graduate_can_choose(intern: Intern) -> bool:
-    """11F: выпускник нажал в боте «Продолжить стажировку» (ждёт проект) — выбирает
-    проект сам, как новый после продаж: стажёры попадают в проект только через бота."""
-    from apps.interns.models import GraduateStatus
-
-    return (intern is not None and intern.graduate_status == GraduateStatus.WAITING
-            and intern.status != InternStatus.PAUSED and not intern.is_archived)
-
-
 def can_choose(intern: Intern) -> bool:
-    return open_return(intern) is not None or graduate_can_choose(intern)
+    """Выбор проекта в боте — после одобренной заявки (продажи, возвращение, продолжение)."""
+    return open_return(intern) is not None
 
 
 def available_projects(intern: Intern) -> list:
@@ -315,11 +327,10 @@ def choose_project(intern: Intern, project):
     with transaction.atomic():
         intern = Intern.objects.select_for_update().get(pk=intern.pk)
         req = open_return(intern)
-        if req is None and not graduate_can_choose(intern):
-            raise FreezeError('Выбор проекта доступен после одобренного возвращения или подтверждения продаж.')
-        if req is not None:
-            req = InternshipRequest.objects.select_for_update().get(pk=req.pk)
-        if (req is not None and req.chosen_project_id) or intern.status == InternStatus.PAUSED:
+        if req is None:
+            raise FreezeError('Выбор проекта доступен после одобренной заявки или подтверждения продаж.')
+        req = InternshipRequest.objects.select_for_update().get(pk=req.pk)
+        if req.chosen_project_id or intern.status == InternStatus.PAUSED:
             raise FreezeError('Проект уже выбран.')
         closed = lock_and_recheck(project, intern, role)
         errors, _ = check_assignment(intern, project, role)
@@ -330,16 +341,13 @@ def choose_project(intern: Intern, project):
             group=getattr(project, 'group', None), joined_at=timezone.localdate(),
         )
         intern.status = InternStatus.ACTIVE
-        if req is None:  # выпускник продолжает — из «Выпускников» уходит
-            intern.graduate_status = ''
-            intern.save(update_fields=['status', 'graduate_status', 'updated_at'])
-            audit_log(intern, 'Выбрал(а) проект — выпускник продолжает стажировку', new_value=project.name)
-            return member
-        intern.save(update_fields=['status', 'updated_at'])
+        if req.kind == Kind.CONTINUE:
+            intern.graduate_status = ''  # выпускник продолжает — из «Выпускников» уходит
+        intern.save(update_fields=['status', 'graduate_status', 'updated_at'])
         req.chosen_project, req.chosen_at = project, timezone.now()
         req.save(update_fields=['chosen_project', 'chosen_at', 'updated_at'])
-        audit_log(intern, 'Выбрал(а) первый проект' if req.kind == Kind.ENROLL else 'Выбрал(а) проект после возвращения',
-                  new_value=project.name)
+        audit_log(intern, {Kind.ENROLL: 'Выбрал(а) первый проект', Kind.CONTINUE: 'Выбрал(а) проект — выпускник продолжает'}
+                  .get(req.kind, 'Выбрал(а) проект после возвращения'), new_value=project.name)
     return member
 
 
@@ -362,6 +370,10 @@ def _tell_intern(req: InternshipRequest):
     elif req.kind == Kind.FREEZE:
         text = ('Стажировка заморожена. Вы вышли из команд проектов. Когда будете готовы '
                 'продолжить — отправьте /return и укажите причину.')
+    elif req.kind == Kind.CONTINUE:
+        text = ('Заявка на продолжение стажировки одобрена! ' +
+                ('Проект для направления PM назначит руководитель — напишем сюда.' if is_pm_direction(intern)
+                 else 'Выберите проект: кнопка «Доступные проекты».'))
     elif is_pm_direction(intern):
         text = 'Возвращение одобрено. Проект для направления PM назначит руководитель — напишем сюда.'
     else:

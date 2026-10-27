@@ -395,6 +395,8 @@ class InternshipRequest(TimeStampedModel):
         REENROLL = 'reenroll', 'Повторная стажировка'
         LEAVE_PROJECT = 'leave', 'Выход из одного проекта'
         ENROLL = 'enroll', 'Новая стажировка (регистрация в боте)'
+        # 11F: выпускник нажал «Продолжить стажировку» — руководитель одобряет, проект стажёр выбирает в боте
+        CONTINUE = 'continue', 'Продолжение стажировки (выпускник)'
 
     class Sales(models.TextChoices):
         PENDING = 'pending', 'Ждёт подтверждения продаж'

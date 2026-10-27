@@ -5,7 +5,6 @@
 {% block page %}
 {% ui_page_header title="Выпускники" subtitle="Подтверждённый выпуск: был в команде при официальном закрытии проекта, сохранённая отметка выпуска или повышение до тимлида. Статус постоянный." %}
     {% url 'interns:list' as list_url %}{% ui_button "Все стажёры" href=list_url icon_name="users" %}
-    {% url 'interns:waiting' as waiting_url %}{% ui_button "Ожидают проект" href=waiting_url icon_name="clock" %}
 {% end_ui_page_header %}
 
 {% if review_count %}<div style="margin-bottom: var(--space-4)">{% ui_alert review_label level="info" title="Неоднозначные записи не считаются выпуском" %}</div>{% endif %}
