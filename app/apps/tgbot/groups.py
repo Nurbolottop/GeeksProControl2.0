@@ -426,6 +426,21 @@ def on_member_update(payload) -> str:
         access.status, access.joined_at, access.join_source = GroupMembership.Status.JOINED, timezone.now(), 'telegram'
         access.save(update_fields=['status', 'joined_at', 'join_source', 'updated_at'])
         return 'member:joined'
+    if new.get('status') == 'member' and access.status in (
+            GroupMembership.Status.ACCESS_ENDED, GroupMembership.Status.REMOVED) and not GroupMembership.objects.filter(
+            group=group, member__intern__telegram_chat_id=user_id, member__status='active').exists():
+        # 11F: из проекта ушёл (перевели, закончил), а в группу вернулся по старой/чужой ссылке — снова исключаем
+        try:
+            _bot().ban_chat_member(group.chat_id, user_id)
+            _bot().unban_chat_member(group.chat_id, user_id, only_if_banned=True)
+        except Exception as exc:
+            logger.warning('Не удалось исключить из группы %s: %s', group.pk, type(exc).__name__)
+            return 'member:rejoined'
+        access.status, access.removed_at = GroupMembership.Status.REMOVED, timezone.now()
+        access.save(update_fields=['status', 'removed_at', 'updated_at'])
+        _tell_leads(access.member, f'{access.member.intern.full_name} больше не в проекте «{access.member.project.name}», '
+                                   'но вступил(а) в группу снова — бот исключил.', f'group-rejoin:{access.pk}:{timezone.now():%Y%m%d%H%M}')
+        return 'member:kicked_rejoin'
     if new.get('status') in ('left', 'kicked') and access.status == GroupMembership.Status.ACCESS_ENDED:
         access.status, access.removed_at = GroupMembership.Status.REMOVED, timezone.now()
         access.save(update_fields=['status', 'removed_at', 'updated_at'])

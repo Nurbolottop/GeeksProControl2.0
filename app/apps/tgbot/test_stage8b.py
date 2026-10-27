@@ -233,6 +233,14 @@ class MembershipTests(Base):
         self.assertTrue(OutboundMessage.objects.filter(kind='team_change', text__contains='удалите').exists())
         groups.mark(access, self.lead_user, GroupMembership.Status.REMOVED)
         self.assertTrue(GroupMembership.objects.filter(pk=access.pk).exists())  # история цела
+        # 11F: вернулся в группу по старой ссылке, хотя в проекте уже нет — бот исключает снова
+        self.bot.ban_chat_member, self.bot.unban_chat_member = mock.Mock(), mock.Mock()
+        rejoin = {'update_id': next(_ids), 'chat_member': {
+            'chat': {'id': GROUP, 'type': 'supergroup'}, 'from': {'id': INTERN_CHAT},
+            'new_chat_member': {'status': 'member', 'user': {'id': INTERN_CHAT}}, 'date': 0}}
+        self.assertEqual(self.run_update(rejoin), 'member:kicked_rejoin')
+        self.bot.ban_chat_member.assert_called_once_with(GROUP, INTERN_CHAT)
+        self.assertTrue(OutboundMessage.objects.filter(kind='team_change', text__contains='бот исключил').exists())
         self.client.force_login(self.lead_user)
         self.assertEqual(self.client.get('/lead/telegram/').status_code, 200)
         self.client.force_login(self.head)
