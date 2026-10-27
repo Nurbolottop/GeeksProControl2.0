@@ -15,6 +15,7 @@
 """
 from __future__ import annotations
 
+import logging
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -25,6 +26,7 @@ from apps.interns.models import Intern, InternshipRequest, InternStatus
 from apps.interns.sales import CITIES, _digits, _name_matches, normalize_city, phone_candidates
 from apps.tgbot.models import LinkRequest
 
+logger = logging.getLogger(__name__)
 NAME_RE = re.compile(r"^[A-Za-zА-Яа-яЁёӨөҮүҢң'\-]{2,}$")
 
 
@@ -86,7 +88,18 @@ def register(*, chat_id, username, full_name, phone, specialization, city) -> In
         audit_log(intern, 'Регистрация через Telegram-бот', new_value=f'{specialization} · {city}',
                   reason='ожидает подтверждения отдела продаж')
         transaction.on_commit(lambda: _notify_head(req))
+        # 11F: карточка новой регистрации в группу продаж — с кнопкой «Оплата подтверждена»
+        transaction.on_commit(lambda: _announce_sales(req.pk))
     return intern
+
+
+def _announce_sales(request_id):
+    from apps.tgbot import sales_group
+
+    try:
+        sales_group.announce(request_id)
+    except Exception:
+        logger.exception('Карточка регистрации в группу продаж не отправлена (заявка %s)', request_id)
 
 
 def link(*, chat_id, telegram_user_id, username, full_name, contact_phone, contact_user_id):

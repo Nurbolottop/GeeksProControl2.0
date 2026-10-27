@@ -89,6 +89,8 @@ def _group(kind, payload, message, chat, sender) -> str:
         return groups.on_bot_membership(payload)
     if kind == 'chat_member':
         return groups.on_member_update(payload)
+    if kind == 'callback_query' and sales_group.is_sales_chat(chat.get('id')):
+        return sales_group.on_callback(payload)  # 11F: «Оплата подтверждена» под карточкой регистрации
     if kind != 'message':
         return 'ignored:group_callback'
     if (message.get('text') or '').strip().split('@')[0].startswith('/bind'):

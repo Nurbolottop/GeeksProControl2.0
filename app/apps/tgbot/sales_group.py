@@ -88,3 +88,88 @@ def handle(message: dict) -> str:
     outbox.send('sales_reply', chat.get('id'), f'{result.get_status_display()}{detail}: {data["full_name"]}',
                 dedup_key=f'sales-reply:{result.external_id}', thread_id=thread)
     return f'sales:{result.status}'
+
+
+# ============================================ 11F: карточка регистрации с кнопкой
+
+PAID = 'paid'
+
+
+def _card_text(req) -> str:
+    intern = req.intern
+    return (f'🆕 Новая регистрация в боте\n\nФИО: {intern.full_name}\nТелефон: {intern.phone}\n'
+            f'Направление: {intern.specialization or "—"}\nГород: {intern.city or intern.branch or "—"}\n'
+            f'Telegram: {intern.telegram or "—"}')
+
+
+def announce(request_id) -> bool:
+    """Новая регистрация → карточка в группу продаж. Оплатил — сотрудник продаж
+    жмёт «Оплата подтверждена», бот зачисляет (как по #новый_стажер)."""
+    from apps.interns.models import InternshipRequest
+    from apps.tgbot import menus, outbox
+
+    chat = str(getattr(settings, 'SALES_TELEGRAM_CHAT_ID', '') or '')
+    req = InternshipRequest.objects.select_related('intern__specialization').filter(pk=request_id).first()
+    if not chat or req is None or req.kind != InternshipRequest.Kind.ENROLL:
+        return False
+    outbox.send('sales_new', chat, _card_text(req) + '\n\nОплатил(а)? Нажмите кнопку — бот зачислит и предложит проекты.',
+                markup=menus.inline([[('✅ Оплата подтверждена', f'{PAID}:{req.pk}')]]),
+                dedup_key=f'sales-new:{req.pk}')
+    return True
+
+
+def _answer(callback_id, text=''):
+    try:
+        from apps.graduate_bot.bot import bot
+
+        bot.answer_callback_query(callback_id, text=text or None, show_alert=bool(text))
+    except Exception:
+        pass
+
+
+def _close_card(message, text):
+    try:
+        from apps.graduate_bot.bot import bot
+
+        bot.edit_message_text(text, message['chat']['id'], message['message_id'])
+    except Exception:
+        pass
+
+
+def on_callback(payload) -> str:
+    """Кнопка под карточкой регистрации. Подтверждает только сотрудник из
+    SALES_AGENT_TELEGRAM_IDS — проверку делает record_sales_confirmation."""
+    from apps.common import telegram_guard
+    from apps.interns.models import InternshipRequest
+    from apps.interns.sales import SalesEvent, record_sales_confirmation
+    from apps.interns.models import SalesConfirmation
+
+    telegram_guard.permit('callback', payload.get('id'))
+    message = payload.get('message') or {}
+    sender = payload.get('from') or {}
+    action, _, value = (payload.get('data') or '').partition(':')
+    if action != PAID or not value.isdigit():
+        _answer(payload.get('id'))
+        return 'sales:btn_unknown'
+    allowed = {str(x) for x in getattr(settings, 'SALES_AGENT_TELEGRAM_IDS', set())}
+    if str(sender.get('id', '')) not in allowed:
+        _answer(payload.get('id'), 'Подтверждать оплату может только сотрудник отдела продаж.')
+        return 'sales:btn_denied'
+    req = InternshipRequest.objects.select_related('intern__specialization').filter(
+        pk=int(value), kind=InternshipRequest.Kind.ENROLL).first()
+    if req is None:
+        _answer(payload.get('id'), 'Заявка не найдена.')
+        return 'sales:btn_missing'
+    intern = req.intern
+    name = ' '.join(x for x in (sender.get('first_name'), sender.get('last_name')) if x) or sender.get('username', '')
+    result = record_sales_confirmation(SalesEvent(
+        external_id=f'tg-btn:{req.pk}', agent_telegram_id=str(sender.get('id', '')), agent_name=name,
+        phone=intern.phone, full_name=intern.full_name, reference='кнопка в группе продаж',
+        direction=intern.specialization.name if intern.specialization else '', city=intern.city or intern.branch or ''))
+    if result.status == SalesConfirmation.Status.APPLIED:
+        _answer(payload.get('id'))
+        _close_card(message, _card_text(req) + f'\n\n✅ Оплата подтверждена — {name}. Бот предложил стажёру проекты.')
+    else:
+        detail = f' ({result.detail})' if result.detail else ''
+        _answer(payload.get('id'), f'{result.get_status_display()}{detail}')
+    return f'sales:btn_{result.status}'

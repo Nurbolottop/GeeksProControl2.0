@@ -196,6 +196,30 @@ class RegistrationAndSalesTests(Base):
         self.assertTrue(TeamMember.objects.filter(intern=intern, project=project, status='active').exists())
         self.assertEqual(self.send(cb(USER, f'choose_ok:{project.pk}')), 'choose:denied')  # один раз
 
+    def test_registration_card_with_paid_button(self):
+        """11F: регистрация → карточка в группу продаж; «Оплата подтверждена» зачисляет."""
+        self.register()
+        intern = Intern.objects.get(telegram_chat_id=USER)
+        req = InternshipRequest.objects.get(intern=intern)
+        card = OutboundMessage.objects.get(kind='sales_new', chat_id=SALES_CHAT)
+        self.assertIn('Асанов Бакыт', card.text)
+        self.assertIn(f'paid:{req.pk}', json.dumps(card.reply_markup))
+        self.bot.edit_message_text = mock.Mock()
+
+        def press(user):
+            return {'update_id': next(_ids), 'callback_query': {
+                'id': str(next(_ids)), 'data': f'paid:{req.pk}', 'from': {'id': user, 'is_bot': False, 'first_name': 'Айбек'},
+                'message': {'message_id': 77, 'date': 0, 'chat': {'id': SALES_CHAT, 'type': 'supergroup'}}}}
+        with mock.patch('apps.graduate_bot.bot.bot', self.bot):
+            self.assertEqual(self.send(press(STRANGER)), 'sales:btn_denied')  # не сотрудник продаж
+            req.refresh_from_db()
+            self.assertEqual(req.sales_status, 'pending')
+            self.assertEqual(self.send(press(AGENT)), 'sales:btn_applied')
+        req.refresh_from_db()
+        self.assertEqual((req.status, req.sales_status), ('approved', 'confirmed'))
+        self.assertTrue(OutboundMessage.objects.filter(kind='registration_confirmed', intern=intern).exists())
+        self.assertIn('Оплата подтверждена — Айбек', self.bot.edit_message_text.call_args.args[0])
+
     def test_ambiguous_sales_go_to_manual(self):
         for name in ('Асанов Бакыт', 'Асанов Бакыт Маратович'):
             Intern.objects.create(full_name=name, phone='0700111222', specialization=self.backend, branch='Бишкек')
