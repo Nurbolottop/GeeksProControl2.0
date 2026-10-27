@@ -165,7 +165,7 @@ def branch_filter(branch: str):
 
 
 def branch_summary(interns) -> dict:
-    """Сколько стажёров в каждом филиале: всего, занято, свободно,
+    """Сколько стажёров в каждом филиале: всего, в проекте, без проекта,
     и разбивка по направлениям."""
     from apps.teams.models import TeamMember
 
