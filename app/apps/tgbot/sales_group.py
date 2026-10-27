@@ -114,7 +114,7 @@ def announce(request_id) -> bool:
         return False
     outbox.send('sales_new', chat, _card_text(req) + '\n\nОплатил(а)? Нажмите кнопку — бот зачислит и предложит проекты.',
                 markup=menus.inline([[('✅ Оплата подтверждена', f'{PAID}:{req.pk}')]]),
-                dedup_key=f'sales-new:{req.pk}')
+                thread_id=getattr(settings, 'SALES_NEW_INTERNS_THREAD_ID', None), dedup_key=f'sales-new:{req.pk}')
     return True
 
 

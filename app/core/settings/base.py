@@ -388,6 +388,8 @@ JAAS_ANONYMOUS_BLOCKED_VERIFIED = os.getenv('JAAS_ANONYMOUS_BLOCKED_VERIFIED', '
 # Группа отдела продаж (этап 8A): только из неё принимаются сообщения «#оплата».
 # Пусто — подтверждения продаж из Telegram не принимаются.
 SALES_TELEGRAM_CHAT_ID = os.getenv('SALES_TELEGRAM_CHAT_ID', '').strip()
+# 11F: тема группы продаж для карточек новых регистраций («Новые стажёры»); пусто — General
+SALES_NEW_INTERNS_THREAD_ID = int(os.getenv('SALES_NEW_INTERNS_THREAD_ID', '0') or 0) or None
 
 # Тесты: загрузки — во временную папку (core/test_runner.py)
 TEST_RUNNER = 'core.test_runner.TempMediaRunner'

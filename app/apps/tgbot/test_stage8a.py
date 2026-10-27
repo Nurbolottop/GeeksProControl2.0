@@ -196,6 +196,7 @@ class RegistrationAndSalesTests(Base):
         self.assertTrue(TeamMember.objects.filter(intern=intern, project=project, status='active').exists())
         self.assertEqual(self.send(cb(USER, f'choose_ok:{project.pk}')), 'choose:denied')  # один раз
 
+    @override_settings(SALES_NEW_INTERNS_THREAD_ID=5)
     def test_registration_card_with_paid_button(self):
         """11F: регистрация → карточка в группу продаж; «Оплата подтверждена» зачисляет."""
         self.register()
@@ -203,6 +204,7 @@ class RegistrationAndSalesTests(Base):
         req = InternshipRequest.objects.get(intern=intern)
         card = OutboundMessage.objects.get(kind='sales_new', chat_id=SALES_CHAT)
         self.assertIn('Асанов Бакыт', card.text)
+        self.assertEqual(card.message_thread_id, 5)  # тема «Новые стажёры», не General
         self.assertIn(f'paid:{req.pk}', json.dumps(card.reply_markup))
         self.bot.edit_message_text = mock.Mock()
 
