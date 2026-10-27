@@ -48,13 +48,21 @@ def _context(request):
     }
 
 
-TABS = (('review', 'Проверка людей'), ('groups', 'Группы'), ('members', 'Участники групп'), ('log', 'Журнал'))
+TABS = (('review', 'Проверка людей'), ('decisions', 'Решения по стажёрам'), ('groups', 'Группы'),
+        ('members', 'Участники групп'), ('log', 'Журнал'))
 
 
 @login_required
 def reconcile(request):
+    return reconcile_page(request)
+
+
+def reconcile_page(request, tab=None):
+    from apps.interns.views import decisions_context
+
     _head(request)
     context = _context(request)
+    context.update(decisions_context())
     try:
         from apps.tgbot import group_views
 
@@ -63,9 +71,10 @@ def reconcile(request):
         pass
     from apps.tgbot.models import GroupMembership
 
-    tab = request.GET.get('tab') if request.GET.get('tab') in dict(TABS) else 'review'
+    tab = tab or (request.GET.get('tab') if request.GET.get('tab') in dict(TABS) else 'review')
     counts = {
         'review': len(context['links']) + len(context['sales']) + len(context['enrollments']),
+        'decisions': context['decisions_count'],
         'groups': sum(1 for g in context.get('tg_groups', []) if g.status == 'pending'),
         'members': GroupMembership.objects.filter(status=GroupMembership.Status.TO_INVITE).count(),
     }

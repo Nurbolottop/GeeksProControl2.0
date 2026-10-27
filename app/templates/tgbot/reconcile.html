@@ -3,13 +3,15 @@
 {% block title %}Telegram-бот — GeeksPro Control{% endblock %}
 {% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
 {% block page %}
-{% ui_page_header title="Telegram-бот" subtitle="Проверка людей, группы, участники групп и журнал сообщений" %}
+{% ui_page_header title="Telegram-бот" subtitle="Проверка людей, решения по стажёрам, группы, участники групп и журнал сообщений" %}
 {% end_ui_page_header %}
 {% ui_tabs tg_tabs active=tab label="Разделы Telegram-бота" %}
 <div style="margin-top: var(--space-5)"></div>
 {% if outbox_held %}<div style="margin-bottom: var(--space-4)">{% ui_alert "Исходящие запрещены режимом TELEGRAM_OUTBOUND_MODE: такие сообщения записаны в журнал, в Telegram они не ушли." title="Задержано защитой" %}</div>{% endif %}
 
 {% block groups %}{% if groups_block %}{% include "tgbot/_groups.html" %}{% endif %}{% endblock %}
+
+{% if tab == 'decisions' %}{% include "interns/_decisions.html" %}{% endif %}
 
 {% if tab == 'review' %}
 <div class="gp-grid gp-grid--2" style="--grid-gap: var(--space-5); align-items: start">

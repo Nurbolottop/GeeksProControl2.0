@@ -1,9 +1,5 @@
-{% extends "layouts/app.html" %}
 {% load ui %}
-{% block title %}Решения по стажёрам — GeeksPro Control{% endblock %}
-{% block breadcrumbs %}{% ui_breadcrumbs crumbs %}{% endblock %}
-{% block page %}
-{% ui_page_header title="Решения по стажёрам" subtitle="Три предупреждения, подтверждение оплаты, заморозки, возвращения, отмены и повторные стажировки. Решает руководитель." %}{% end_ui_page_header %}
+{# «Решения по стажёрам» — вкладка страницы «Telegram-бот» (11F) #}
 
 <div class="gp-stack gp-stack--lg">
 {% ui_card title="Три предупреждения" subtitle="Это не отчисление: выберите «Отчислить» или «Оставить». «Оставить» обнуляет счётчик — сами предупреждения остаются в истории." flush=True %}
@@ -38,12 +34,6 @@
     {% endfor %}
     </ul>
     {% else %}<div style="padding: var(--space-6)">{% ui_empty "Нет заявок, ждущих продаж" icon_name="briefcase" %}</div>{% endif %}
-    {% if sales_events %}
-    <div style="padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border)">
-        <h3 class="gp-h3">События продаж на сверку</h3>
-        <ul class="gp-doc__versions">{% for e in sales_events %}<li>{{ e.occurred_at|date:"d.m.Y H:i" }} · {{ e.full_name|default:"без ФИО" }} {{ e.phone }} · {{ e.get_status_display }}{% if e.agent_name %} · {{ e.agent_name }}{% endif %}</li>{% endfor %}</ul>
-    </div>
-    {% endif %}
 {% end_ui_card %}
 
 {% ui_card title="Ждут решения руководителя" flush=True %}
@@ -124,4 +114,3 @@
         {% ui_slot "footer" %}{% ui_button "Отмена" variant="ghost" data_gp_close=True %}{% ui_button "Одобрить" variant="primary" type="submit" form=req.ui_form %}{% end_ui_slot %}
     {% end_ui_modal %}
 {% endif %}{% endfor %}
-{% endblock %}

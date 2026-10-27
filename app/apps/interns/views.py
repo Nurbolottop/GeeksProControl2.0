@@ -491,18 +491,15 @@ def intern_unpause(request, pk):
     return redirect(intern.get_absolute_url())
 
 
-@login_required
-def internship_requests(request):
-    """Решения по стажёрам (UI-03C/04B): три предупреждения, подтверждение
-    продаж, заявки на заморозку, возвращение, отмену и повторную стажировку."""
+def decisions_context() -> dict:
+    """Решения по стажёрам (UI-03C/04B): три предупреждения, заморозка, возвращение,
+    отмена и повторная стажировка. 11F — вкладка страницы «Telegram-бот»."""
     from apps.interns.models import DisciplineCase, InternshipRequest
-
-    from apps.interns.models import SalesConfirmation
-    from apps.interns.sales import SALES_KINDS
 
     base = InternshipRequest.objects.select_related('intern__specialization', 'decided_by', 'chosen_project', 'sales_by',
                                                     'project')
-    pending = list(base.filter(status=InternshipRequest.Status.PENDING).order_by('created_at'))
+    pending = list(base.filter(status=InternshipRequest.Status.PENDING).exclude(
+        kind=InternshipRequest.Kind.ENROLL).order_by('created_at'))  # регистрации — во вкладке «Проверка людей»
     for req in pending:
         req.ui_modal, req.ui_form = f'req-approve-{req.pk}', f'req-approve-form-{req.pk}'
         req.ui_waits_sales = req.kind == InternshipRequest.Kind.REENROLL and req.sales_status != InternshipRequest.Sales.CONFIRMED
@@ -511,19 +508,26 @@ def internship_requests(request):
                  .order_by('created_at'))
     for case in cases:
         case.ui_keep, case.ui_expel = f'case-keep-{case.pk}', f'case-expel-{case.pk}'
-    return render(request, 'interns/internship_requests.html', {
+    sales_queue = [r for r in pending if r.kind == InternshipRequest.Kind.REENROLL
+                   and r.sales_status == InternshipRequest.Sales.PENDING]
+    waiting = [r for r in pending if r not in sales_queue]
+    return {
         'cases': cases,
-        # 11F: регистрация в боте (ENROLL) тоже ждёт продаж — кнопки «Одобрить» у руководителя для неё нет
-        'sales_queue': [r for r in pending if r.kind in SALES_KINDS
-                        and r.sales_status == InternshipRequest.Sales.PENDING],
-        'pending': [r for r in pending if not (r.kind in SALES_KINDS
-                                               and r.sales_status == InternshipRequest.Sales.PENDING)],
+        'sales_queue': sales_queue,
+        'pending': waiting,
         'decided': base.exclude(status=InternshipRequest.Status.PENDING).order_by('-decided_at')[:50],
-        'sales_events': SalesConfirmation.objects.exclude(status=SalesConfirmation.Status.APPLIED)[:20],
         'decided_cases': DisciplineCase.objects.exclude(status=DisciplineCase.Status.PENDING)
         .select_related('intern', 'decided_by').order_by('-decided_at')[:30],
-        'crumbs': [{'label': 'Главная', 'href': reverse('dashboard')}, {'label': 'Решения по стажёрам', 'href': ''}],
-    })
+        'decisions_count': len(cases) + len(waiting),
+    }
+
+
+@login_required
+def internship_requests(request):
+    """Старый адрес «Решений по стажёрам» — та же вкладка страницы «Telegram-бот»."""
+    from apps.tgbot.views import reconcile_page
+
+    return reconcile_page(request, tab='decisions')
 
 
 @login_required
