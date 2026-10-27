@@ -524,13 +524,16 @@ def show_available(message, sender, state, intern):
         _reply(chat_id, 'Ваша заявка на продолжение стажировки у руководителя. Как одобрит — '
                         'здесь появится выбор проекта.', intern=intern)
         return 'projects:continue_pending'
+    if not freeze.can_choose(intern) and freeze.second_allowed(intern):
+        return _second_list(chat_id, intern)
     if not freeze.can_choose(intern):
         from apps.projects.services import projects_open_for_recruitment
 
         names = [f'{p.name} — {p.recruitment_summary}' if p.recruitment_roles or p.recruitment_kind != 'all' else p.name
                  for p in projects_open_for_recruitment().order_by('name')[:15]]
         _reply(chat_id, ('Открыт набор:\n' + '\n'.join(f'• {n}' for n in names) if names else 'Сейчас набора нет.') +
-               '\n\nВступление во второй проект оформляют руководитель и тимлид.', intern=intern)
+               '\n\nНовые стажёры участвуют в одном проекте. Второй параллельно — для тех, кто уже '
+               'заканчивал проект, и для дизайнеров, по заявке руководителю.', intern=intern)
         return 'projects:info'
     projects = freeze.available_projects(intern)
     if not projects:
@@ -546,6 +549,51 @@ def show_available(message, sender, state, intern):
     _reply(chat_id, '\n'.join(lines)[:4000],
            menus.inline([[(p.name[:60], f'choose:{p.pk}')] for p in projects[:20]]))
     return 'projects:list'
+
+
+def _second_list(chat_id, intern):
+    """11F: стажёр уже в проекте — выбирает второй, заявка уходит руководителю."""
+    from apps.interns import freeze
+
+    pending = freeze.second_pending(intern)
+    if pending:
+        _reply(chat_id, f'Заявка на второй проект «{pending.chosen_project.name}» уже у руководителя. '
+                        'Как решит — напишем сюда.', intern=intern)
+        return 'second:pending'
+    projects = freeze.second_projects(intern)
+    if not projects:
+        _reply(chat_id, 'Сейчас нет проектов с открытым набором для вашего направления. Напишем, когда появятся.',
+               intern=intern)
+        return 'second:none'
+    lines = ['Можно участвовать параллельно ещё в одном проекте. Выберите — заявка уйдёт руководителю:']
+    for p in projects[:20]:
+        lines.append(f'\n• {p.name}' + (f' — {p.intern_brief}' if p.intern_brief else ''))
+    _reply(chat_id, '\n'.join(lines)[:4000], menus.inline([[(p.name[:60], f'second:{p.pk}')] for p in projects[:20]]))
+    return 'second:list'
+
+
+def _second(chat_id, intern, project_id, *, confirm):
+    from apps.interns import freeze
+    from apps.projects.models import Project
+
+    project = Project.objects.filter(pk=project_id).first()
+    if project is None or project not in freeze.second_projects(intern):
+        _reply(chat_id, 'В этот проект сейчас нельзя подать заявку.', intern=intern)
+        return 'second:unavailable'
+    if not confirm:
+        about = f'\n{project.intern_brief}\n' if project.intern_brief else ''
+        _reply(chat_id, f'Отправить руководителю заявку на участие в проекте «{project.name}»?{about}\n'
+                        'Текущий проект остаётся за вами.',
+               menus.inline([[('Да, отправить', f'second_ok:{project.pk}'), ('Отмена', 'cancel')]]))
+        return 'second:confirm'
+    try:
+        freeze.request_second(intern, project)
+    except (ValidationError, freeze.FreezeError) as error:
+        _reply(chat_id, _errors(error), intern=intern)
+        return 'second:refused'
+    _reply(chat_id, f'Заявка на участие в «{project.name}» отправлена руководителю. Как решит — напишем сюда.',
+           intern=intern)
+    return 'second:sent'
 
 
 # -------------------------------------------------------------- задачи
@@ -745,6 +793,11 @@ def _callback(payload, message, sender) -> str:
         return _meeting_entry(chat_id, intern, int(value))
     if action == 'bank' and value in ('agree', 'sent'):
         return _bank(chat_id, intern, value)
+    if action in ('second', 'second_ok') and value.isdigit():
+        if menus.AVAILABLE not in labels:
+            _reply(chat_id, 'Выбор проекта сейчас недоступен.', intern=intern)
+            return 'cb:denied'
+        return _second(chat_id, intern, int(value), confirm=action == 'second_ok')
     if action in ('choose', 'choose_ok') and value.isdigit():
         return _choose(chat_id, intern, int(value), confirm=action == 'choose_ok')
     if action in ('task', 'start', 'submit') and value.isdigit():

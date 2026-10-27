@@ -155,8 +155,12 @@ def buttons_for(intern, chat_id=None) -> list[list[str]]:
     extra = []
     if is_active_pm(intern):
         extra.append(PM_REPORT)  # стажёр направления PM — назначенный ПМ проекта
-    if is_graduate(intern.pk):
+    from apps.interns.freeze import second_allowed
+
+    graduate = is_graduate(intern.pk)
+    if graduate or second_allowed(intern):  # 11F: заявка во второй проект — старым и дизайнерам
         extra.append(AVAILABLE)
+    if graduate:
         if leave_allowed(intern):
             extra.append(LEAVE)
     if extra:

@@ -222,6 +222,8 @@ def approve(req: InternshipRequest, user, comment: str = '') -> InternshipReques
             from apps.interns import discipline
 
             discipline.apply_reenroll(req, intern, user)
+        elif req.kind == Kind.SECOND:
+            _apply_second(req, intern, user)
         elif req.kind == Kind.CONTINUE:
             audit_log(intern, 'Продолжение стажировки одобрено', reason=req.reason, user=user,
                       new_value='проект — выбор в боте')
@@ -351,6 +353,81 @@ def choose_project(intern: Intern, project):
     return member
 
 
+# ------------------------------------------------- 11F: второй проект параллельно
+
+def _active_projects(intern) -> int:
+    from apps.teams.rules import _active_direction_members
+
+    return _active_direction_members().filter(intern=intern).values('project_id').distinct().count()
+
+
+def second_allowed(intern: Intern) -> bool:
+    """Может ли стажёр с проектом попросить второй: старый (уже заканчивал проект)
+    или дизайнер (UX/UI заканчивает раньше), сейчас ровно в одном проекте."""
+    from apps.dashboard.graduation import is_graduate
+    from apps.teams.models import TeamRole
+
+    if intern is None or intern.is_archived or intern.status != InternStatus.ACTIVE or is_pm_direction(intern):
+        return False
+    if _active_projects(intern) != 1:
+        return False
+    return is_graduate(intern.pk) or _role(intern) == TeamRole.UXUI
+
+
+def second_pending(intern: Intern) -> InternshipRequest | None:
+    return intern.internship_requests.filter(kind=Kind.SECOND, status=Status.PENDING).select_related(
+        'chosen_project').first()
+
+
+def second_projects(intern: Intern) -> list:
+    """Проекты с открытым набором, куда стажёра можно взять вторым проектом."""
+    from apps.projects.services import projects_open_for_recruitment
+    from apps.teams.models import TeamMember
+    from apps.teams.rules import check_assignment
+
+    if not second_allowed(intern):
+        return []
+    role = _role(intern)
+    mine = set(TeamMember.objects.filter(intern=intern, status=TeamMember.Status.ACTIVE).values_list('project_id', flat=True))
+    return [p for p in projects_open_for_recruitment().order_by('name')
+            if p.pk not in mine and not check_assignment(intern, p, role)[0]]
+
+
+def request_second(intern: Intern, project, *, source=InternshipRequest.Source.BOT, user=None) -> InternshipRequest:
+    """Заявка руководителю: участвовать параллельно ещё в одном проекте."""
+    if project not in second_projects(intern):
+        raise FreezeError('В этот проект сейчас нельзя подать заявку.')
+    from apps.teams.models import TeamMember, TeamRole
+
+    current = ', '.join(TeamMember.objects.filter(intern=intern, status=TeamMember.Status.ACTIVE)
+                        .values_list('project__name', flat=True))
+    req = _create(intern, Kind.SECOND, f'Хочу участвовать параллельно в проекте «{project.name}» '
+                                       f'({TeamRole(_role(intern)).label}). Сейчас в: {current}', source, user)
+    req.chosen_project = project
+    req.save(update_fields=['chosen_project', 'updated_at'])
+    transaction.on_commit(lambda: _notify_head(req))
+    return req
+
+
+def _apply_second(req: InternshipRequest, intern: Intern, user):
+    from apps.audit.services import log as audit_log
+    from apps.teams.models import TeamMember
+    from apps.teams.rules import check_assignment, lock_and_recheck
+
+    project = req.chosen_project
+    if project is None:
+        raise FreezeError('В заявке не указан проект.')
+    role = _role(intern)
+    closed = lock_and_recheck(project, intern, role)
+    errors, _ = check_assignment(intern, project, role)
+    if closed or errors:
+        raise FreezeError([closed] if closed else errors)
+    TeamMember.objects.create(project=project, intern=intern, role=role, status=TeamMember.Status.ACTIVE,
+                              group=getattr(project, 'group', None), joined_at=timezone.localdate())
+    req.chosen_at = timezone.now()
+    audit_log(intern, 'Второй проект параллельно', new_value=project.name, reason=req.reason, user=user)
+
+
 # ------------------------------------------------------------ сообщения
 
 def _tell_intern(req: InternshipRequest):
@@ -370,6 +447,9 @@ def _tell_intern(req: InternshipRequest):
     elif req.kind == Kind.FREEZE:
         text = ('Стажировка заморожена. Вы вышли из команд проектов. Когда будете готовы '
                 'продолжить — отправьте /return и укажите причину.')
+    elif req.kind == Kind.SECOND:
+        text = (f'Руководитель одобрил участие во втором проекте «{req.chosen_project.name}». '
+                'Ссылка в группу проекта придёт отдельным сообщением.')
     elif req.kind == Kind.CONTINUE:
         text = ('Заявка на продолжение стажировки одобрена! ' +
                 ('Проект для направления PM назначит руководитель — напишем сюда.' if is_pm_direction(intern)

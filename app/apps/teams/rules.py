@@ -123,7 +123,11 @@ def check_assignment(intern, project, role, exclude_member_pk=None, joining=True
         if len(old_ids) >= OLD_MAX_PER_DIRECTION:
             errors.append(f'В направлении уже {len(old_ids)} старых стажёра — максимум {OLD_MAX_PER_DIRECTION}.')
     else:
-        if projects_elsewhere >= NEW_MAX_PROJECTS:
+        # 11F: дизайн заканчивается раньше — новый UX/UI может идти во второй проект, не дожидаясь конца первого
+        new_max = OLD_MAX_PROJECTS if role == TeamRole.UXUI else NEW_MAX_PROJECTS
+        if projects_elsewhere >= new_max and role == TeamRole.UXUI:
+            errors.append(f'{intern.full_name} уже в {projects_elsewhere} проектах — дизайнер может быть максимум в {new_max}.')
+        elif projects_elsewhere >= new_max:
             errors.append(f'{intern.full_name} — новый стажёр и уже участвует в проекте; вторая параллельная стажировка запрещена.')
         same_direction = _active_direction_members().filter(project=project, role=role).exclude(intern=intern)
         if same_direction.count() >= NEW_TARGET_PER_DIRECTION:
