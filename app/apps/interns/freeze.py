@@ -348,6 +348,8 @@ def choose_project(intern: Intern, project):
         intern.save(update_fields=['status', 'graduate_status', 'updated_at'])
         req.chosen_project, req.chosen_at = project, timezone.now()
         req.save(update_fields=['chosen_project', 'chosen_at', 'updated_at'])
+        if req.kind == Kind.ENROLL:  # 11F: в карточке регистрации в группе продаж — какой проект выбрал
+            transaction.on_commit(lambda: _card_project(req.pk))
         audit_log(intern, {Kind.ENROLL: 'Выбрал(а) первый проект', Kind.CONTINUE: 'Выбрал(а) проект — выпускник продолжает'}
                   .get(req.kind, 'Выбрал(а) проект после возвращения'), new_value=project.name)
     return member
@@ -426,6 +428,17 @@ def _apply_second(req: InternshipRequest, intern: Intern, user):
                               group=getattr(project, 'group', None), joined_at=timezone.localdate())
     req.chosen_at = timezone.now()
     audit_log(intern, 'Второй проект параллельно', new_value=project.name, reason=req.reason, user=user)
+
+
+def _card_project(request_id):
+    try:
+        from apps.tgbot import sales_group
+
+        sales_group.card_project_chosen(request_id)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception('Карточка в группе продаж не обновлена (заявка %s)', request_id)
 
 
 # ------------------------------------------------------------ сообщения

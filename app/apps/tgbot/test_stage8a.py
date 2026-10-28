@@ -221,6 +221,15 @@ class RegistrationAndSalesTests(Base):
         self.assertEqual((req.status, req.sales_status), ('approved', 'confirmed'))
         self.assertTrue(OutboundMessage.objects.filter(kind='registration_confirmed', intern=intern).exists())
         self.assertIn('Оплата подтверждена — Айбек', self.bot.edit_message_text.call_args.args[0])
+        # 11F: стажёр выбрал проект — в той же карточке появляется проект
+        OutboundMessage.objects.filter(pk=card.pk).update(telegram_message_id=77)
+        project = create_project(Project(name='Проект Карточки', recruitment_open=True))
+        with mock.patch('apps.graduate_bot.bot.bot', self.bot):
+            self.assertEqual(self.send(cb(USER, f'choose_ok:{project.pk}')), 'choose:done')
+        text, chat, message_id = self.bot.edit_message_text.call_args.args
+        self.assertEqual((chat, message_id), (SALES_CHAT, 77))
+        self.assertIn('Оплата подтверждена — Айбек', text)
+        self.assertIn('📌 Проект: Проект Карточки', text)
 
     def test_ambiguous_sales_go_to_manual(self):
         for name in ('Асанов Бакыт', 'Асанов Бакыт Маратович'):

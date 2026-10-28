@@ -168,8 +168,41 @@ def on_callback(payload) -> str:
         direction=intern.specialization.name if intern.specialization else '', city=intern.city or intern.branch or ''))
     if result.status == SalesConfirmation.Status.APPLIED:
         _answer(payload.get('id'))
-        _close_card(message, _card_text(req) + f'\n\n✅ Оплата подтверждена — {name}. Бот предложил стажёру проекты.')
+        _close_card(message, _closed_text(req))
     else:
         detail = f' ({result.detail})' if result.detail else ''
         _answer(payload.get('id'), f'{result.get_status_display()}{detail}')
     return f'sales:btn_{result.status}'
+
+
+def _closed_text(req) -> str:
+    """Закрытая карточка: кто подтвердил оплату и (когда выбран) проект стажёра."""
+    from apps.interns.models import SalesConfirmation
+
+    paid = SalesConfirmation.objects.filter(external_id=f'tg-btn:{req.pk}').first()
+    text = _card_text(req) + '\n\n✅ Оплата подтверждена' + (f' — {paid.agent_name}' if paid and paid.agent_name else '') + '.'
+    if req.chosen_project_id:
+        return text + f'\n📌 Проект: {req.chosen_project.name}'
+    return text + ' Бот предложил стажёру проекты.'
+
+
+def card_project_chosen(request_id) -> bool:
+    """11F: стажёр выбрал проект — дописываем проект в его карточку в группе продаж."""
+    from apps.interns.models import InternshipRequest
+    from apps.tgbot.models import OutboundMessage
+
+    req = InternshipRequest.objects.select_related('intern__specialization', 'chosen_project').filter(pk=request_id).first()
+    if req is None or not req.chosen_project_id:
+        return False
+    cards = OutboundMessage.objects.filter(kind='sales_new', dedup_key__startswith=f'sales-new:{req.pk}',
+                                           telegram_message_id__isnull=False).order_by('-pk')
+    card = next((c for c in cards if c.dedup_key in (f'sales-new:{req.pk}', f'sales-new:{req.pk}:topic')), None)
+    if card is None:
+        return False
+    try:
+        from apps.graduate_bot.bot import bot
+
+        bot.edit_message_text(_closed_text(req), card.chat_id, card.telegram_message_id)
+    except Exception:
+        return False
+    return True
