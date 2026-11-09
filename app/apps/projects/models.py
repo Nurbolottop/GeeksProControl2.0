@@ -396,8 +396,9 @@ class ProjectStatusHistory(TimeStampedModel):
         verbose_name='Проект',
     )
     field = models.CharField('Поле', max_length=50)
-    old_value = models.CharField('Старое значение', max_length=255, blank=True)
-    new_value = models.CharField('Новое значение', max_length=255, blank=True)
+    # Текст, не 255 символов: при закрытии сюда пишется список выпускников
+    old_value = models.TextField('Старое значение', blank=True)
+    new_value = models.TextField('Новое значение', blank=True)
     reason = models.TextField('Причина', blank=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
