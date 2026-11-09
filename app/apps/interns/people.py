@@ -8,9 +8,11 @@ TeamMember; выпуск — только apps.dashboard.graduation (тот же
 """
 from __future__ import annotations
 
+import datetime
 from collections import defaultdict
 
 from django.db.models import Count, Exists, OuterRef, Q
+from django.utils import timezone
 
 from apps.interns.models import (
     AVAILABLE_STATUSES,
@@ -103,10 +105,18 @@ def project_stats() -> dict:
     busy = base.filter(on_project=True)
     repeat = busy.filter(pk__in=graduates).count()
     active = busy.count()
+    # Прошлая календарная неделя (пн–вс) — настоящие новые: регистрация через бота
+    monday = timezone.localdate() - datetime.timedelta(days=timezone.localdate().weekday())
+    week_start, week_end = monday - datetime.timedelta(days=7), monday - datetime.timedelta(days=1)
+    enrolled = InternshipRequest.objects.filter(
+        kind=InternshipRequest.Kind.ENROLL, source=InternshipRequest.Source.BOT,
+    )
     return {
         'active': active, 'new': active - repeat, 'repeat': repeat,
         'paused': base.filter(status=InternStatus.PAUSED).count(),
         'graduates': base.filter(pk__in=graduates).count(),
+        'week_new': enrolled.filter(created_at__date__range=(week_start, week_end)).count(),
+        'week_start': week_start, 'week_end': week_end, 'bot_total': enrolled.count(),
     }
 
 

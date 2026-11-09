@@ -682,13 +682,21 @@ class GraduationOnCloseTests(TestCase):
         member(self.project, old)
         member(self.project, Intern.objects.create(full_name='Первый Проект', specialization=self.backend, status=InternStatus.ACTIVE))
         Intern.objects.create(full_name='Замороженный', specialization=self.backend, status=InternStatus.PAUSED)
+        from apps.interns.models import InternshipRequest as Request
+        from django.utils import timezone
+
+        for days_ago in (0, 7):  # эта неделя и прошлая
+            req = Request.objects.create(intern=Intern.objects.create(full_name=f'Из бота {days_ago}', specialization=self.backend),
+                                         kind=Request.Kind.ENROLL, reason='Регистрация', source=Request.Source.BOT)
+            Request.objects.filter(pk=req.pk).update(created_at=timezone.now() - datetime.timedelta(days=days_ago))
         stats = project_stats()
-        self.assertEqual(stats, {'active': 2, 'new': 1, 'repeat': 1, 'paused': 1, 'graduates': 1})
+        self.assertEqual({k: stats[k] for k in ('active', 'new', 'repeat', 'paused', 'graduates', 'week_new', 'bot_total')},
+                         {'active': 2, 'new': 1, 'repeat': 1, 'paused': 1, 'graduates': 1, 'week_new': 1, 'bot_total': 2})
         self.client.force_login(self.head)
         response = self.client.get(reverse('projects:list'))
         self.assertContains(response, 'Активные повторные')
         self.assertEqual(response.context['people_stats'], stats)
-        self.assertContains(self.client.get(reverse('interns:list')), 'Активные повторные')
+        self.assertContains(self.client.get(reverse('interns:list')), 'Новые за прошлую неделю')
 
     def test_many_graduates_fit_into_history(self):
         # 11F: список выпускников большой команды длиннее 255 символов — закрытие падало
