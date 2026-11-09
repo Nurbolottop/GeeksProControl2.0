@@ -675,6 +675,20 @@ class GraduationOnCloseTests(TestCase):
         self.assertEqual(novice.graduate_status, GraduateStatus.PENDING)
         self.assertEqual(novice.status, InternStatus.READY)
 
+    def test_people_stats_on_project_list(self):
+        from apps.interns.people import project_stats
+
+        old = graduate('Старый Снова', self.backend)
+        member(self.project, old)
+        member(self.project, Intern.objects.create(full_name='Первый Проект', specialization=self.backend, status=InternStatus.ACTIVE))
+        Intern.objects.create(full_name='Замороженный', specialization=self.backend, status=InternStatus.PAUSED)
+        stats = project_stats()
+        self.assertEqual(stats, {'active': 2, 'new': 1, 'repeat': 1, 'paused': 1, 'graduates': 1})
+        self.client.force_login(self.head)
+        response = self.client.get(reverse('projects:list'))
+        self.assertContains(response, 'Активные повторные')
+        self.assertEqual(response.context['people_stats'], stats)
+
     def test_many_graduates_fit_into_history(self):
         # 11F: список выпускников большой команды длиннее 255 символов — закрытие падало
         names = [f'Стажёрова Длиннофамильная Номер{n} Отчествовна' for n in range(15)]

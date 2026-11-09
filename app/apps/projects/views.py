@@ -119,6 +119,9 @@ def project_list(request, category='all'):
     if request.htmx and request.htmx.target == 'project-list':
         # htmx меняет содержимое #project-list — отдаём только таблицу
         return render(request, 'projects/_project_table.html', context)
+    from apps.interns.people import project_stats
+
+    context['people_stats'] = project_stats()
     return render(request, 'projects/list.html', context)
 
 

@@ -92,6 +92,24 @@ def search_filter(qs, search):
     return qs.filter(query)
 
 
+def project_stats() -> dict:
+    """Цифры над «Все проекты» — те же люди и фильтры, что в списке стажёров.
+
+    Новый/повторный — как метка «новый/старый» в списке: повторный уже
+    выпускался (graduation.compute) и снова в проекте.
+    """
+    base = list_queryset(staff_ids())
+    graduates = graduate_ids()
+    busy = base.filter(on_project=True)
+    repeat = busy.filter(pk__in=graduates).count()
+    active = busy.count()
+    return {
+        'active': active, 'new': active - repeat, 'repeat': repeat,
+        'paused': base.filter(status=InternStatus.PAUSED).count(),
+        'graduates': base.filter(pk__in=graduates).count(),
+    }
+
+
 def apply_filters(qs, params, graduates: set):
     qs = search_filter(qs, params.get('q'))
     if params.get('branch') in BRANCHES:

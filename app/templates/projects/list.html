@@ -5,6 +5,36 @@
 {% ui_page_header title="Проекты" subtitle=title %}
     {% if can_create %}{% url 'projects:create' as create_url %}{% ui_button "Новый проект" variant="primary" href=create_url icon_name="plus" %}{% endif %}
 {% end_ui_page_header %}
+{% if people_stats %}
+{% url 'interns:list' as interns_url %}{% url 'interns:graduates' as graduates_url %}
+<section aria-label="Стажёры в проектах" class="gp-grid" style="--grid-min: 180px; margin-bottom: var(--space-6)">
+    <a class="gp-stat" href="{{ interns_url }}?availability=busy">
+        <span class="gp-stat__label">Активные в проектах</span>
+        <span class="gp-stat__value">{{ people_stats.active }}</span>
+        <span class="gp-stat__caption">стажёры, сейчас в команде</span>
+    </a>
+    <a class="gp-stat" href="{{ interns_url }}?availability=busy&amp;kind=new">
+        <span class="gp-stat__label">Активные новые</span>
+        <span class="gp-stat__value">{{ people_stats.new }}</span>
+        <span class="gp-stat__caption">первый проект</span>
+    </a>
+    <a class="gp-stat" href="{{ interns_url }}?availability=busy&amp;kind=old">
+        <span class="gp-stat__label">Активные повторные</span>
+        <span class="gp-stat__value">{{ people_stats.repeat }}</span>
+        <span class="gp-stat__caption">уже заканчивали проект</span>
+    </a>
+    <a class="gp-stat" href="{{ interns_url }}?availability=paused">
+        <span class="gp-stat__label">В заморозке</span>
+        <span class="gp-stat__value">{{ people_stats.paused }}</span>
+        <span class="gp-stat__caption">стажировка приостановлена</span>
+    </a>
+    <a class="gp-stat" href="{{ graduates_url }}">
+        <span class="gp-stat__label">Выпускники</span>
+        <span class="gp-stat__value">{{ people_stats.graduates }}</span>
+        <span class="gp-stat__caption">всего, из них снова в проекте {{ people_stats.repeat }}</span>
+    </a>
+</section>
+{% endif %}
 {% ui_tabs category_tabs active=category label="Категории проектов" %}
 {% include "projects/_list_filters.html" %}
 {% include "projects/_list_body.html" %}
