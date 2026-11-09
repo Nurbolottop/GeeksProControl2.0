@@ -44,12 +44,13 @@ def intern_list(request):
     qs, sort = people.apply_sort(qs, request.GET.get('sort'))
     page = Paginator(qs, 25).get_page(request.GET.get('page'))
     page.object_list = people.decorate(page.object_list, graduates)
-    filters = ('q', 'branch', 'specialization', 'status', 'kind', 'project', 'telegram')
+    filters = ('q', 'branch', 'specialization', 'status', 'kind', 'project', 'telegram', 'availability')
     context = {
         'page': page, 'params': request.GET, 'sort': sort,
         'has_filters': any(request.GET.get(key) for key in filters),
         'options': people.filter_options(staff),
         'total_people': base.count(),
+        'people_stats': people.project_stats(),
         'waiting_count': (waiting := base.filter(status=InternStatus.WAITING, on_project=False).count()),
         'waiting_text': f'{waiting} — ждут, когда их добавят на проект.',
         'profile_link': services.active_profile_form_link(),

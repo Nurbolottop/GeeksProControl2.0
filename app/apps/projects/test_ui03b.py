@@ -688,6 +688,7 @@ class GraduationOnCloseTests(TestCase):
         response = self.client.get(reverse('projects:list'))
         self.assertContains(response, 'Активные повторные')
         self.assertEqual(response.context['people_stats'], stats)
+        self.assertContains(self.client.get(reverse('interns:list')), 'Активные повторные')
 
     def test_many_graduates_fit_into_history(self):
         # 11F: список выпускников большой команды длиннее 255 символов — закрытие падало

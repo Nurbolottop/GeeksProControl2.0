@@ -9,6 +9,7 @@
     {% url 'interns:create' as create_url %}{% ui_button "Новый стажёр" variant="primary" href=create_url icon_name="plus" %}
 {% end_ui_page_header %}
 
+{% include "interns/_people_stats.html" %}
 {% if waiting_count %}<div style="margin-bottom: var(--space-4)">{% ui_alert waiting_text level="info" title="Новенькие" %}{% if params.status != 'waiting' %}<div style="margin-top: var(--space-2)"><a class="gp-link gp-small" href="?status=waiting">Показать ожидающих</a></div>{% endif %}</div>{% endif %}
 <form method="get" class="gp-card" style="margin-bottom: var(--space-4)" role="search" aria-label="Фильтры стажёров">
     <div class="gp-card__body">
